@@ -1,0 +1,16 @@
+<ul class="tl">
+{% for e in timeline %}
+  <li>
+    <div class="meta">
+      <span>{{ e.when|date:"Y-m-d H:i" }}</span><span>{{ e.who }}</span>
+      <span class="act">{{ e.action }}</span>{% if e.subject %}<span>{{ e.subject }}</span>{% endif %}
+      {% if e.revertible and e.action != "新建" %}
+        <form class="inline" method="post" action="{% url 'history_revert' e.model_key e.history_id %}" style="margin-left:auto"
+              onsubmit="return confirm('把这次改动恢复成改动前的值？');">{% csrf_token %}<button class="sm">回滚</button></form>
+      {% endif %}
+    </div>
+    {% if e.changes %}<div class="chg">{% for c in e.changes %}<div>{{ c.field }}：<span class="old">{{ c.old }}</span> → <span class="new">{{ c.new }}</span></div>{% endfor %}</div>{% endif %}
+    {% if e.text %}<div class="text">{{ e.text }}</div>{% endif %}
+  </li>
+{% empty %}<li class="muted">暂无记录</li>{% endfor %}
+</ul>

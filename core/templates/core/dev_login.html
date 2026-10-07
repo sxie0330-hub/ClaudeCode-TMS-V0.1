@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}开发登录{% endblock %}
+{% block content %}
+<div class="login form" style="text-align:left">
+  <h1>开发/测试登录</h1>
+  <p class="muted">仅在本地测试环境开放。正式环境只能用 Google 登录。</p>
+  <form method="post">{% csrf_token %}
+    {% if form.errors %}<div class="nonfield">用户名或密码错误</div>{% endif %}
+    <div class="f"><label>用户名</label>{{ form.username }}</div>
+    <div class="f" style="margin-top:8px"><label>密码</label>{{ form.password }}</div>
+    <button class="btn primary" type="submit">登录</button>
+  </form>
+</div>
+{% endblock %}

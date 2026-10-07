@@ -1,0 +1,22 @@
+{% extends "core/base.html" %}
+{% block title %}项目{% endblock %}
+{% block content %}
+<div class="head"><h1>项目</h1>
+  <div class="actions">{% if perm.edit_ops %}<a class="btn primary" href="{% url 'project_create' %}">+ 新建项目</a>{% endif %}</div>
+</div>
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="项目名 / 编号 / Monday ID / 客户">
+  <select name="status"><option value="">全部状态</option>
+    {% for v, l in statuses %}<option value="{{ v }}" {% if g.status|default:'ACTIVE' == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  </select>
+  <button type="submit">筛选</button>
+</form>
+<div class="panel"><div class="tablewrap"><table class="t">
+  <thead><tr><th>编号</th><th>项目</th><th>客户</th><th>Monday ID</th><th>状态</th><th>创建</th></tr></thead>
+  <tbody>
+  {% for p in page %}<tr><td><a href="{{ p.get_absolute_url }}"><b>{{ p.number }}</b></a></td><td><a href="{{ p.get_absolute_url }}">{{ p.name }}</a></td>
+    <td>{{ p.customer.name }}</td><td>{{ p.monday_item_id|default:"—" }}</td><td>{{ p.get_status_display }}</td><td>{{ p.created_at|date:"Y-m-d" }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="muted">没有项目</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}
