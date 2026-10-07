@@ -1,0 +1,8 @@
+{% load tms %}<tr class="{% if c.state == 'VOID' %}void{% endif %}">
+  <td>{{ c.side }}</td><td>{{ c.get_charge_type_display }}</td><td class="wrap">{{ c.description }}{% if c.notes %}<br><small class="muted">{{ c.notes }}</small>{% endif %}</td>
+  <td class="num">{{ c.quantity|qty }}</td><td class="num">{{ c.unit_price|money }}</td><td class="num"><b>{{ c.amount|money }}</b></td>
+  <td>{% if c.side == 'AR' %}{{ s.customer.name }}{% else %}{{ c.carrier|dash }}{% endif %}</td>
+  <td>{{ c.invoice_number|dash }}</td><td>{{ c.invoice_date|dash }}</td>
+  <td><span class="b b-{{ c.state }}">{{ c.get_state_display }}</span></td>
+  <td><a href="{% url 'charge_edit' c.pk %}">编辑</a> · <a href="{% url 'charge_delete' c.pk %}">删除</a></td>
+</tr>

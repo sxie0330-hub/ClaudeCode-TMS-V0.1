@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% block title %}团队{% endblock %}
+{% block content %}
+<div class="head"><h1>团队与权限</h1><div class="actions"><a class="btn" href="{% url 'import_trina' %}">导入 Trina 表格</a></div></div>
+<div class="intro">同事第一次用公司 Google 账号登录后会出现在这里，分配角色后才能使用。
+  <b>管理层</b>：全部；<b>OP</b>：编辑运输信息 + 看/改应付；<b>AP</b>：只读运输信息 + 看/改应付；<b>AR</b>：只读运输信息 + 看/改应收（看不到应付）。</div>
+<div class="panel"><div class="tablewrap"><table class="t">
+  <thead><tr><th>账号</th><th>姓名</th><th>最近登录</th><th>角色</th></tr></thead>
+  <tbody>{% for u in users %}<tr><td>{{ u.email|default:u.username }}</td><td>{{ u.get_full_name|default:"—" }}</td><td>{{ u.last_login|date:"Y-m-d H:i"|default:"—" }}</td>
+    <td><form method="post" class="inline">{% csrf_token %}<input type="hidden" name="user" value="{{ u.pk }}">
+      <select name="role" onchange="this.form.submit()"><option value="">未分配（无权限）</option>
+        {% for v, l in roles %}<option value="{{ v }}" {% if u.profile.role == v or u.is_superuser and v == 'MGMT' and not u.profile.role %}selected{% endif %}>{{ l }}</option>{% endfor %}
+      </select></form></td></tr>{% endfor %}</tbody>
+</table></div></div>
+{% endblock %}

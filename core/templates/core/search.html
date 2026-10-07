@@ -1,0 +1,19 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}搜索 {{ q }}{% endblock %}
+{% block content %}
+<div class="head"><h1>搜索：{{ q|default:"" }}</h1></div>
+{% if q|length < 2 %}<p class="muted">请输入至少 2 个字符。</p>{% endif %}
+{% for title, items in results.items %}{% if items %}
+<div class="panel"><header><h2>{{ title }}</h2><small class="muted">{{ items|length }}</small></header><div class="body">
+  {% for i in items %}<div style="padding:2px 0">
+    {% if title == "运单" %}<a href="{{ i.get_absolute_url }}"><b>{{ i.number }}</b></a> <span class="b b-{{ i.status }}">{{ i.get_status_display }}</span>
+      {{ i.container_number }} · {{ i.master_bl.number|default:"" }} · {{ i.customer.name }}{% if i.project %} · {{ i.project.name }}{% endif %}
+    {% elif title == "费用（发票号）" %}<a href="{{ i.shipment.get_absolute_url }}#charges">{{ i.shipment.number }}</a> · {{ i.side }} {{ i.get_charge_type_display }} · 发票 {{ i.invoice_number }} · {{ i.amount|money }}
+    {% elif title == "项目" %}<a href="{{ i.get_absolute_url }}">{{ i }}</a>
+    {% else %}<a href="{% if title == '客户' %}{% url 'master_detail' 'customer' i.pk %}{% elif title == '承运商' %}{% url 'master_detail' 'carrier' i.pk %}{% else %}{% url 'master_detail' 'location' i.pk %}{% endif %}">{{ i }}</a>{% if i.full_address %} <small class="muted">{{ i.full_address }}</small>{% endif %}
+    {% endif %}</div>{% endfor %}
+</div></div>
+{% endif %}{% endfor %}
+{% if q|length >= 2 and not results.运单 and not results.项目 %}<p class="muted">没有找到结果。</p>{% endif %}
+{% endblock %}
