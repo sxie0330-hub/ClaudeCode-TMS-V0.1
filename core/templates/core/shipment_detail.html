@@ -1,0 +1,189 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}{{ s.number }}{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>{{ s.number }}</h1>
+  <span class="b b-{{ s.status }}">{{ s.get_status_display }}</span>
+  <span class="muted">{{ s.customer.name }}{% if s.project %} · <a href="{{ s.project.get_absolute_url }}">{{ s.project.number }} {{ s.project.name }}</a>{% endif %}</span>
+  <div class="actions">
+    <a class="btn" href="{% url 'shipment_bol' s.pk %}" target="_blank">生成 BOL</a>
+    {% if can_edit %}<a class="btn primary" href="{% url 'shipment_edit' s.pk %}">编辑运单</a>{% endif %}
+    {% if perm.mgmt %}
+      {% if s.status == 'DELIVERED' or s.status == 'CLOSED' %}
+      <form class="inline" method="post" action="{% url 'shipment_close' s.pk %}">{% csrf_token %}<button>{% if s.closed_at %}取消结案{% else %}结案{% endif %}</button></form>
+      {% endif %}
+      <a class="btn danger" href="{% url 'shipment_delete' s.pk %}">删除</a>
+    {% endif %}
+  </div>
+</div>
+
+{% if s.is_locked %}
+<div class="lock">🔒 该运单已送达/结案，运输信息已锁定，防止误改。文件链接、还空信息和费用仍可编辑。
+  {% if perm.mgmt %}<form class="inline" method="post" action="{% url 'shipment_unlock' s.pk %}" style="margin-left:auto">{% csrf_token %}<button class="sm">管理层解锁</button></form>{% endif %}
+</div>
+{% elif perm.mgmt and s.status == 'DELIVERED' or perm.mgmt and s.status == 'CLOSED' %}
+<div class="lock">⚠ 该运单已被解锁编辑。<form class="inline" method="post" action="{% url 'shipment_lock' s.pk %}" style="margin-left:auto">{% csrf_token %}<button class="sm">重新锁定</button></form></div>
+{% endif %}
+
+<div class="panel">
+  <header><h2>基本信息</h2></header>
+  <div class="body kv3">
+    <dl class="kv">
+      <dt>服务</dt><dd>{{ s.get_service_display }}</dd>
+      <dt>Monday ID</dt><dd>{{ s.monday_item_id|dash }}</dd>
+      <dt>客户参考号</dt><dd>{{ s.customer_ref|dash }}</dd>
+      <dt>起运地</dt><dd>{% if s.shipper %}<a href="{% url 'master_detail' 'location' s.shipper.pk %}">{{ s.shipper }}</a>{% else %}—{% endif %}</dd>
+      <dt>最终收货地</dt><dd>{% if s.consignee %}<a href="{% url 'master_detail' 'location' s.consignee.pk %}">{{ s.consignee }}</a> <small>{{ s.consignee.full_address }}</small>{% else %}—{% endif %}</dd>
+    </dl>
+    <dl class="kv">
+      <dt>柜号</dt><dd><b>{{ s.container_number|dash }}</b></dd>
+      <dt>柜型/设备</dt><dd>{{ s.get_equipment_display|dash }}</dd>
+      <dt>封条号</dt><dd>{{ s.seal_number|dash }}</dd>
+      <dt>LFD</dt><dd class="{% if s.lfd_warning %}lfd-warn{% endif %}">{{ s.lfd|dash }}</dd>
+      <dt>还空</dt><dd>{{ s.empty_return_date|dash }} {% if s.empty_return_location %}@ {{ s.empty_return_location }}{% endif %}</dd>
+    </dl>
+    <dl class="kv">
+      <dt>MBL</dt><dd>{% if s.master_bl %}<b>{{ s.master_bl.number }}</b> {% if can_edit %}<a href="{% url 'mbl_edit' s.pk %}">编辑提单</a>{% endif %}{% else %}—{% endif %}</dd>
+      {% if s.master_bl %}
+      <dt>船公司/船名</dt><dd>{{ s.master_bl.ocean_carrier|dash }} · {{ s.master_bl.vessel_voyage|dash }}</dd>
+      <dt>码头</dt><dd>{{ s.master_bl.terminal|dash }} {{ s.master_bl.port_of_discharge }}</dd>
+      <dt>ETA / ATA</dt><dd>{{ s.master_bl.eta|dash }} / {{ s.master_bl.ata|dash }}</dd>
+      {% endif %}
+    </dl>
+  </div>
+  {% if s.notes %}<div class="body" style="border-top:1px solid var(--line);white-space:pre-wrap">{{ s.notes }}</div>{% endif %}
+</div>
+
+<div class="panel" id="leg">
+  <header><h2>运输段</h2>
+    <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'leg' %}">+ 添加运输段</a>{% endif %}</div>
+  </header>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th><th></th></tr></thead>
+    <tbody>
+    {% for l in legs %}
+      <tr>
+        <td>{{ l.sequence }}</td>
+        <td>{{ l.get_kind_display }}{% if l.equipment %}<br><small>{{ l.equipment }}</small>{% endif %}</td>
+        <td>{{ l.origin|dash }} → {{ l.destination|dash }}</td>
+        <td>{% if l.carrier %}<a href="{% url 'master_detail' 'carrier' l.carrier.pk %}">{{ l.carrier }}</a>{% else %}—{% endif %}</td>
+        <td>{{ l.carrier_load_number|dash }}</td>
+        <td>{{ l.driver_name }} {{ l.driver_phone }} {{ l.truck_trailer }}</td>
+        <td>{{ l.scheduled_pickup|dash }} {% if l.pickup_appt %}{{ l.pickup_appt|time:"H:i" }}{% endif %}</td>
+        <td>{{ l.actual_pickup|dash }}</td>
+        <td>{{ l.scheduled_delivery|dash }} {% if l.delivery_appt %}{{ l.delivery_appt|time:"H:i" }}{% endif %}</td>
+        <td>{{ l.actual_delivery|dash }}</td>
+        <td>{% if l.tracking_url %}<a href="{{ l.tracking_url }}" target="_blank" rel="noopener">跟踪</a>{% endif %}</td>
+        <td><a href="{% url 'shipment_bol' s.pk %}?leg={{ l.pk }}" target="_blank">{{ l.effective_bol_number }}</a></td>
+        <td>{% if can_edit %}<a href="{% url 'child_edit' 'leg' l.pk %}">编辑</a> · <a href="{% url 'child_delete' 'leg' l.pk %}">删除</a>{% endif %}</td>
+      </tr>
+      {% if l.notes %}<tr><td></td><td colspan="12" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}
+    {% empty %}<tr><td colspan="13" class="muted">还没有运输段。例如：①拖柜 码头→堆场 ②OTR 堆场→现场。</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</div>
+
+<div class="grid2">
+  <div class="panel" id="cargo">
+    <header><h2>货物明细</h2><small class="muted">印在 BOL 上</small>
+      <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'cargo' %}">+ 添加</a>{% endif %}</div>
+    </header>
+    <div class="tablewrap"><table class="t">
+      <thead><tr><th>数量</th><th>描述</th><th>HM</th><th>尺寸 (in)</th><th class="num">重量 lbs</th><th></th></tr></thead>
+      <tbody>
+      {% for c in cargo %}
+        <tr><td>{{ c.handling_qty }} {{ c.get_handling_type_display }}{% if c.pieces %} / {{ c.pieces }} pcs{% endif %}</td>
+          <td class="wrap">{{ c.bol_description }}</td><td>{% if c.hazmat %}X{% endif %}</td><td>{{ c.dims|dash }}</td>
+          <td class="num">{{ c.weight_lbs|qty|dash }}</td>
+          <td>{% if can_edit %}<a href="{% url 'child_edit' 'cargo' c.pk %}">编辑</a> · <a href="{% url 'child_delete' 'cargo' c.pk %}">删除</a>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="muted">还没有货物明细</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="panel" id="unit">
+    <header><h2>设备序列号</h2>
+      <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'unit' %}">+ 添加</a>{% endif %}</div>
+    </header>
+    <div class="tablewrap"><table class="t">
+      <thead><tr><th>序列号</th><th>产品</th><th>Config</th><th>Tier</th><th>换标后</th><th></th></tr></thead>
+      <tbody>
+      {% for u in units %}
+        <tr><td><b>{{ u.serial_number }}</b></td><td>{{ u.product|dash }}</td><td>{{ u.config|dash }}</td><td>{{ u.tier|dash }}</td><td>{{ u.new_serial_number|dash }}</td>
+          <td>{% if can_edit %}<a href="{% url 'child_edit' 'unit' u.pk %}">编辑</a> · <a href="{% url 'child_delete' 'unit' u.pk %}">删除</a>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="6" class="muted">无</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel" id="yard">
+    <header><h2>堆场停留</h2>
+      <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'yard' %}">+ 添加</a>{% endif %}</div>
+    </header>
+    <div class="tablewrap"><table class="t">
+      <thead><tr><th>堆场</th><th>进场</th><th>出场</th><th class="num">天数</th><th class="num">免费</th><th class="num">计费天数</th><th></th><th></th></tr></thead>
+      <tbody>
+      {% for y in yard_stays %}
+        <tr><td>{{ y.yard }}</td><td>{{ y.in_date|dash }}</td><td>{{ y.out_date|default:"在场" }}</td>
+          <td class="num">{{ y.total_days }}</td><td class="num">{{ y.free_days }}</td><td class="num"><b>{{ y.billable_days }}</b></td>
+          <td><details><summary><small>按月</small></summary><small>{% for m, d in y.days_by_month %}{{ m }}: {{ d }}天<br>{% endfor %}</small></details></td>
+          <td>{% if can_edit %}<a href="{% url 'child_edit' 'yard' y.pk %}">编辑</a> · <a href="{% url 'child_delete' 'yard' y.pk %}">删除</a>{% endif %}
+            {% if can_edit_ar %}<br><a href="{% url 'charge_create' s.pk 'AR' %}?type=STORAGE&qty={{ y.billable_days }}">→ 应收仓储费</a>{% endif %}
+            {% if can_edit_ap %}<br><a href="{% url 'charge_create' s.pk 'AP' %}?type=STORAGE&qty={{ y.billable_days }}">→ 应付仓储费</a>{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="8" class="muted">无</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+  </div>
+
+  <div class="panel" id="docs">
+    <header><h2>文件</h2><small class="muted">存于 Google Drive</small>
+      <div class="actions">{% if can_edit_docs %}<a class="btn sm" href="{% url 'shipment_docs' s.pk %}">编辑链接 / 还空</a>{% endif %}</div>
+    </header>
+    <div class="body"><dl class="kv">
+      <dt>POD</dt><dd>{% if s.pod_link %}<a href="{{ s.pod_link }}" target="_blank" rel="noopener">打开</a>{% else %}<span class="muted">未上传</span>{% endif %}</dd>
+      <dt>照片</dt><dd>{% if s.photos_link %}<a href="{{ s.photos_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
+      <dt>检验报告</dt><dd>{% if s.inspection_link %}<a href="{{ s.inspection_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
+      <dt>其他</dt><dd>{% if s.other_docs_link %}<a href="{{ s.other_docs_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
+    </dl></div>
+  </div>
+</div>
+
+{% if perm.see_ar or perm.see_ap %}
+<div class="panel" id="charges">
+  <header><h2>费用</h2>
+    {% if perm.see_margin %}<span class="money">应收 <b>{{ ar_total|money }}</b> − 应付 <b>{{ ap_total|money }}</b> = 毛利 <b>{{ margin|money }}</b></span>{% endif %}
+    <div class="actions">
+      {% if can_edit_ar %}<a class="btn sm" href="{% url 'charge_create' s.pk 'AR' %}">+ 应收</a>{% endif %}
+      {% if can_edit_ap %}<a class="btn sm" href="{% url 'charge_create' s.pk 'AP' %}">+ 应付</a>{% endif %}
+    </div>
+  </header>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th>方向</th><th>类型</th><th>说明</th><th class="num">数量</th><th class="num">单价</th><th class="num">金额</th><th>对象</th><th>发票号</th><th>发票日期</th><th>状态</th><th></th></tr></thead>
+    <tbody>
+    {% if perm.see_ar %}
+      {% for c in ar %}{% include "core/_charge_row.html" %}{% endfor %}
+      <tr class="total"><td colspan="5">应收合计</td><td class="num">{{ ar_total|money }}</td><td colspan="5"></td></tr>
+    {% endif %}
+    {% if perm.see_ap %}
+      {% for c in ap %}{% include "core/_charge_row.html" %}{% endfor %}
+      <tr class="total"><td colspan="5">应付合计</td><td class="num">{{ ap_total|money }}</td><td colspan="5"></td></tr>
+    {% endif %}
+    </tbody>
+  </table></div>
+</div>
+{% endif %}
+
+<div class="panel" id="timeline">
+  <header><h2>时间线</h2><small class="muted">所有改动自动记录：谁、什么时候、旧值 → 新值</small></header>
+  <div class="body">
+    <form method="post" action="{% url 'shipment_note' s.pk %}" class="form" style="max-width:none;margin-bottom:8px">
+      {% csrf_token %}{{ note_form.text }}
+      <div style="margin-top:6px"><button class="sm primary" type="submit">添加备注</button></div>
+    </form>
+    {% include "core/_timeline.html" %}
+  </div>
+</div>
+{% endblock %}

@@ -1,0 +1,64 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}{{ p.name }}{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>{{ p.name }}</h1><span class="muted">{{ p.number }} · <a href="{% url 'master_detail' 'customer' p.customer.pk %}">{{ p.customer.name }}</a> · {{ p.get_status_display }}</span>
+  <div class="actions">
+    {% if perm.edit_ops %}
+      <a class="btn" href="{% url 'project_edit' p.pk %}">编辑项目</a>
+      <a class="btn" href="{% url 'project_bulk' p.pk %}">批量新建运单</a>
+      <a class="btn primary" href="{% url 'shipment_create' %}?project={{ p.pk }}">+ 新建运单</a>
+    {% endif %}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel"><header><h2>项目信息</h2></header><div class="body"><dl class="kv">
+    <dt>Monday ID</dt><dd>{{ p.monday_item_id|dash }}</dd>
+    <dt>默认提货地</dt><dd>{{ p.default_shipper|dash }}</dd>
+    <dt>默认收货地</dt><dd>{{ p.default_consignee|dash }} <small>{{ p.default_consignee.full_address }}</small></dd>
+    <dt>默认货物</dt><dd>{{ p.un_number }} {{ p.cargo_description|dash }} {% if p.hazard_class %}Class {{ p.hazard_class }}{% endif %}</dd>
+    <dt>紧急联系人</dt><dd>{{ p.emergency_contact|dash }}</dd>
+    <dt>BOL 司机须知</dt><dd style="white-space:pre-wrap">{{ p.bol_instructions|dash }}</dd>
+    {% if p.notes %}<dt>备注</dt><dd style="white-space:pre-wrap">{{ p.notes }}</dd>{% endif %}
+  </dl></div></div>
+  <div class="panel"><header><h2>进度</h2></header><div class="body">
+    <div class="stats">{% for label, n in counts %}<span class="b">{{ label }} {{ n }}</span>{% empty %}<span class="muted">还没有运单</span>{% endfor %}</div>
+    <dl class="kv" style="margin-top:12px">
+      {% if money.ar is not None %}<dt>应收合计</dt><dd class="money">{{ money.ar|money }}</dd>{% endif %}
+      {% if money.ap is not None %}<dt>应付合计</dt><dd class="money">{{ money.ap|money }}</dd>{% endif %}
+      {% if money.margin is not None %}<dt>毛利</dt><dd class="money"><b>{{ money.margin|money }}</b></dd>{% endif %}
+    </dl>
+  </div></div>
+</div>
+
+<form method="post" action="{% url 'bulk_bol' %}" target="_blank" id="bulk">{% csrf_token %}
+<div class="panel"><header><h2>运单（{{ shipments|length }}）</h2>
+  <div class="actions"><button class="sm" type="submit">为勾选的生成 BOL</button>
+  <a class="btn sm" href="{% url 'shipment_export' %}?project={{ p.pk }}&status=">导出 CSV</a></div></header>
+<div class="tablewrap"><table class="t">
+  <thead><tr><th><input type="checkbox" id="all"></th><th>运单号</th><th>状态</th><th>柜号</th><th>序列号</th><th>MBL</th><th>ETA</th><th>LFD</th><th>当前段</th><th>承运商</th><th>实际送达</th></tr></thead>
+  <tbody>
+  {% for s in shipments %}{% with leg=s.current_leg %}
+    <tr><td><input type="checkbox" name="ids" value="{{ s.pk }}"></td>
+      <td><a href="{{ s.get_absolute_url }}"><b>{{ s.number }}</b></a>{% if s.is_locked %} 🔒{% endif %}</td>
+      <td><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span></td>
+      <td>{{ s.container_number|dash }}</td><td>{% for u in s.units.all %}{{ u.serial_number }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</td>
+      <td>{{ s.master_bl.number|dash }}</td><td>{{ s.master_bl.eta|dash }}</td><td class="{% if s.lfd_warning %}lfd-warn{% endif %}">{{ s.lfd|dash }}</td>
+      <td>{% if leg %}{{ leg.origin|dash }} → {{ leg.destination|dash }}{% else %}—{% endif %}</td><td>{{ leg.carrier|dash }}</td><td>{{ leg.actual_delivery|dash }}</td></tr>
+  {% endwith %}{% empty %}<tr><td colspan="11" class="muted">还没有运单</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+</form>
+
+<div class="panel" id="timeline"><header><h2>项目时间线</h2><small class="muted">项目改动 + 项目下所有运单的备注</small></header><div class="body">
+  <form method="post" action="{% url 'project_note' p.pk %}" class="form" style="max-width:none;margin-bottom:8px">{% csrf_token %}{{ note_form.text }}
+    <div style="margin-top:6px"><button class="sm primary" type="submit">添加备注</button></div></form>
+  {% include "core/_timeline.html" %}
+</div></div>
+{% endblock %}
+{% block scripts %}<script>
+document.getElementById("all").addEventListener("change", function (e) {
+  document.querySelectorAll('#bulk input[name=ids]').forEach(function (c) { c.checked = e.target.checked; });
+});</script>{% endblock %}

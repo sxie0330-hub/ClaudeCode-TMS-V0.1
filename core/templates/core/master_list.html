@@ -1,0 +1,15 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}{{ label }}{% endblock %}
+{% block content %}
+<div class="head"><h1>{{ label }}</h1><span class="muted">{{ page.paginator.count }} 条</span>
+  <div class="actions">{% if perm.edit_ops %}<a class="btn primary" href="{% url 'master_create' kind %}">+ 新建{{ label }}</a>{% endif %}</div></div>
+<form class="filters" method="get"><input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="搜索{{ label }}"><button type="submit">搜索</button></form>
+<div class="panel"><div class="tablewrap"><table class="t">
+  <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>
+  <tbody>{% for obj, cells in rows %}<tr>{% for c in cells %}<td{% if not forloop.first %} class="wrap"{% endif %}>{% if forloop.first %}<a href="{% url 'master_detail' kind obj.pk %}"><b>{{ c }}</b></a>{% else %}{{ c|dash }}{% endif %}</td>{% endfor %}</tr>
+  {% empty %}<tr><td colspan="{{ headers|length }}" class="muted">没有记录</td></tr>{% endfor %}</tbody>
+</table></div></div>
+<div class="pager">{% if page.has_previous %}<a class="btn sm" href="?q={{ g.q|default:'' }}&page={{ page.previous_page_number }}">上一页</a>{% endif %}
+  {% if page.has_next %}<a class="btn sm" href="?q={{ g.q|default:'' }}&page={{ page.next_page_number }}">下一页</a>{% endif %}</div>
+{% endblock %}

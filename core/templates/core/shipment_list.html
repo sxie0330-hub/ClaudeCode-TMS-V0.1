@@ -1,0 +1,83 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}运单{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>运单</h1>
+  <span class="muted">共 {{ page.paginator.count }} 票</span>
+  <div class="actions">
+    <a class="btn" href="{% url 'shipment_export' %}?{{ querystring }}">导出 CSV</a>
+    {% if perm.edit_ops %}<a class="btn primary" href="{% url 'shipment_create' %}">+ 新建运单</a>{% endif %}
+  </div>
+</div>
+
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="柜号 / MBL / 运单号 / 序列号 / PO / Monday ID">
+  <select name="status">
+    <option value="">未结案（默认）</option>
+    {% for v, l in statuses %}<option value="{{ v }}" {% if g.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  </select>
+  <select name="customer"><option value="">全部客户</option>
+    {% for c in customers %}<option value="{{ c.pk }}" {% if g.customer == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}
+  </select>
+  <select name="project"><option value="">全部进行中项目</option>
+    {% for p in projects %}<option value="{{ p.pk }}" {% if g.project == p.pk|stringformat:"s" %}selected{% endif %}>{{ p.customer.name }} · {{ p.name }}</option>{% endfor %}
+  </select>
+  <select name="service"><option value="">全部服务</option>
+    {% for v, l in services %}<option value="{{ v }}" {% if g.service == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  </select>
+  <label><input type="checkbox" name="lfd" value="soon" {% if g.lfd == 'soon' %}checked{% endif %}> LFD 临近</label>
+  <input type="hidden" name="view" value="open">
+  <button type="submit">筛选</button>
+  <a href="{% url 'shipment_list' %}">清除</a>
+</form>
+
+<form method="post" action="{% url 'bulk_bol' %}" target="_blank" id="bulk">
+{% csrf_token %}
+<div class="panel"><div class="tablewrap">
+<table class="t">
+  <thead><tr>
+    <th><input type="checkbox" id="all" title="全选本页"></th>
+    <th>运单号</th><th>状态</th><th>客户 / 项目</th><th>柜号</th><th>柜型</th><th>MBL</th><th>ETA</th><th>LFD</th>
+    <th>当前段</th><th>承运商</th><th>计划送达</th><th>实际送达</th><th>最终收货地</th>
+  </tr></thead>
+  <tbody>
+  {% for s in rows %}{% with leg=s.current_leg %}
+    <tr>
+      <td><input type="checkbox" name="ids" value="{{ s.pk }}"></td>
+      <td><a href="{{ s.get_absolute_url }}"><b>{{ s.number }}</b></a>{% if s.is_locked %} 🔒{% endif %}</td>
+      <td><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span></td>
+      <td>{{ s.customer.name }}{% if s.project %} · <a href="{{ s.project.get_absolute_url }}">{{ s.project.name }}</a>{% endif %}</td>
+      <td>{{ s.container_number|dash }}</td>
+      <td>{{ s.equipment|dash }}</td>
+      <td>{{ s.master_bl.number|dash }}</td>
+      <td>{% if s.master_bl %}{{ s.master_bl.ata|default:s.master_bl.eta|dash }}{% else %}—{% endif %}</td>
+      <td class="{% if s.lfd_warning %}lfd-warn{% endif %}">{{ s.lfd|dash }}</td>
+      <td>{% if leg %}{{ leg.origin|dash }} → {{ leg.destination|dash }}{% else %}—{% endif %}</td>
+      <td>{{ leg.carrier|dash }}</td>
+      <td>{{ leg.scheduled_delivery|dash }}</td>
+      <td>{{ leg.actual_delivery|dash }}</td>
+      <td>{{ s.consignee|dash }}</td>
+    </tr>
+  {% endwith %}{% empty %}
+    <tr><td colspan="14" class="muted" style="padding:24px;text-align:center">没有符合条件的运单</td></tr>
+  {% endfor %}
+  </tbody>
+</table>
+</div></div>
+<div class="pager">
+  <button type="submit">为勾选的运单生成 BOL（PDF）</button>
+  <span style="margin-left:auto"></span>
+  {% if page.has_previous %}<a class="btn sm" href="?{{ querystring }}&page={{ page.previous_page_number }}">上一页</a>{% endif %}
+  <span class="muted">第 {{ page.number }} / {{ page.paginator.num_pages }} 页</span>
+  {% if page.has_next %}<a class="btn sm" href="?{{ querystring }}&page={{ page.next_page_number }}">下一页</a>{% endif %}
+</div>
+</form>
+{% endblock %}
+{% block scripts %}
+<script>
+document.getElementById("all").addEventListener("change", function (e) {
+  document.querySelectorAll('#bulk input[name=ids]').forEach(function (c) { c.checked = e.target.checked; });
+});
+</script>
+{% endblock %}

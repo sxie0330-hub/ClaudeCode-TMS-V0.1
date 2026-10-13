@@ -1,0 +1,21 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}{{ obj }}{% endblock %}
+{% block content %}
+<div class="head"><h1>{{ obj }}</h1><span class="muted">{{ label }}</span>
+  <div class="actions">
+    {% if kind == 'customer' and perm.edit_ops %}<a class="btn" href="{% url 'project_create' %}?customer={{ obj.pk }}">+ 新建项目</a>{% endif %}
+    {% if perm.edit_ops %}<a class="btn primary" href="{% url 'master_edit' kind obj.pk %}">编辑</a>{% endif %}
+  </div></div>
+<div class="panel"><div class="body"><dl class="kv">
+  {% for name, value in fields %}<dt>{{ name }}</dt><dd style="white-space:pre-wrap">{{ value|dash }}</dd>{% endfor %}
+</dl></div></div>
+{% for title, items in related %}
+<div class="panel"><header><h2>{{ title }}</h2></header><div class="body">
+  {% for i in items %}<div><a href="{{ i.get_absolute_url }}">{{ i }}</a>
+    {% if i.status %}<span class="b b-{{ i.status }}">{{ i.get_status_display }}</span>{% endif %}
+    {% if i.origin_id or i.destination_id %}<small class="muted">{{ i.origin|dash }} → {{ i.destination|dash }} · {{ i.actual_delivery|default:i.scheduled_delivery|dash }}</small>{% endif %}</div>
+  {% empty %}<span class="muted">无</span>{% endfor %}
+</div></div>
+{% endfor %}
+{% endblock %}

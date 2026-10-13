@@ -1,0 +1,14 @@
+{% extends "core/base.html" %}
+{% block title %}导入 Trina 表格{% endblock %}
+{% block content %}
+<div class="head"><h1>导入 Trina 表格（测试数据）</h1></div>
+<div class="panel"><div class="body form">
+  <div class="intro">上传 “Trina NJ_VA units Tracking Sheet.xlsx”。重复导入是安全的：已导入的柜子会自动跳过。先勾“只预览”看读到了什么。</div>
+  <form method="post" enctype="multipart/form-data">{% csrf_token %}
+    <div class="f"><label>Excel 文件 (.xlsx)</label><input type="file" name="file" accept=".xlsx" required></div>
+    <label style="display:block;margin-top:8px"><input type="checkbox" name="dry_run" value="1"> 只预览，不写入</label>
+    <div class="buttons"><button class="primary" type="submit">开始</button></div>
+  </form>
+  {% if output %}<pre style="white-space:pre-wrap;background:#f6f7f9;padding:10px;border-radius:5px;margin-top:14px">{{ output }}</pre>{% endif %}
+</div></div>
+{% endblock %}

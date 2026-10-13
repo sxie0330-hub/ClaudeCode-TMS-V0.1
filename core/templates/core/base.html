@@ -1,0 +1,34 @@
+{% load static %}<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>{% block title %}TMS{% endblock %} · TMS</title>
+<link rel="stylesheet" href="{% static 'core/app.css' %}">
+</head>
+<body>
+{% if user.is_authenticated and user_role %}
+<div class="top">
+  <a class="brand" href="{% url 'shipment_list' %}">TMS</a>
+  {% with p=request.path %}
+  <nav>
+    <a href="{% url 'shipment_list' %}" class="{% if p == '/' or '/shipments/' in p %}on{% endif %}">运单</a>
+    <a href="{% url 'project_list' %}" class="{% if '/projects/' in p %}on{% endif %}">项目</a>
+    <a href="{% url 'master_list' 'customer' %}" class="{% if '/data/customer' in p %}on{% endif %}">客户</a>
+    <a href="{% url 'master_list' 'carrier' %}" class="{% if '/data/carrier' in p %}on{% endif %}">承运商</a>
+    <a href="{% url 'master_list' 'location' %}" class="{% if '/data/location' in p %}on{% endif %}">地址库</a>
+    {% if perm.mgmt %}<a href="{% url 'team' %}" class="{% if '/team/' in p %}on{% endif %}">团队</a>{% endif %}
+  </nav>
+  {% endwith %}
+  <form action="{% url 'search' %}" method="get"><input type="search" name="q" value="{{ request.GET.q|default:'' }}" placeholder="搜索 柜号 / MBL / 运单号 / 序列号 / PO / 发票号…"></form>
+  <span class="who">{{ user.get_full_name|default:user.email|default:user.username }} · {{ role_label }}</span>
+  <form method="post" action="{% url 'account_logout' %}" class="inline">{% csrf_token %}<button class="sm" type="submit">退出</button></form>
+</div>
+{% endif %}
+<main>
+  {% if messages %}<ul class="msgs">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
+  {% block content %}{% endblock %}
+</main>
+{% block scripts %}{% endblock %}
+</body>
+</html>

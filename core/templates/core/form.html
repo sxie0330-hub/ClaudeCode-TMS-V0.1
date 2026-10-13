@@ -1,0 +1,38 @@
+{% extends "core/base.html" %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="head"><h1>{{ title }}</h1></div>
+<div class="panel"><div class="body">
+<form method="post" class="form" id="editform" novalidate>
+  {% csrf_token %}
+  {% if intro %}<div class="intro">{{ intro }}</div>{% endif %}
+  {% if form.non_field_errors %}<div class="nonfield">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+  {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+  <div class="fields">
+  {% for f in form.visible_fields %}
+    <div class="f{% if f.widget_type == 'textarea' %} full{% endif %}">
+      <label for="{{ f.id_for_label }}">{{ f.label }}{% if f.field.required %} *{% endif %}</label>
+      {{ f }}
+      {% if f.help_text %}<span class="help">{{ f.help_text }}</span>{% endif %}
+      {% for e in f.errors %}<span class="err">{{ e }}</span>{% endfor %}
+    </div>
+  {% endfor %}
+  </div>
+  <div class="buttons">
+    <button type="submit" class="primary">保存</button>
+    <a class="btn" href="{{ cancel_url }}">取消</a>
+  </div>
+</form>
+</div></div>
+{% endblock %}
+{% block scripts %}
+<script>
+// Warn before leaving with unsaved edits.
+(function () {
+  var f = document.getElementById("editform"), dirty = false;
+  f.addEventListener("input", function () { dirty = true; });
+  f.addEventListener("submit", function () { dirty = false; });
+  window.addEventListener("beforeunload", function (e) { if (dirty) { e.preventDefault(); e.returnValue = ""; } });
+})();
+</script>
+{% endblock %}
