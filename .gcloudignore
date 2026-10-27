@@ -1,0 +1,11 @@
+# Files not uploaded by "gcloud run deploy --source ."
+.git
+.gitignore
+.gcloudignore
+.venv
+__pycache__/
+*.pyc
+db.sqlite3
+staticfiles/
+.env
+*.xlsx

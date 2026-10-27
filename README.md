@@ -61,7 +61,11 @@
 - 提货地、收货地、承运商取自运输段；货物取自货物明细；司机须知、UN 编号、紧急联系人取自项目设置。
 - 列表或项目页里勾选多票，可以一次生成一个多页 PDF。
 
-## 部署（Render）
+## 部署（Google Cloud）
+
+正式环境用 Google Cloud Run + Cloud SQL，约 $10/月。逐步操作见 [docs/deploy-google-cloud.md](docs/deploy-google-cloud.md)。仓库里的 `Dockerfile` 就是给它用的。
+
+## 部署（Render，免费测试用）
 
 `render.yaml` 现在是**免费测试配置**：一个免费 Web 服务加一个免费 Postgres。
 

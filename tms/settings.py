@@ -82,8 +82,21 @@ DATABASES = {
     "default": dj_database_url.config(
         default=f"sqlite:///{BASE_DIR / 'db.sqlite3'}",
         conn_max_age=600,
+        conn_health_checks=True,
     )
 }
+# Google Cloud Run + Cloud SQL: connect over the Unix socket Cloud Run mounts at
+# /cloudsql/<instance>. Separate variables avoid URL-encoding the password.
+if os.environ.get("CLOUDSQL_INSTANCE"):
+    DATABASES["default"] = {
+        "ENGINE": "django.db.backends.postgresql",
+        "HOST": f"/cloudsql/{os.environ['CLOUDSQL_INSTANCE']}",
+        "NAME": os.environ.get("DB_NAME", "tms"),
+        "USER": os.environ.get("DB_USER", "tms"),
+        "PASSWORD": os.environ.get("DB_PASSWORD", ""),
+        "CONN_MAX_AGE": 600,
+        "CONN_HEALTH_CHECKS": True,
+    }
 
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator"},
