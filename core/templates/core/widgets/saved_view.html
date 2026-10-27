@@ -1,0 +1,3 @@
+<div class="wg-sub" style="margin-bottom:4px"><b style="color:var(--ink)">{{ d.title }}</b> · {{ d.count }} 个 · <a href="{% url 'shipment_list' %}?{{ d.query }}">打开</a></div>
+{% for s in d.items %}{% with leg=s.current_leg %}<div class="wg-li"><a href="{{ s.get_absolute_url }}"><b>{{ s.container_number|default:s.number }}</b></a><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span><span class="wg-sub">{{ s.project.name|default:s.customer.name }}</span></div>{% endwith %}
+{% empty %}<p class="wg-sub">{% if d.query %}没有符合条件的 Load{% else %}点右上角「设置」，把 Load 列表的筛选条件贴进来{% endif %}</p>{% endfor %}

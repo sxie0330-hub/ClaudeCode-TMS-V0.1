@@ -1,0 +1,6 @@
+{% load tms %}
+{% if d.missing %}<p class="wg-sub">还没选项目。点右上角「设置」选一个，或在项目页点「置顶到工作台」。</p>{% else %}
+<a href="{{ d.p.get_absolute_url }}"><b>{{ d.p.name }}</b></a>
+<div style="display:flex;gap:12px;flex-wrap:wrap;margin:6px 0"><span>送达 <b>{{ d.delivered }}/{{ d.n }}</b></span><span>POD <b>{{ d.pod }}/{{ d.n }}</b></span>{% if d.margin is not None %}<span>毛利 <b>{{ d.margin|money }}</b></span>{% endif %}<span class="b b-P{{ d.p.status }}">{{ d.p.get_status_display }}</span></div>
+<div class="prog"><span style="width: {{ d.pct }}%"></span></div>
+{% endif %}

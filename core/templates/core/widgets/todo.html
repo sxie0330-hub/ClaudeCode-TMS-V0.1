@@ -1,0 +1,4 @@
+<div class="stats" style="margin-bottom:6px"><span class="b b-lv-urgent">紧急 {{ d.counts.urgent }}</span><span class="b b-lv-today">今天 {{ d.counts.today }}</span><span class="b">本周 {{ d.counts.week }}</span></div>
+{% for a in d.items %}<div class="wg-li"><span class="dot dot-{{ a.level }}"></span><div><a href="{{ a.url }}"><b>{{ a.title }}</b></a>{% if a.project %}<br><span class="wg-sub">{{ a.project.name }}</span>{% endif %}</div></div>
+{% empty %}<p class="wg-sub">没有待办，一切正常。</p>{% endfor %}
+{% if d.total > d.items|length %}<a href="{% url 'todo' %}" style="font-size:12.5px">查看全部 {{ d.total }} 条 →</a>{% endif %}

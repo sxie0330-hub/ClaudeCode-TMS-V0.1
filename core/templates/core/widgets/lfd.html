@@ -1,0 +1,2 @@
+<div class="wg-big {% if d.count %}lfd-warn{% endif %}">{{ d.count }}</div><div class="wg-sub">3 天内到期、还没提的柜子</div>
+{% for s in d.items %}<div class="wg-sub"><a href="{{ s.get_absolute_url }}">{{ s.container_number }}</a> {{ s.lfd|date:"m-d" }}</div>{% endfor %}

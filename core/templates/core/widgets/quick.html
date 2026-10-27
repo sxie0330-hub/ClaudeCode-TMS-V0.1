@@ -1,0 +1,4 @@
+<div style="display:flex;flex-direction:column;gap:6px">
+{% if d.can_edit %}<a href="{% url 'project_create' %}">+ 新建项目</a><a href="{% url 'shipment_create' %}">+ 新建 Load</a>{% endif %}
+<a href="{% url 'shipment_list' %}?lfd=soon&view=open">LFD 临近的柜子</a><a href="{% url 'todo' %}">全部待办</a>
+</div>

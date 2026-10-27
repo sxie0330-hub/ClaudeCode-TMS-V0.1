@@ -1,0 +1,2 @@
+<div class="wg-big {% if d.count %}lfd-warn{% endif %}">{{ d.count }}</div><div class="wg-sub">已送达、POD 未收 · {{ d.projects }} 个项目</div>
+{% if size != "S" %}{% for s in d.items %}<div class="wg-sub"><a href="{{ s.get_absolute_url }}">{{ s.container_number|default:s.number }}</a> · {{ s.project.name|default:"" }}</div>{% endfor %}{% endif %}

@@ -1,0 +1,2 @@
+{% load tms %}<div class="wg-big" style="color:var(--ok)">{{ d.margin|money }}</div><div class="wg-sub">{{ d.month|date:"n" }} 月送达{% if d.pct is not None %} · {{ d.pct|floatformat:1 }}%{% endif %}</div>
+{% if size != "S" %}<div class="wg-sub">应收 {{ d.ar|money }} · 应付 {{ d.ap|money }}</div>{% endif %}

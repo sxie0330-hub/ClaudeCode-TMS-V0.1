@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}设置组件{% endblock %}
+{% block content %}
+<div class="head"><h1>设置组件：{{ meta.label }}</h1></div>
+<div class="panel"><div class="body">
+<form method="post" class="form">{% csrf_token %}
+  {% if w.type == "my_projects" %}
+    <div class="f full"><label>显示哪些列（按勾选顺序从左到右）</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 16px">{% for k, label in columns %}<label style="font-weight:400"><input type="checkbox" name="columns" value="{{ k }}" {% if k in cfg.columns %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+      <span class="help">应收、应付、毛利只有对应权限的人才看得到。</span>
+    </div>
+    <div class="f full" style="margin-top:12px"><label>项目状态</label>
+      <div style="display:flex;flex-wrap:wrap;gap:6px 16px">{% for k, label in statuses %}<label style="font-weight:400"><input type="checkbox" name="statuses" value="{{ k }}" {% if k in cfg.statuses %}checked{% endif %}> {{ label }}</label>{% endfor %}</div>
+    </div>
+  {% elif w.type == "project" %}
+    <div class="f"><label for="project">项目</label><select id="project" name="project">{% for p in projects %}<option value="{{ p.pk }}" {% if p.pk == cfg.project %}selected{% endif %}>{{ p.name }}</option>{% endfor %}</select></div>
+  {% elif w.type == "note" %}
+    <div class="f full"><label for="text">便签内容</label><textarea id="text" name="text" rows="6">{{ cfg.text }}</textarea></div>
+  {% elif w.type == "saved_view" %}
+    <div class="f"><label for="title">标题</label><input id="title" name="title" value="{{ cfg.title|default:'' }}" placeholder="如：Hithium 在途"></div>
+    <div class="f full" style="margin-top:10px"><label for="query">筛选条件</label><input id="query" name="query" value="{{ cfg.query|default:'' }}" placeholder="例：q=Hithium&status=TRANSIT">
+      <span class="help">做法：在 Load 列表页设好筛选，复制浏览器地址栏里 ? 后面的部分贴到这里。</span></div>
+  {% endif %}
+  {% if w.type != "note" and w.type != "project" and w.type != "saved_view" %}
+    <div class="f" style="margin-top:12px"><label for="scope">范围</label><select id="scope" name="scope"><option value="mine" {% if cfg.scope != 'all' %}selected{% endif %}>我负责的项目</option><option value="all" {% if cfg.scope == 'all' %}selected{% endif %}>全部</option></select></div>
+  {% endif %}
+  <div class="buttons"><button class="primary" type="submit">保存</button><a class="btn" href="{% url 'home' %}">取消</a></div>
+</form>
+</div></div>
+{% endblock %}

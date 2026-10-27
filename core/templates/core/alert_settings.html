@@ -1,0 +1,56 @@
+{% extends "core/base.html" %}
+{% block title %}待办设置{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>我的待办规则</h1>
+  <span class="muted">只对你自己生效 · 每条规则可开关、改阈值、选范围和级别</span>
+  <div class="actions">
+    <form method="post" action="{% url 'alert_settings_reset' %}" class="inline" onsubmit="return confirm('恢复全部默认设置？');">{% csrf_token %}<button>恢复默认</button></form>
+    <button class="primary" form="rules">保存</button>
+  </div>
+</div>
+<form method="post" id="rules">{% csrf_token %}
+<div class="panel"><div class="tablewrap"><table class="t">
+  <thead><tr><th>开启</th><th>规则</th><th>阈值</th><th>范围</th><th>级别</th><th>为什么</th></tr></thead>
+  <tbody>
+  {% for cat, rows in groups %}
+    <tr class="cat"><td colspan="6">{{ cat }}</td></tr>
+    {% for st in rows %}{% with r=st.rule %}
+    <tr>
+      <td><input type="checkbox" name="{{ r.key }}_enabled" {% if st.enabled %}checked{% endif %} aria-label="开启 {{ r.label }}"></td>
+      <td class="wrap">{{ r.label }}</td>
+      <td>{% if r.threshold is not None %}{{ r.prefix }} <input class="num-in" type="number" name="{{ r.key }}_threshold" value="{{ st.threshold }}" aria-label="阈值"> {{ r.unit }}{% else %}—{% endif %}</td>
+      <td><select name="{{ r.key }}_scope" aria-label="范围"><option value="mine" {% if st.scope == 'mine' %}selected{% endif %}>我的项目</option><option value="all" {% if st.scope == 'all' %}selected{% endif %}>全部</option></select></td>
+      <td><select name="{{ r.key }}_level" aria-label="级别">{% for k, label in levels %}<option value="{{ k }}" {% if st.level == k %}selected{% endif %}>{{ label }}</option>{% endfor %}</select></td>
+      <td class="wrap muted">{{ r.why }}</td>
+    </tr>
+    {% endwith %}{% endfor %}
+  {% endfor %}
+  </tbody>
+</table></div></div>
+</form>
+
+<div class="panel" id="custom">
+  <header><h2>自定义规则</h2><small class="muted">当 Load 满足条件时提醒我</small></header>
+  <div class="body">
+    {% for c in custom %}
+      <div style="display:flex;gap:10px;align-items:center;padding:4px 0">
+        <b>{{ c.name }}</b><span class="muted">{{ c.get_field1_display }} = {{ c.value1 }}{% if c.field2 %} 且 {{ c.get_field2_display }} = {{ c.value2 }}{% endif %} · {{ c.level }}</span>
+        <form method="post" action="{% url 'custom_rule_delete' c.pk %}" class="inline">{% csrf_token %}<button class="sm danger">删除</button></form>
+      </div>
+    {% empty %}<p class="muted" style="margin-top:0">还没有自定义规则。</p>{% endfor %}
+    <form method="post" action="{% url 'custom_rule_add' %}" class="filters" style="margin-top:10px">{% csrf_token %}
+      <label for="cr-name" class="sr">提醒标题</label><input id="cr-name" name="name" placeholder="提醒标题，如：Hithium 在途">
+      <span>当 Load 的</span>
+      <select name="field1" aria-label="条件一">{% for v, l in fields %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+      <label for="cr-v1" class="sr">值</label><input id="cr-v1" name="value1" placeholder="值，如 Hithium" style="width:140px">
+      <span>并且</span>
+      <select name="field2" aria-label="条件二"><option value="">（不加）</option>{% for v, l in fields %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+      <label for="cr-v2" class="sr">值二</label><input id="cr-v2" name="value2" placeholder="如 运输中" style="width:120px">
+      <span>级别</span><select name="level" aria-label="级别">{% for k, label in levels %}<option value="{{ k }}">{{ label }}</option>{% endfor %}</select>
+      <button class="primary" type="submit">添加</button>
+    </form>
+    <p class="muted" style="margin:6px 0 0;font-size:12.5px">状态可填：待安排、待到港、已到港、运输中、在堆场、已送达；"计划提货 / 送达在 N 天内"填数字。</p>
+  </div>
+</div>
+{% endblock %}

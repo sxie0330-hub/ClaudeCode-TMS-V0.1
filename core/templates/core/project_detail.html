@@ -2,61 +2,102 @@
 {% load tms %}
 {% block title %}{{ p.name }}{% endblock %}
 {% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'home' %}">我的工作台</a> / <a href="{% url 'project_list' %}">项目</a> / {{ p.number }}</div>
 <div class="head">
-  <h1>{{ p.name }}</h1><span class="muted">{{ p.number }} · <a href="{% url 'master_detail' 'customer' p.customer.pk %}">{{ p.customer.name }}</a> · {{ p.get_status_display }}</span>
+  <h1>{{ p.name }}</h1>
+  <span class="b b-P{{ p.status }}">{{ p.get_status_display }}</span>
   <div class="actions">
+    <form method="post" action="{% url 'pin_project' p.pk %}" class="inline">{% csrf_token %}<button>置顶到工作台</button></form>
     {% if perm.edit_ops %}
       <a class="btn" href="{% url 'project_edit' p.pk %}">编辑项目</a>
-      <a class="btn" href="{% url 'project_bulk' p.pk %}">批量新建运单</a>
-      <a class="btn primary" href="{% url 'shipment_create' %}?project={{ p.pk }}">+ 新建运单</a>
+      <a class="btn" href="{% url 'project_bulk' p.pk %}">批量新建 Load</a>
+      <a class="btn primary" href="{% url 'shipment_create' %}?project={{ p.pk }}">+ 新建 Load</a>
     {% endif %}
   </div>
 </div>
+<div class="meta-row">
+  <span>客户 <b><a href="{{ p.customer.get_absolute_url }}">{{ p.customer.name }}</a></b></span>
+  <span>公司 <b>{{ p.get_company_display }}</b></span>
+  <span>负责人 {% for u in p.owners.all %}<b>{{ u.get_full_name|default:u.email }}</b>{% if not forloop.last %}、{% endif %}{% empty %}<b class="lfd-warn">未指定</b>{% if perm.edit_ops %} <a href="{% url 'project_edit' p.pk %}">指定</a>{% endif %}{% endfor %}</span>
+  {% if p.monday_item_id %}<span>Monday <b>{{ p.monday_item_id }}</b></span>{% endif %}
+  <span>{{ p.start_date|default:"—" }} → {{ p.end_date|default:"—" }}</span>
+  {% if p.cargo_description %}<span>货物 <b>{{ p.cargo_description }}</b></span>{% endif %}
+</div>
+
+<section class="kpis">
+  {% if see_ar %}<div class="kpi"><div class="kl">总售价（AR）</div><div class="kv">{{ money.ar|money }}</div></div>{% endif %}
+  {% if see_ap %}<div class="kpi"><div class="kl">总成本（AP）</div><div class="kv">{{ money.ap|money }}</div></div>{% endif %}
+  {% if see_margin %}<div class="kpi"><div class="kl">毛利</div><div class="kv" style="color:var(--ok)">{{ money.margin|money }}{% if kpi.pct is not None %} <small>{{ kpi.pct|floatformat:1 }}%</small>{% endif %}</div></div>{% endif %}
+  {% if kpi.extra is not None %}<div class="kpi"><div class="kl">附加费用</div><div class="kv">{{ kpi.extra|money }}</div></div>{% endif %}
+  <div class="kpi"><div class="kl">送达</div><div class="kv">{{ kpi.delivered }} / {{ kpi.n }}</div></div>
+  <div class="kpi {% if kpi.delivered and kpi.pod < kpi.delivered %}kpi-bad{% endif %}"><div class="kl">POD 已收</div><div class="kv">{{ kpi.pod }} / {{ kpi.n }}</div></div>
+</section>
+
+<div class="panel" id="milestones">
+  <header><h2>里程碑</h2><small class="muted">实心 = 已完成；标准节点的日期由 Load 自动带出</small>
+    <div class="actions">{% if perm.edit_ops %}<a class="btn sm" href="{% url 'milestone_create' p.pk %}">+ 自定义节点</a>{% endif %}</div></header>
+  <div class="body"><div class="ms">
+    {% for m in milestones %}
+      <div class="ms-i {% if m.done %}done{% elif m.warn %}warn{% endif %}">
+        <span class="ms-dot"></span><b>{% if m.obj and perm.edit_ops %}<a href="{% url 'milestone_edit' p.pk m.obj.pk %}">{{ m.name }}</a>{% else %}{{ m.name }}{% endif %}</b>
+        <span class="muted">{{ m.date|date:"m-d"|default:"" }} {{ m.note }}</span>
+      </div>
+    {% endfor %}
+  </div></div>
+</div>
+
+{% if alerts %}
+<div class="panel" style="border-color:#f3d9a9">
+  <header style="background:#fffbf3"><h2>本项目待办（{{ alerts|length }}）</h2><div class="actions"><a class="btn sm" href="{% url 'alert_settings' %}">规则设置</a></div></header>
+  {% for a in alerts %}{% include "core/_alert.html" %}{% endfor %}
+</div>
+{% endif %}
+
+<form method="post" action="{% url 'bulk_bol' %}" target="_blank" id="bulk">{% csrf_token %}
+<div class="panel">
+  <header><h2>Load（{{ shipments|length }}）</h2>
+    <small class="muted">{% if p.default_shipper %}{{ p.default_shipper.full_address|default:p.default_shipper }}{% endif %}{% if p.default_consignee %} → {{ p.default_consignee.full_address|default:p.default_consignee }}{% endif %}</small>
+    <div class="actions"><button class="sm" type="submit">为勾选的生成 BOL</button><a class="btn sm" href="{% url 'shipment_export' %}?project={{ p.pk }}&status=">导出 CSV</a></div></header>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th><input type="checkbox" id="all" aria-label="全选"></th><th>柜号</th><th>Load#</th><th>承运商单号</th><th>承运商 / 司机</th><th>状态</th><th>实际提货</th><th>实际送达</th><th>POD</th>
+      {% if see_ar %}<th class="num">售价</th>{% endif %}{% if see_ap %}<th class="num">成本</th>{% endif %}{% if see_margin %}<th class="num">毛利</th>{% endif %}</tr></thead>
+    <tbody>
+    {% for s in shipments %}{% with leg=s.current_leg %}
+      <tr>
+        <td><input type="checkbox" name="ids" value="{{ s.pk }}" aria-label="选择"></td>
+        <td><a href="{{ s.get_absolute_url }}"><b>{{ s.container_number|default:"（无柜号）" }}</b></a>{% if s.is_locked %} 🔒{% endif %}</td>
+        <td>{{ s.number }}</td>
+        <td>{{ leg.carrier_load_number|default:"—" }}</td>
+        <td>{{ leg.carrier|default:"—" }}{% if leg.driver_name %} · {{ leg.driver_name }}{% endif %}</td>
+        <td><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span></td>
+        <td>{{ s.picked_up_on|date:"m-d"|default:"—" }}</td>
+        <td>{{ s.delivered_on|date:"m-d"|default:"—" }}</td>
+        <td>{% if s.pod_received %}<span style="color:var(--ok)">{{ s.pod_received|date:"m-d" }}</span>{% elif s.delivered_on %}<span class="lfd-warn">未收</span>{% else %}—{% endif %}</td>
+        {% if see_ar %}<td class="num">{{ s.ar|money }}</td>{% endif %}{% if see_ap %}<td class="num">{{ s.ap|money }}</td>{% endif %}{% if see_margin %}<td class="num">{{ s.margin|money }}</td>{% endif %}
+      </tr>
+    {% endwith %}{% empty %}<tr><td colspan="12" class="muted">还没有 Load</td></tr>{% endfor %}
+    {% if shipments %}<tr class="total"><td></td><td colspan="8">合计</td>{% if see_ar %}<td class="num">{{ money.ar|money }}</td>{% endif %}{% if see_ap %}<td class="num">{{ money.ap|money }}</td>{% endif %}{% if see_margin %}<td class="num">{{ money.margin|money }}</td>{% endif %}</tr>{% endif %}
+    </tbody>
+  </table></div>
+</div>
+</form>
 
 <div class="grid2">
-  <div class="panel"><header><h2>项目信息</h2></header><div class="body"><dl class="kv">
-    <dt>Monday ID</dt><dd>{{ p.monday_item_id|dash }}</dd>
-    <dt>默认提货地</dt><dd>{{ p.default_shipper|dash }}</dd>
-    <dt>默认收货地</dt><dd>{{ p.default_consignee|dash }} <small>{{ p.default_consignee.full_address }}</small></dd>
+  <div class="panel"><header><h2>商务条款与默认设置</h2></header><div class="body"><dl class="kv">
+    <dt>商务条款</dt><dd style="white-space:pre-wrap">{{ p.terms|dash }}</dd>
+    <dt>Detention</dt><dd>免费 {{ p.detention_free_hours|qty }} 小时{% if p.detention_rate %} · 向客户收 {{ p.detention_rate|money }}/小时{% endif %}</dd>
     <dt>默认货物</dt><dd>{{ p.un_number }} {{ p.cargo_description|dash }} {% if p.hazard_class %}Class {{ p.hazard_class }}{% endif %}</dd>
     <dt>紧急联系人</dt><dd>{{ p.emergency_contact|dash }}</dd>
     <dt>BOL 司机须知</dt><dd style="white-space:pre-wrap">{{ p.bol_instructions|dash }}</dd>
     {% if p.notes %}<dt>备注</dt><dd style="white-space:pre-wrap">{{ p.notes }}</dd>{% endif %}
+    {% if p.source_ref %}<dt>数据来源</dt><dd class="muted">{{ p.source_ref }}</dd>{% endif %}
   </dl></div></div>
-  <div class="panel"><header><h2>进度</h2></header><div class="body">
-    <div class="stats">{% for label, n in counts %}<span class="b">{{ label }} {{ n }}</span>{% empty %}<span class="muted">还没有运单</span>{% endfor %}</div>
-    <dl class="kv" style="margin-top:12px">
-      {% if money.ar is not None %}<dt>应收合计</dt><dd class="money">{{ money.ar|money }}</dd>{% endif %}
-      {% if money.ap is not None %}<dt>应付合计</dt><dd class="money">{{ money.ap|money }}</dd>{% endif %}
-      {% if money.margin is not None %}<dt>毛利</dt><dd class="money"><b>{{ money.margin|money }}</b></dd>{% endif %}
-    </dl>
+  <div class="panel" id="timeline"><header><h2>项目时间线</h2><small class="muted">项目改动 + 所有 Load 的备注</small></header><div class="body">
+    <form method="post" action="{% url 'project_note' p.pk %}" class="form" style="max-width:none;margin-bottom:8px">{% csrf_token %}{{ note_form.text }}
+      <div style="margin-top:6px"><button class="sm primary" type="submit">添加备注</button></div></form>
+    {% include "core/_timeline.html" %}
   </div></div>
 </div>
-
-<form method="post" action="{% url 'bulk_bol' %}" target="_blank" id="bulk">{% csrf_token %}
-<div class="panel"><header><h2>运单（{{ shipments|length }}）</h2>
-  <div class="actions"><button class="sm" type="submit">为勾选的生成 BOL</button>
-  <a class="btn sm" href="{% url 'shipment_export' %}?project={{ p.pk }}&status=">导出 CSV</a></div></header>
-<div class="tablewrap"><table class="t">
-  <thead><tr><th><input type="checkbox" id="all"></th><th>运单号</th><th>状态</th><th>柜号</th><th>序列号</th><th>MBL</th><th>ETA</th><th>LFD</th><th>当前段</th><th>承运商</th><th>实际送达</th></tr></thead>
-  <tbody>
-  {% for s in shipments %}{% with leg=s.current_leg %}
-    <tr><td><input type="checkbox" name="ids" value="{{ s.pk }}"></td>
-      <td><a href="{{ s.get_absolute_url }}"><b>{{ s.number }}</b></a>{% if s.is_locked %} 🔒{% endif %}</td>
-      <td><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span></td>
-      <td>{{ s.container_number|dash }}</td><td>{% for u in s.units.all %}{{ u.serial_number }}{% if not forloop.last %}<br>{% endif %}{% empty %}—{% endfor %}</td>
-      <td>{{ s.master_bl.number|dash }}</td><td>{{ s.master_bl.eta|dash }}</td><td class="{% if s.lfd_warning %}lfd-warn{% endif %}">{{ s.lfd|dash }}</td>
-      <td>{% if leg %}{{ leg.origin|dash }} → {{ leg.destination|dash }}{% else %}—{% endif %}</td><td>{{ leg.carrier|dash }}</td><td>{{ leg.actual_delivery|dash }}</td></tr>
-  {% endwith %}{% empty %}<tr><td colspan="11" class="muted">还没有运单</td></tr>{% endfor %}
-  </tbody>
-</table></div></div>
-</form>
-
-<div class="panel" id="timeline"><header><h2>项目时间线</h2><small class="muted">项目改动 + 项目下所有运单的备注</small></header><div class="body">
-  <form method="post" action="{% url 'project_note' p.pk %}" class="form" style="max-width:none;margin-bottom:8px">{% csrf_token %}{{ note_form.text }}
-    <div style="margin-top:6px"><button class="sm primary" type="submit">添加备注</button></div></form>
-  {% include "core/_timeline.html" %}
-</div></div>
 {% endblock %}
 {% block scripts %}<script>
 document.getElementById("all").addEventListener("change", function (e) {

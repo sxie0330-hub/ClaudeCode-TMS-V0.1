@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}今日待办{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>今日待办</h1>
+  <span class="muted">只列会增加成本、造成延误或影响回款的事</span>
+  <div class="actions"><a class="btn" href="{% url 'alert_settings' %}">待办设置</a><a class="btn" href="{% url 'home' %}">回工作台</a></div>
+</div>
+<div class="stats" style="margin-bottom:12px">
+  <a class="b {% if not level and show != 'snoozed' %}b-on{% endif %}" href="?">全部 {{ n_all }}</a>
+  {% for k, label in levels %}<a class="b b-lv-{{ k }} {% if level == k %}b-on{% endif %}" href="?level={{ k }}">{{ label }} {{ counts|get_item:k }}</a>{% endfor %}
+  <a class="b {% if show == 'snoozed' %}b-on{% endif %}" href="?show=snoozed">已稍后提醒 {{ n_snoozed }}</a>
+</div>
+<div class="panel">
+  {% for a in items %}{% include "core/_alert.html" %}{% empty %}<div class="body muted" style="padding:28px;text-align:center">没有待办，一切正常</div>{% endfor %}
+</div>
+{% endblock %}

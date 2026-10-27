@@ -1,4 +1,5 @@
 import csv
+import json
 from decimal import Decimal
 
 from django.conf import settings
@@ -61,6 +62,7 @@ from .permissions import (
 )
 
 PAGE_SIZE = 50
+OPEN_PROJECT = [Project.Status.PENDING, Project.Status.ACTIVE, Project.Status.DELIVERED]
 
 
 # ---------------------------------------------------------------------------
@@ -159,7 +161,7 @@ def shipment_list(request):
         "rows": rows,
         "statuses": Status.choices,
         "customers": Customer.objects.all(),
-        "projects": Project.objects.filter(status=Project.Status.ACTIVE).select_related("customer"),
+        "projects": Project.objects.filter(status__in=OPEN_PROJECT).select_related("customer"),
         "services": Shipment.Service.choices,
         "querystring": params.urlencode(),
         "g": request.GET,
@@ -176,7 +178,7 @@ def shipment_export(request):
     w = csv.writer(resp)
     see_ar = can_see_side(request.user, "AR")
     see_ap = can_see_side(request.user, "AP")
-    head = ["运单号", "状态", "客户", "项目", "Monday ID", "客户参考号", "服务", "MBL", "柜号", "柜型", "序列号", "ETA", "LFD",
+    head = ["Load#", "状态", "客户", "项目", "Monday ID", "客户参考号", "服务", "MBL", "柜号", "柜型", "序列号", "ETA", "LFD",
             "起运地", "最终收货地", "承运商", "实际提货", "实际送达", "POD"]
     if see_ar:
         head.append("应收合计")
@@ -220,9 +222,43 @@ def shipment_detail(request, pk):
         return sum((c.amount for c in rows if c.state != Charge.State.VOID), Decimal("0"))
 
     yard_stays = list(s.yard_stays.select_related("yard"))
+    legs = list(s.legs.select_related("origin", "destination", "carrier"))
+    free = s.project.detention_free_hours if s.project else Decimal("2")
+    rate = s.project.detention_rate if s.project else None
+    waits = []
+    for leg in legs:
+        for where, w in (("提货点", leg.pickup_wait(free)), ("收货点", leg.delivery_wait(free))):
+            if w:
+                waits.append({"leg": leg, "where": where, **w, "amount": (w["billable"] * rate).quantize(Decimal("1")) if rate else None})
+    first, last = (legs[0], legs[-1]) if legs else (None, None)
+
+    def fmt(v):
+        if not v:
+            return ""
+        if isinstance(v, str):
+            return v
+        if hasattr(v, "hour"):
+            return timezone.localtime(v).strftime("%m-%d %H:%M %Z")
+        return v.strftime("%m-%d")
+
+    nodes = [
+        {"name": "已派车", "done": bool(first and first.carrier_id), "when": (first.carrier.name if first and first.carrier else "")},
+        {"name": "到达提货点", "done": bool(first and first.pickup_arrived_at), "when": first.pickup_arrived_at if first else None},
+        {"name": "提货离场", "done": bool(first and (first.pickup_departed_at or first.actual_pickup)), "when": (first.pickup_departed_at or first.actual_pickup) if first else None},
+        {"name": "在途", "done": bool(first and first.actual_pickup), "when": ""},
+        {"name": "到达收货点", "done": bool(last and last.delivery_arrived_at), "when": last.delivery_arrived_at if last else None},
+        {"name": "卸货完成", "done": s.status in (Status.DELIVERED, Status.CLOSED), "when": (last.delivery_departed_at or last.actual_delivery) if last else None},
+        {"name": "POD 收到", "done": bool(s.pod_received), "when": s.pod_received},
+    ]
+    for n in nodes:
+        n["when"] = fmt(n["when"])
     return render(request, "core/shipment_detail.html", {
         "s": s,
-        "legs": s.legs.select_related("origin", "destination", "carrier"),
+        "legs": legs,
+        "nodes": nodes,
+        "waits": waits,
+        "free_hours": free,
+        "rate": rate,
         "cargo": s.cargo_lines.all(),
         "units": s.units.all(),
         "yard_stays": yard_stays,
@@ -264,17 +300,17 @@ def shipment_create(request):
         if form.is_valid():
             s = form.save()
             _add_default_cargo(s)
-            messages.success(request, f"已创建运单 {s.number}")
+            messages.success(request, f"已创建 Load {s.number}")
             return redirect(s)
     else:
         form = ShipmentForm(initial=_new_shipment_defaults(project))
-    return _form_page(request, form, "新建运单", project.get_absolute_url() if project else reverse("shipment_list"))
+    return _form_page(request, form, "新建 Load", project.get_absolute_url() if project else reverse("shipment_list"))
 
 
 def shipment_edit(request, pk):
     s = get_object_or_404(Shipment, pk=pk)
     _need(can_edit_shipment_ops(request.user, s))
-    return _edit(request, ShipmentForm, s, f"编辑运单 {s.number}", lambda o: o.get_absolute_url())
+    return _edit(request, ShipmentForm, s, f"编辑 Load {s.number}", lambda o: o.get_absolute_url())
 
 
 def shipment_docs(request, pk):
@@ -287,7 +323,7 @@ def shipment_docs(request, pk):
 def shipment_delete(request, pk):
     s = get_object_or_404(Shipment, pk=pk)
     _need(is_management(request.user))
-    return _confirm_delete(request, s, f"删除运单 {s.number}", reverse("shipment_list"), s.get_absolute_url())
+    return _confirm_delete(request, s, f"删除 Load {s.number}", reverse("shipment_list"), s.get_absolute_url())
 
 
 @require_POST
@@ -295,7 +331,7 @@ def shipment_unlock(request, pk):
     s = get_object_or_404(Shipment, pk=pk)
     _need(is_management(request.user))
     Shipment.objects.filter(pk=pk).update(is_locked=False)
-    _note(s, request.user, "管理层解锁了运单（已送达/已结案的数据可再次编辑）")
+    _note(s, request.user, "管理层解锁了 Load（已送达/已结案的数据可再次编辑）")
     messages.warning(request, "已解锁。改完后请点“重新锁定”。")
     return redirect(s)
 
@@ -305,7 +341,7 @@ def shipment_lock(request, pk):
     s = get_object_or_404(Shipment, pk=pk)
     _need(is_management(request.user))
     Shipment.objects.filter(pk=pk).update(is_locked=True)
-    _note(s, request.user, "管理层重新锁定了运单")
+    _note(s, request.user, "管理层重新锁定了 Load")
     return redirect(s)
 
 
@@ -318,7 +354,7 @@ def shipment_close(request, pk):
         _note(s, request.user, "管理层取消结案")
     else:
         if s.status != Status.DELIVERED:
-            messages.error(request, "只有已送达的运单可以结案")
+            messages.error(request, "只有已送达的 Load 可以结案")
             return redirect(s)
         s.closed_at = timezone.now()
         _note(s, request.user, "管理层结案")
@@ -339,7 +375,7 @@ def mbl_edit(request, pk):
     s = get_object_or_404(Shipment, pk=pk)
     _need(can_edit_shipment_ops(request.user, s))
     if not s.master_bl:
-        messages.info(request, "请先在运单里填 MBL 号")
+        messages.info(request, "请先在 Load 里填 MBL 号")
         return redirect(reverse("shipment_edit", args=[pk]))
     others = s.master_bl.shipments.exclude(pk=pk).count()
     intro = f"该提单下还有 {others} 个其他柜子，修改会同时作用于它们。" if others else None
@@ -466,7 +502,7 @@ def bulk_bol(request):
     ids = request.POST.getlist("ids")
     shipments = list(Shipment.objects.filter(pk__in=ids).order_by("number"))
     if not shipments:
-        messages.error(request, "请先勾选运单")
+        messages.error(request, "请先勾选 Load")
         return redirect(request.META.get("HTTP_REFERER") or reverse("shipment_list"))
     contexts = []
     for s in shipments:
@@ -487,31 +523,98 @@ def _pdf(data, filename):
 # projects
 # ---------------------------------------------------------------------------
 def project_list(request):
-    qs = Project.objects.select_related("customer")
+    qs = Project.objects.select_related("customer").prefetch_related("owners")
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(number__icontains=q) | Q(monday_item_id__icontains=q) | Q(customer__name__icontains=q))
-    if request.GET.get("status", "ACTIVE"):
-        qs = qs.filter(status=request.GET.get("status", "ACTIVE"))
+    st = request.GET.get("status", "open")
+    if st == "open":
+        qs = qs.filter(status__in=OPEN_PROJECT)
+    elif st:
+        qs = qs.filter(status=st)
+    if request.GET.get("mine"):
+        qs = qs.filter(owners=request.user)
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
     return render(request, "core/project_list.html", {"page": page, "g": request.GET, "statuses": Project.Status.choices})
 
 
+def _milestones(p, loads):
+    """Standard milestones derived from the loads, plus the project's custom ones."""
+    today = timezone.localdate()
+    live = [x for x in loads if x.status != Status.CANCELLED]
+    n = len(live)
+    picks = [x.picked_up_on for x in live if x.picked_up_on]
+    dels = [x.delivered_on for x in live if x.delivered_on]
+    pods = [x.pod_received for x in live if x.pod_received]
+    plan_pick = [leg.scheduled_pickup for x in live for leg in x.legs.all() if leg.scheduled_pickup]
+    rows = []
+    if p.start_date:
+        rows.append({"name": "项目开始", "date": p.start_date, "done": p.start_date <= today, "note": ""})
+    for m in p.milestones.all():
+        rows.append({"name": m.name, "date": m.done_date or m.planned_date, "done": bool(m.done_date), "note": "" if m.done_date else "计划", "obj": m})
+    if n:
+        rows.append({"name": "首车提货", "date": min(picks) if picks else (min(plan_pick) if plan_pick else None), "done": bool(picks), "note": "" if picks else "计划"})
+        rows.append({"name": "末车提货", "date": max(picks) if len(picks) == n else None, "done": len(picks) == n, "note": "" if len(picks) == n else f"{len(picks)}/{n}"})
+        rows.append({"name": "末车送达", "date": max(dels) if len(dels) == n else None, "done": len(dels) == n, "note": "" if len(dels) == n else f"{len(dels)}/{n}"})
+        rows.append({"name": "POD 收齐", "date": max(pods) if len(pods) == n else None, "done": len(pods) == n, "note": "" if len(pods) == n else f"{len(pods)}/{n}",
+                     "warn": len(dels) == n and len(pods) < n})
+    rows.append({"name": "完结", "date": None, "done": p.status == Project.Status.DONE, "note": "负责人确认"})
+    return rows
+
+
 def project_detail(request, pk):
-    p = get_object_or_404(Project.objects.select_related("customer", "default_shipper", "default_consignee"), pk=pk)
-    shipments = p.shipments.select_related("master_bl", "consignee").prefetch_related("legs__carrier", "units")
-    counts = {}
-    for st in shipments.values_list("status", flat=True):
-        counts[st] = counts.get(st, 0) + 1
-    money = _project_money(p, request.user)
+    from . import alerts as alert_engine
+
+    p = get_object_or_404(Project.objects.select_related("customer", "default_shipper", "default_consignee").prefetch_related("owners"), pk=pk)
+    user = request.user
+    sides = visible_sides(user)
+    loads = list(p.shipments.order_by("number").select_related("master_bl", "consignee").prefetch_related("legs__carrier", "legs__origin", "legs__destination", "units", "charges"))
+    for x in loads:
+        live = [c for c in x.charges.all() if c.state != Charge.State.VOID and c.side in sides]
+        x.ar = sum((c.amount for c in live if c.side == "AR"), Decimal("0")) if "AR" in sides else None
+        x.ap = sum((c.amount for c in live if c.side == "AP"), Decimal("0")) if "AP" in sides else None
+        x.margin = (x.ar - x.ap) if can_see_margin(user) else None
+        x.extra = sum((c.amount for c in live if c.charge_type in alert_engine.ACCESSORIAL), Decimal("0"))
+    live_loads = [x for x in loads if x.status != Status.CANCELLED]
+    money = _project_money(p, user)
+    kpi = {
+        "n": len(live_loads),
+        "delivered": sum(1 for x in live_loads if x.status in (Status.DELIVERED, Status.CLOSED)),
+        "pod": sum(1 for x in live_loads if x.pod_received),
+        "extra": sum((x.extra for x in live_loads), Decimal("0")) if sides else None,
+        "pct": (money["margin"] / money["ar"] * 100) if money.get("margin") is not None and money.get("ar") else None,
+    }
     return render(request, "core/project_detail.html", {
         "p": p,
-        "shipments": shipments,
-        "counts": [(Status(k).label, v) for k, v in sorted(counts.items(), key=lambda kv: list(Status.values).index(kv[0]))],
+        "shipments": loads,
         "money": money,
-        "timeline": audit.project_timeline(p, can_revert=is_management(request.user)),
+        "kpi": kpi,
+        "milestones": _milestones(p, loads),
+        "alerts": alert_engine.collect(user, project=p),
+        "timeline": audit.project_timeline(p, can_revert=is_management(user)),
         "note_form": NoteForm(),
+        "see_ar": "AR" in sides, "see_ap": "AP" in sides, "see_margin": can_see_margin(user),
     })
+
+
+def milestone_edit(request, pk, mid=None):
+    from .forms import MilestoneForm
+    from .models import Milestone
+
+    p = get_object_or_404(Project, pk=pk)
+    _need(can_edit_ops(request.user))
+    m = get_object_or_404(Milestone, pk=mid, project=p) if mid else Milestone(project=p)
+    if request.method == "POST" and request.POST.get("delete") and m.pk:
+        m.delete()
+        return redirect(p)
+    if request.method == "POST":
+        form = MilestoneForm(request.POST, instance=m)
+        if form.is_valid():
+            form.save()
+            return redirect(reverse("project_detail", args=[p.pk]) + "#milestones")
+    else:
+        form = MilestoneForm(instance=m)
+    return _form_page(request, form, f"{p.name} · {'编辑' if m.pk else '添加'}里程碑", p.get_absolute_url())
 
 
 def _project_money(project, user):
@@ -579,11 +682,11 @@ def project_bulk_shipments(request, pk):
                         Unit.objects.create(shipment=s, serial_number=serial)
                     _add_default_cargo(s)
                     created.append(s.number)
-            messages.success(request, f"已创建 {len(created)} 票运单" + (f"；跳过已存在的柜号：{', '.join(skipped)}" if skipped else ""))
+            messages.success(request, f"已创建 {len(created)} 个 Load" + (f"；跳过已存在的柜号：{', '.join(skipped)}" if skipped else ""))
             return redirect(p)
     else:
         form = BulkShipmentForm()
-    return _form_page(request, form, f"{p.name} · 批量新建运单", p.get_absolute_url(),
+    return _form_page(request, form, f"{p.name} · 批量新建 Load", p.get_absolute_url(),
                       intro="每行一个柜子。客户、项目、默认提货地/收货地和货物描述会自动从项目带入。")
 
 
@@ -620,11 +723,11 @@ def master_detail(request, kind, pk):
               if f.name not in ("id", "is_deleted", "created_at", "updated_at")]
     related = []
     if kind == "customer":
-        related = [("项目", obj.projects.all()[:100]), ("最近运单", obj.shipments.select_related("project")[:100])]
+        related = [("项目", obj.projects.all()[:100]), ("最近 Load", obj.shipments.select_related("project")[:100])]
     elif kind == "carrier":
         related = [("最近运输段", Leg.objects.filter(carrier=obj).select_related("shipment", "origin", "destination").order_by("-id")[:100])]
     elif kind == "location":
-        related = [("最近运单（收货地）", Shipment.objects.filter(consignee=obj)[:100])]
+        related = [("最近 Load（收货地）", Shipment.objects.filter(consignee=obj)[:100])]
     return render(request, "core/master_detail.html", {"kind": kind, "label": label, "obj": obj, "fields": fields, "related": related})
 
 
@@ -641,18 +744,23 @@ def master_edit(request, kind, pk=None):
 # search, history, team
 # ---------------------------------------------------------------------------
 def search(request):
+    from .views_workspace import search_loads, search_projects
+
     q = request.GET.get("q", "").strip()
     results = {}
     if len(q) >= 2:
-        results["运单"] = _shipment_filters(request, Shipment.objects.select_related("customer", "project", "master_bl"))[:50]
-        results["项目"] = Project.objects.filter(Q(name__icontains=q) | Q(number__icontains=q) | Q(monday_item_id__icontains=q))[:20]
-        results["客户"] = Customer.objects.filter(Q(name__icontains=q) | Q(code__icontains=q))[:20]
-        results["承运商"] = Carrier.objects.filter(Q(name__icontains=q) | Q(code__icontains=q) | Q(mc_number__icontains=q))[:20]
-        results["地址"] = Location.objects.filter(Q(code__icontains=q) | Q(name__icontains=q) | Q(address__icontains=q))[:20]
-        sides = visible_sides(request.user)
-        results["费用（发票号）"] = Charge.objects.filter(invoice_number__icontains=q, side__in=sides).select_related("shipment")[:20]
-    if len(results.get("运单", [])) == 1 and not any(len(v) for k, v in results.items() if k != "运单"):
-        return redirect(results["运单"][0])
+        loads, filters, text = search_loads(q, limit=100)
+        results["Load"] = list(loads)
+        results["项目"] = list(search_projects(text, filters, 30))
+        if text and not filters:
+            results["客户"] = Customer.objects.filter(Q(name__icontains=text) | Q(code__icontains=text))[:20]
+            results["承运商"] = Carrier.objects.filter(Q(name__icontains=text) | Q(code__icontains=text) | Q(mc_number__icontains=text))[:20]
+            results["地址"] = Location.objects.filter(Q(code__icontains=text) | Q(name__icontains=text) | Q(address__icontains=text))[:20]
+            sides = visible_sides(request.user)
+            results["费用（发票号）"] = Charge.objects.filter(invoice_number__icontains=text, side__in=sides).select_related("shipment")[:20]
+    hits = [(k, v) for k, v in results.items() if len(v)]
+    if len(hits) == 1 and len(hits[0][1]) == 1:
+        return redirect(hits[0][1][0] if hits[0][0] != "费用（发票号）" else hits[0][1][0].shipment)
     return render(request, "core/search.html", {"q": q, "results": results})
 
 
@@ -695,30 +803,29 @@ def team(request):
     return render(request, "core/team.html", {"users": users, "roles": Role.choices})
 
 
-def import_trina_upload(request):
-    """Upload the Trina workbook and import it — no server shell needed."""
+def import_upload(request):
+    """Upload a JSON export (see core/importer.py) and import it — no server shell needed."""
     _need(is_management(request.user))
     output = None
     if request.method == "POST" and request.FILES.get("file"):
-        import io
-        import tempfile
-
-        from django.core.management import call_command
+        from .importer import ImportError_, import_data, wipe_operational_data
 
         upload = request.FILES["file"]
-        if upload.size > 20 * 1024 * 1024 or not upload.name.lower().endswith(".xlsx"):
-            messages.error(request, "请上传 20MB 以内的 .xlsx 文件")
-            return redirect("import_trina")
-        out = io.StringIO()
-        with tempfile.NamedTemporaryFile(suffix=".xlsx") as tmp:
-            for chunk in upload.chunks():
-                tmp.write(chunk)
-            tmp.flush()
-            try:
-                call_command("import_trina", tmp.name, dry_run=bool(request.POST.get("dry_run")), stdout=out)
-            except Exception as e:  # show the reason instead of a 500 page
-                out.write(f"导入失败：{e}")
-        output = out.getvalue()
+        if upload.size > 20 * 1024 * 1024 or not upload.name.lower().endswith(".json"):
+            messages.error(request, "请上传 20MB 以内的 .json 文件")
+            return redirect("import_upload")
+        lines = []
+        try:
+            data = json.loads(upload.read().decode("utf-8"))
+            with transaction.atomic():
+                if request.POST.get("wipe") == "1":
+                    if request.POST.get("confirm", "").strip() != "DELETE":
+                        raise ImportError_("要清空旧数据，请在确认框里输入 DELETE")
+                    lines.append(wipe_operational_data())
+                lines += import_data(data, user=request.user, dry_run=bool(request.POST.get("dry_run")))
+        except (ValueError, ImportError_) as e:
+            lines.append(f"导入失败：{e}")
+        output = "\n".join(lines)
     return render(request, "core/import.html", {"output": output})
 
 

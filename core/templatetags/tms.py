@@ -25,3 +25,11 @@ def qty(value):
         return ""
     value = Decimal(value)
     return f"{value.quantize(Decimal(1)):f}" if value == value.to_integral() else f"{value.normalize():f}"
+
+
+@register.filter
+def get_item(d, key):
+    try:
+        return d.get(key)
+    except AttributeError:
+        return None
