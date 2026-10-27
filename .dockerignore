@@ -1,0 +1,11 @@
+# Files kept out of the Docker build context
+.git
+.gitignore
+.gcloudignore
+.venv
+__pycache__/
+*.pyc
+db.sqlite3
+staticfiles/
+.env
+*.xlsx
