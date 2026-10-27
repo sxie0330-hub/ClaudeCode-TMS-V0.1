@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% block title %}团队{% endblock %}
 {% block content %}
-<div class="head"><h1>团队与权限</h1><div class="actions"><a class="btn" href="{% url 'import_trina' %}">导入 Trina 表格</a></div></div>
+<div class="head"><h1>团队与权限</h1><div class="actions"><a class="btn" href="{% url 'import_upload' %}">导入数据</a></div></div>
 <div class="intro">同事第一次用公司 Google 账号登录后会出现在这里，分配角色后才能使用。
   <b>管理层</b>：全部；<b>OP</b>：编辑运输信息 + 看/改应付；<b>AP</b>：只读运输信息 + 看/改应付；<b>AR</b>：只读运输信息 + 看/改应收（看不到应付）。</div>
 <div class="panel"><div class="tablewrap"><table class="t">

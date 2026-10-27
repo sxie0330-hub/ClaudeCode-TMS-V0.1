@@ -1,22 +1,25 @@
 {% extends "core/base.html" %}
 {% block title %}项目{% endblock %}
 {% block content %}
-<div class="head"><h1>项目</h1>
+<div class="head"><h1>项目</h1><span class="muted">{{ page.paginator.count }} 个</span>
   <div class="actions">{% if perm.edit_ops %}<a class="btn primary" href="{% url 'project_create' %}">+ 新建项目</a>{% endif %}</div>
 </div>
 <form class="filters" method="get">
   <input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="项目名 / 编号 / Monday ID / 客户">
-  <select name="status"><option value="">全部状态</option>
-    {% for v, l in statuses %}<option value="{{ v }}" {% if g.status|default:'ACTIVE' == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  <select name="status" aria-label="状态"><option value="open" {% if g.status|default:'open' == 'open' %}selected{% endif %}>未完结</option><option value="" {% if g.status == '' %}selected{% endif %}>全部状态</option>
+    {% for v, l in statuses %}<option value="{{ v }}" {% if g.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
   </select>
+  <label><input type="checkbox" name="mine" value="1" {% if g.mine %}checked{% endif %}> 只看我负责的</label>
   <button type="submit">筛选</button>
 </form>
 <div class="panel"><div class="tablewrap"><table class="t">
-  <thead><tr><th>编号</th><th>项目</th><th>客户</th><th>Monday ID</th><th>状态</th><th>创建</th></tr></thead>
+  <thead><tr><th>项目</th><th>编号</th><th>公司</th><th>客户</th><th>状态</th><th>负责人</th><th>开始 → 结束</th><th>Monday ID</th></tr></thead>
   <tbody>
-  {% for p in page %}<tr><td><a href="{{ p.get_absolute_url }}"><b>{{ p.number }}</b></a></td><td><a href="{{ p.get_absolute_url }}">{{ p.name }}</a></td>
-    <td>{{ p.customer.name }}</td><td>{{ p.monday_item_id|default:"—" }}</td><td>{{ p.get_status_display }}</td><td>{{ p.created_at|date:"Y-m-d" }}</td></tr>
-  {% empty %}<tr><td colspan="6" class="muted">没有项目</td></tr>{% endfor %}
+  {% for p in page %}<tr><td><a href="{{ p.get_absolute_url }}"><b>{{ p.name }}</b></a></td><td>{{ p.number }}</td><td>{{ p.company }}</td>
+    <td>{{ p.customer.name }}</td><td><span class="b b-P{{ p.status }}">{{ p.get_status_display }}</span></td>
+    <td>{% for u in p.owners.all %}{{ u.get_full_name|default:u.email }}{% if not forloop.last %}、{% endif %}{% empty %}<span class="lfd-warn">未指定</span>{% endfor %}</td>
+    <td>{{ p.start_date|default:"—" }} → {{ p.end_date|default:"—" }}</td><td>{{ p.monday_item_id|default:"—" }}</td></tr>
+  {% empty %}<tr><td colspan="8" class="muted">没有项目</td></tr>{% endfor %}
   </tbody>
 </table></div></div>
 {% endblock %}

@@ -1,0 +1,48 @@
+{% extends "core/base.html" %}
+{% load static tms %}
+{% block title %}我的工作台{% endblock %}
+{% block content %}
+<div class="head">
+  <h1>我的工作台</h1>
+  <span class="muted">{{ today|date:"n月j日" }} · 紧急 {{ counts.urgent }} · 今天 {{ counts.today }} · 本周 {{ counts.week }}</span>
+  <div class="actions" id="view-actions">
+    <a class="btn" href="{% url 'todo' %}">全部待办</a>
+    <a class="btn" href="{% url 'alert_settings' %}">待办设置</a>
+    <button type="button" id="edit-on">编辑布局</button>
+  </div>
+  <div class="actions" id="edit-actions" hidden>
+    <span class="b b-lv-today">拖动换位置 · 点尺寸改大小 · 点 − 移除</span>
+    <button type="button" id="add-open">+ 添加组件</button>
+    <form method="post" action="{% url 'dashboard_reset' %}" class="inline" onsubmit="return confirm('恢复默认布局？');">{% csrf_token %}<button>恢复默认</button></form>
+    <button type="button" class="primary" id="edit-done">完成</button>
+  </div>
+</div>
+
+<section class="board" id="board" data-save="{% url 'dashboard_save' %}">
+  {% for w in widgets %}
+  <article class="wg" data-id="{{ w.id }}" data-type="{{ w.type }}" data-size="{{ w.size }}" style="grid-column: span {{ w.cols }}; grid-row: span {{ w.rows }}">
+    <header class="wg-h">
+      <span class="wg-title">{{ w.meta.label }}</span>
+      {% if w.meta.configurable %}<a class="wg-cfg" href="{% url 'widget_config' w.id %}" aria-label="设置{{ w.meta.label }}">设置</a>{% endif %}
+    </header>
+    <div class="wg-b">{% include "core/widgets/"|add:w.type|add:".html" with d=w.data cfg=w.config size=w.size %}</div>
+    <div class="wg-edit">
+      <button type="button" class="wg-x" aria-label="移除{{ w.meta.label }}">−</button>
+      <span class="wg-sizes">{% for s in w.meta.sizes %}<button type="button" class="wg-s {% if s == w.size %}on{% endif %}" data-s="{{ s }}">{{ sizes|get_item:s }}</button>{% endfor %}</span>
+    </div>
+  </article>
+  {% empty %}
+  <p class="muted">工作台是空的，点「编辑布局 → 添加组件」。</p>
+  {% endfor %}
+</section>
+
+<dialog id="add-dlg" class="dlg">
+  <h2 style="margin-top:0">添加组件</h2>
+  <div class="cat-grid">
+    {% for c in catalog %}<button type="button" class="cat-item" data-type="{{ c.key }}"><b>{{ c.label }}</b><small>{{ c.desc }}</small></button>{% endfor %}
+  </div>
+  <div style="margin-top:12px;text-align:right"><button type="button" id="add-close">关闭</button></div>
+</dialog>
+<script id="catalog-data" type="application/json">{{ catalog_json|safe }}</script>
+{% endblock %}
+{% block scripts %}<script src="{% static 'core/dashboard.js' %}" defer></script>{% endblock %}

@@ -19,7 +19,7 @@ TRACKED = {
     "project": Project,
 }
 MODEL_LABELS = {
-    "shipment": "运单",
+    "shipment": "Load",
     "leg": "运输段",
     "cargo": "货物明细",
     "unit": "设备序列号",

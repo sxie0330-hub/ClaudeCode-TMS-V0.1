@@ -2,13 +2,17 @@
 {% load tms %}
 {% block title %}{{ s.number }}{% endblock %}
 {% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'home' %}">我的工作台</a>{% if s.project %} / <a href="{{ s.project.get_absolute_url }}">{{ s.project.name }}</a>{% endif %} / Load</div>
 <div class="head">
-  <h1>{{ s.number }}</h1>
+  <h1>{{ s.container_number|default:s.number }}</h1>
+  {% if s.container_number %}<span class="b">{{ s.number }}</span>{% endif %}
   <span class="b b-{{ s.status }}">{{ s.get_status_display }}</span>
-  <span class="muted">{{ s.customer.name }}{% if s.project %} · <a href="{{ s.project.get_absolute_url }}">{{ s.project.number }} {{ s.project.name }}</a>{% endif %}</span>
+  {% if s.status == 'DELIVERED' or s.status == 'CLOSED' %}{% if s.pod_received %}<span class="b b-DELIVERED">POD 已收</span>{% else %}<span class="b b-HOLD">POD 未收</span>{% endif %}{% endif %}
+  <span class="muted">{{ s.customer.name }}</span>
   <div class="actions">
+    <form method="post" action="{% url 'watch_load' s.pk %}" class="inline">{% csrf_token %}<button>关注</button></form>
     <a class="btn" href="{% url 'shipment_bol' s.pk %}" target="_blank">生成 BOL</a>
-    {% if can_edit %}<a class="btn primary" href="{% url 'shipment_edit' s.pk %}">编辑运单</a>{% endif %}
+    {% if can_edit %}<a class="btn primary" href="{% url 'shipment_edit' s.pk %}">编辑 Load</a>{% endif %}
     {% if perm.mgmt %}
       {% if s.status == 'DELIVERED' or s.status == 'CLOSED' %}
       <form class="inline" method="post" action="{% url 'shipment_close' s.pk %}">{% csrf_token %}<button>{% if s.closed_at %}取消结案{% else %}结案{% endif %}</button></form>
@@ -19,12 +23,19 @@
 </div>
 
 {% if s.is_locked %}
-<div class="lock">🔒 该运单已送达/结案，运输信息已锁定，防止误改。文件链接、还空信息和费用仍可编辑。
+<div class="lock">🔒 该 Load 已送达/结案，运输信息已锁定，防止误改。文件链接、还空信息和费用仍可编辑。
   {% if perm.mgmt %}<form class="inline" method="post" action="{% url 'shipment_unlock' s.pk %}" style="margin-left:auto">{% csrf_token %}<button class="sm">管理层解锁</button></form>{% endif %}
 </div>
 {% elif perm.mgmt and s.status == 'DELIVERED' or perm.mgmt and s.status == 'CLOSED' %}
-<div class="lock">⚠ 该运单已被解锁编辑。<form class="inline" method="post" action="{% url 'shipment_lock' s.pk %}" style="margin-left:auto">{% csrf_token %}<button class="sm">重新锁定</button></form></div>
+<div class="lock">⚠ 该 Load 已被解锁编辑。<form class="inline" method="post" action="{% url 'shipment_lock' s.pk %}" style="margin-left:auto">{% csrf_token %}<button class="sm">重新锁定</button></form></div>
 {% endif %}
+
+<div class="panel">
+  <header><h2>运输节点</h2><small class="muted">按行业标准事件记录实际时间；在运输段里填到场 / 离场时间</small></header>
+  <div class="body"><div class="ms">
+    {% for n in nodes %}<div class="ms-i {% if n.done %}done{% endif %}"><span class="ms-dot"></span><b>{{ n.name }}</b><span class="muted">{{ n.when }}</span></div>{% endfor %}
+  </div></div>
+</div>
 
 <div class="panel">
   <header><h2>基本信息</h2></header>
@@ -143,13 +154,24 @@
       <div class="actions">{% if can_edit_docs %}<a class="btn sm" href="{% url 'shipment_docs' s.pk %}">编辑链接 / 还空</a>{% endif %}</div>
     </header>
     <div class="body"><dl class="kv">
-      <dt>POD</dt><dd>{% if s.pod_link %}<a href="{{ s.pod_link }}" target="_blank" rel="noopener">打开</a>{% else %}<span class="muted">未上传</span>{% endif %}</dd>
+      <dt>POD</dt><dd>{% if s.pod_received %}<b style="color:var(--ok)">已收 {{ s.pod_received }}</b>{% else %}<span class="muted">未收</span>{% endif %}{% if s.pod_check %} · {{ s.get_pod_check_display }}{% endif %}{% if s.pod_link %} · <a href="{{ s.pod_link }}" target="_blank" rel="noopener">打开</a>{% endif %}</dd>
+      {% if s.empty_return_due %}<dt>还空期限</dt><dd>{{ s.empty_return_due }}</dd>{% endif %}
       <dt>照片</dt><dd>{% if s.photos_link %}<a href="{{ s.photos_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
       <dt>检验报告</dt><dd>{% if s.inspection_link %}<a href="{{ s.inspection_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
       <dt>其他</dt><dd>{% if s.other_docs_link %}<a href="{{ s.other_docs_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
     </dl></div>
   </div>
 </div>
+
+{% if waits or legs %}
+<div class="panel" id="detention">
+  <header><h2>Detention / 等待时间</h2><small class="muted">免费 {{ free_hours|qty }} 小时{% if rate %} · 向客户 {{ rate|money }}/小时{% endif %}</small></header>
+  <div class="body">
+    {% for w in waits %}<div>运输段 #{{ w.leg.sequence }} {{ w.where }}：已等 <b>{{ w.hours }}</b> 小时{% if w.running %}（计时中）{% endif %} · 超出免费 <b>{{ w.billable }}</b> 小时{% if w.amount %} · 可收约 <b>{{ w.amount|money }}</b>{% endif %}</div>
+    {% empty %}<span class="muted">在运输段里填"到达 / 离开提货点、收货点"的时间后，这里自动算出等待时长和可收金额。</span>{% endfor %}
+  </div>
+</div>
+{% endif %}
 
 {% if perm.see_ar or perm.see_ap %}
 <div class="panel" id="charges">

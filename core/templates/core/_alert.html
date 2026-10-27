@@ -1,0 +1,17 @@
+<div class="al al-{{ a.level }}">
+  <div class="al-bar"></div>
+  <div class="al-main">
+    <div class="al-t"><span class="b al-tag">{{ a.tag }}</span><a href="{{ a.url }}"><b>{{ a.title }}</b></a></div>
+    {% if a.detail %}<div class="al-d">{% if a.project %}<a href="{{ a.project.get_absolute_url }}">{{ a.project.name }}</a> · {% endif %}{{ a.detail }}</div>{% endif %}
+  </div>
+  <div class="al-act">
+    <a class="btn sm primary" href="{{ a.url }}">去处理</a>
+    {% if a.snoozed %}
+      <form method="post" action="{% url 'snooze' %}" class="inline">{% csrf_token %}<input type="hidden" name="key" value="{{ a.key }}"><input type="hidden" name="days" value="0"><input type="hidden" name="next" value="{{ request.get_full_path }}"><button class="sm">恢复提醒</button></form>
+    {% else %}
+      <form method="post" action="{% url 'snooze' %}" class="inline">{% csrf_token %}<input type="hidden" name="key" value="{{ a.key }}"><input type="hidden" name="next" value="{{ request.get_full_path }}">
+        <select name="days" class="sm-sel" aria-label="稍后提醒" onchange="this.form.submit()"><option value="">稍后提醒…</option><option value="1">明天</option><option value="3">3 天后</option><option value="7">1 周后</option></select>
+      </form>
+    {% endif %}
+  </div>
+</div>

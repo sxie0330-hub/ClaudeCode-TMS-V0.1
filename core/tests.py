@@ -255,15 +255,213 @@ class TeamTests(Base):
         self.assertEqual(self.client.get(reverse("team")).status_code, 403)
 
 
-class ImportUploadTests(Base):
-    def test_only_management(self):
-        self.login(self.op)
-        self.assertEqual(self.client.get(reverse("import_trina")).status_code, 403)
-        self.login(self.mgmt)
-        self.assertEqual(self.client.get(reverse("import_trina")).status_code, 200)
+class ImportTests(Base):
+    SAMPLE = {
+        "customers": [{"name": "Hithium"}],
+        "carriers": [{"name": "Harris Brokerage", "code": "Harris"}],
+        "locations": [{"code": "KHE Carson", "kind": "YARD", "address": "851 E Watson Center Rd"},
+                      {"code": "Nokesville", "kind": "SITE", "address": "10311 Reid Ln"}],
+        "projects": [{
+            "name": "PTT#4475 test", "customer": "Hithium", "company": "PTT", "owners": ["boss@advtransolution.com"],
+            "default_shipper": "KHE Carson", "default_consignee": "Nokesville",
+            "milestones": [{"name": "Test Run", "done_date": "2026-09-28"}],
+            "loads": [
+                {"container_number": "SHPU2204302", "pod_received": "2026-10-16",
+                 "legs": [{"carrier": "Harris Brokerage", "carrier_load_number": "BLN30784", "actual_pickup": "2026-10-09",
+                           "actual_delivery": "2026-10-13", "delivery_arrived_at": "2026-10-13T09:20:00-04:00"}],
+                 "charges": [{"side": "AR", "unit_price": 28500}, {"side": "AP", "unit_price": 24000, "carrier": "Harris Brokerage"}]},
+                {"container_number": "SHPU2204133",
+                 "legs": [{"carrier": "Harris Brokerage", "actual_pickup": "2026-10-09"}]},
+            ],
+        }],
+    }
 
-    def test_rejects_non_xlsx(self):
+    def test_import_is_idempotent_and_sets_status(self):
+        from .importer import import_data
+
+        import_data(self.SAMPLE)
+        p = Project.objects.get(name="PTT#4475 test")
+        self.assertEqual(p.company, "PTT")
+        self.assertEqual(list(p.owners.all()), [self.mgmt])
+        self.assertEqual(p.shipments.count(), 2)
+        self.assertEqual(p.status, Project.Status.ACTIVE)  # one delivered, one in transit
+        s = p.shipments.get(container_number="SHPU2204302")
+        self.assertEqual(s.status, Status.DELIVERED)
+        self.assertEqual(s.legs.get().carrier_load_number, "BLN30784")
+        log = import_data(self.SAMPLE)
+        self.assertIn("跳过", log[0])
+        self.assertEqual(Project.objects.filter(name="PTT#4475 test").count(), 1)
+
+    def test_dry_run_writes_nothing(self):
+        from .importer import import_data
+
+        import_data(self.SAMPLE, dry_run=True)
+        self.assertFalse(Project.objects.filter(name="PTT#4475 test").exists())
+
+    def test_upload_page(self):
+        import json as _json
+
         from django.core.files.uploadedfile import SimpleUploadedFile
+        self.login(self.op)
+        self.assertEqual(self.client.get(reverse("import_upload")).status_code, 403)
         self.login(self.mgmt)
-        r = self.client.post(reverse("import_trina"), {"file": SimpleUploadedFile("x.csv", b"a,b")})
-        self.assertEqual(r.status_code, 302)
+        f = SimpleUploadedFile("p.json", _json.dumps(self.SAMPLE).encode())
+        r = self.client.post(reverse("import_upload"), {"file": f})
+        self.assertContains(r, "导入项目")
+        # wipe needs the typed confirmation
+        f = SimpleUploadedFile("p.json", _json.dumps(self.SAMPLE).encode())
+        r = self.client.post(reverse("import_upload"), {"file": f, "wipe": "1", "confirm": "no"})
+        self.assertContains(r, "DELETE")
+        self.assertTrue(Project.objects.filter(name="PTT#4475 test").exists())
+        f = SimpleUploadedFile("p.json", _json.dumps(self.SAMPLE).encode())
+        self.client.post(reverse("import_upload"), {"file": f, "wipe": "1", "confirm": "DELETE"})
+        self.assertFalse(Shipment.objects.filter(container_number="CYMU2523606").exists())
+        self.assertTrue(Project.objects.filter(name="PTT#4475 test").exists())
+
+
+class ProjectStatusTests(Base):
+    def test_status_follows_loads(self):
+        p = Project.objects.create(customer=self.customer, name="Flow")
+        self.assertEqual(p.status, Project.Status.PENDING)
+        s = Shipment.objects.create(customer=self.customer, project=p, consignee=self.site)
+        leg = Leg.objects.create(shipment=s, origin=self.yard, destination=self.site, actual_pickup=date(2026, 1, 1))
+        p.refresh_from_db()
+        self.assertEqual(p.status, Project.Status.ACTIVE)
+        leg.actual_delivery = date(2026, 1, 3)
+        leg.save()
+        p.refresh_from_db()
+        self.assertEqual(p.status, Project.Status.DELIVERED)
+        p.manual_status = Project.Status.DONE
+        p.save()
+        self.assertEqual(p.status, Project.Status.DONE)
+
+    def test_milestones_derived(self):
+        from .views import _milestones
+
+        Leg.objects.filter(pk=self.leg.pk).update(actual_pickup=date(2026, 1, 1), actual_delivery=date(2026, 1, 4))
+        self.leg.refresh_from_db()
+        self.leg.save()
+        self.s.pod_received = date(2026, 1, 6)
+        self.s.save()
+        rows = {m["name"]: m for m in _milestones(self.project, list(self.project.shipments.prefetch_related("legs")))}
+        self.assertTrue(rows["末车送达"]["done"])
+        self.assertEqual(rows["POD 收齐"]["date"], date(2026, 1, 6))
+
+
+class AlertTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.project.owners.add(self.op)
+        self.s.lfd = date.today() + timedelta(days=1)
+        self.s.save()
+
+    def keys(self, user, **kw):
+        from . import alerts
+        return {a.rule for a in alerts.collect(user, **kw)}
+
+    def test_lfd_only_for_owner_by_default(self):
+        self.assertIn("lfd", self.keys(self.op))
+        self.assertNotIn("lfd", self.keys(self.ap))  # not an owner, scope = mine
+
+    def test_settings_scope_and_disable(self):
+        from .models import AlertSetting
+        AlertSetting.objects.create(user=self.ap, rule="lfd", scope="all")
+        self.assertIn("lfd", self.keys(self.ap))
+        AlertSetting.objects.filter(user=self.ap, rule="lfd").update(enabled=False)
+        self.assertNotIn("lfd", self.keys(self.ap))
+
+    def test_snooze(self):
+        from . import alerts
+        a = next(a for a in alerts.collect(self.op) if a.rule == "lfd")
+        self.login(self.op)
+        self.client.post(reverse("snooze"), {"key": a.key, "days": "3"})
+        self.assertNotIn("lfd", self.keys(self.op))
+
+    def test_money_rules_respect_roles(self):
+        Charge.objects.create(shipment=self.s, side="AP", charge_type="DETENTION", unit_price=Decimal("300"), carrier=self.carrier)
+        self.project.owners.add(self.ar, self.ap)
+        self.assertIn("extra_charges", self.keys(self.ap))
+        self.assertNotIn("extra_charges", self.keys(self.ar))
+        self.assertNotIn("low_margin", self.keys(self.op))
+
+    def test_detention_running(self):
+        from django.utils import timezone
+        self.leg.actual_pickup = date.today()
+        self.leg.delivery_arrived_at = timezone.now() - timedelta(hours=3)
+        self.leg.save()
+        self.assertIn("detention", self.keys(self.op))
+
+    def test_custom_rule(self):
+        from .models import CustomRule
+        CustomRule.objects.create(user=self.op, name="Trina 盯一下", field1="customer", value1="Trina")
+        self.assertIn("custom", self.keys(self.op))
+
+    def test_pages_render(self):
+        self.login(self.op)
+        for url in [reverse("todo"), reverse("alert_settings"), self.project.get_absolute_url()]:
+            self.assertEqual(self.client.get(url).status_code, 200)
+
+
+class DashboardTests(Base):
+    def test_default_layout_and_role_filtered_widgets(self):
+        from . import widgets
+        self.login(self.ar)
+        self.assertEqual(self.client.get(reverse("home")).status_code, 200)
+        kinds = {w["type"] for w in widgets.get_layout(self.ar).layout}
+        self.assertIn("todo", kinds)
+        self.assertNotIn("extra_charges", kinds)  # AP-only widget
+        cleaned = widgets.clean_layout(self.ar, [{"type": "margin_month"}, {"type": "nope"}, {"type": "note", "size": "XL"}])
+        self.assertEqual([w["type"] for w in cleaned], ["note"])
+        self.assertEqual(cleaned[0]["size"], "S")
+
+    def test_save_keeps_server_config(self):
+        import json as _json
+        from . import widgets
+        self.login(self.mgmt)
+        board = widgets.get_layout(self.mgmt)
+        mp = next(w for w in board.layout if w["type"] == "my_projects")
+        new = [{"id": mp["id"], "type": "my_projects", "size": "W", "config": {"columns": ["evil"]}}]
+        r = self.client.post(reverse("dashboard_save"), _json.dumps(new), content_type="application/json")
+        self.assertEqual(r.status_code, 200)
+        board.refresh_from_db()
+        self.assertEqual(board.layout[0]["size"], "W")
+        self.assertEqual(board.layout[0]["config"]["columns"], widgets.DEFAULT_PROJECT_COLUMNS)
+
+    def test_pin_and_watch(self):
+        from . import widgets
+        self.login(self.op)
+        self.client.post(reverse("pin_project", args=[self.project.pk]))
+        self.client.post(reverse("watch_load", args=[self.s.pk]))
+        kinds = [w["type"] for w in widgets.get_layout(self.op).layout]
+        self.assertIn("project", kinds)
+        self.assertIn("watched_loads", kinds)
+        self.assertContains(self.client.get(reverse("home")), self.s.container_number)
+
+    def test_widget_config(self):
+        from . import widgets
+        self.login(self.mgmt)
+        board = widgets.get_layout(self.mgmt)
+        mp = next(w for w in board.layout if w["type"] == "my_projects")
+        self.client.post(reverse("widget_config", args=[mp["id"]]), {"columns": ["name", "margin"], "scope": "all", "statuses": ["PENDING"]})
+        board.refresh_from_db()
+        cfg = next(w for w in board.layout if w["id"] == mp["id"])["config"]
+        self.assertEqual(cfg["columns"], ["name", "margin"])
+        self.assertContains(self.client.get(reverse("home")), self.project.name)
+
+
+class SuggestTests(Base):
+    def test_suggest_and_prefix_filters(self):
+        self.login(self.ar)
+        data = self.client.get(reverse("search_suggest") + "?q=2523606").json()
+        self.assertEqual(data["groups"][0]["label"], "Load")
+        data = self.client.get(reverse("search_suggest"), {"q": "客户:Trina"}).json()
+        self.assertTrue(any(g["label"] == "Load" for g in data["groups"]))
+        data = self.client.get(reverse("search_suggest"), {"q": "客户:Nobody"}).json()
+        self.assertFalse(any(g["label"] == "Load" for g in data["groups"]))
+
+    def test_invoice_search_hides_other_side(self):
+        self.ap_charge.invoice_number = "INV-AP-77"
+        self.ap_charge.save()
+        self.login(self.ar)
+        data = self.client.get(reverse("search_suggest"), {"q": "INV-AP-77"}).json()
+        self.assertFalse(any(g["label"] == "发票" for g in data["groups"]))

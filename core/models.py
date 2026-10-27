@@ -97,7 +97,7 @@ class Customer(SoftDeleteModel):
         return self.name
 
     def get_absolute_url(self):
-        return reverse("customer_detail", args=[self.pk])
+        return reverse("master_detail", args=["customer", self.pk])
 
 
 class Carrier(SoftDeleteModel):
@@ -131,7 +131,7 @@ class Carrier(SoftDeleteModel):
         return self.code or self.name
 
     def get_absolute_url(self):
-        return reverse("carrier_detail", args=[self.pk])
+        return reverse("master_detail", args=["carrier", self.pk])
 
 
 class Location(SoftDeleteModel):
@@ -165,7 +165,7 @@ class Location(SoftDeleteModel):
         return self.code
 
     def get_absolute_url(self):
-        return reverse("location_detail", args=[self.pk])
+        return reverse("master_detail", args=["location", self.pk])
 
     @property
     def full_address(self):
@@ -180,24 +180,40 @@ class Location(SoftDeleteModel):
 # --------------------------------------------------------------------------
 # Projects and shipments
 # --------------------------------------------------------------------------
+class Company(models.TextChoices):
+    ATS = "ATS", "ATS"
+    PTT = "PTT", "PTT"
+
+
 class Project(SoftDeleteModel):
     class Status(models.TextChoices):
-        ACTIVE = "ACTIVE", "进行中"
-        DONE = "DONE", "已完成"
-        ON_HOLD = "HOLD", "暂停"
+        PENDING = "PENDING", "待执行"
+        ACTIVE = "ACTIVE", "执行中"
+        DELIVERED = "DELIVERED", "已交付待POD"
+        DONE = "DONE", "已完结"
+        CANCELLED = "CANCELLED", "已取消"
 
     number = models.CharField("项目编号", max_length=20, unique=True, editable=False)
+    company = models.CharField("公司", max_length=4, choices=Company.choices, default=Company.ATS)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="projects", verbose_name="客户")
     name = models.CharField("项目名称", max_length=160)
+    owners = models.ManyToManyField(settings.AUTH_USER_MODEL, blank=True, related_name="owned_projects", verbose_name="负责人")
     monday_item_id = models.CharField("Monday Item ID", max_length=40, blank=True, db_index=True)
-    status = models.CharField("状态", max_length=10, choices=Status.choices, default=Status.ACTIVE)
+    start_date = models.DateField("开始日期", null=True, blank=True)
+    end_date = models.DateField("结束日期", null=True, blank=True)
+    status = models.CharField("状态", max_length=10, choices=Status.choices, default=Status.PENDING, editable=False, db_index=True)
+    # Only 已完结 / 已取消 are set by hand; the rest follow the loads.
+    manual_status = models.CharField(
+        "手动状态", max_length=10, blank=True,
+        choices=[("", "—（按 Load 自动）"), (Status.DONE.value, "已完结"), (Status.CANCELLED.value, "已取消")],
+    )
     default_shipper = models.ForeignKey(
         Location, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="默认提货地"
     )
     default_consignee = models.ForeignKey(
         Location, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="默认收货地"
     )
-    # Defaults used to pre-fill new shipments and their BOL.
+    # Defaults used to pre-fill new loads and their BOL.
     cargo_description = models.CharField(
         "默认货物描述", max_length=255, blank=True, help_text="例如 Energy Storage System / Lithium ion batteries installed in cargo transport unit"
     )
@@ -207,6 +223,10 @@ class Project(SoftDeleteModel):
     freight_class = models.CharField("默认 Freight Class", max_length=10, blank=True)
     emergency_contact = models.CharField("24小时紧急联系人", max_length=255, blank=True, help_text="危险品必填，例如 CHEMTREC 703-527-3887")
     bol_instructions = models.TextField("BOL 司机须知", blank=True, help_text="印在该项目每张 BOL 的特别说明里")
+    detention_free_hours = models.DecimalField("免费等待（小时）", max_digits=4, decimal_places=1, default=Decimal("2"))
+    detention_rate = models.DecimalField("向客户收 Detention（$/小时）", max_digits=8, decimal_places=2, null=True, blank=True)
+    terms = models.TextField("商务条款", blank=True, help_text="售价、附加费标准、报价来源等")
+    source_ref = models.CharField("数据来源", max_length=255, blank=True, editable=False)
     notes = models.TextField("备注", blank=True)
 
     history = HistoricalRecords()
@@ -215,7 +235,7 @@ class Project(SoftDeleteModel):
         ordering = ["-created_at"]
 
     def __str__(self):
-        return f"{self.number} {self.name}"
+        return self.name
 
     def get_absolute_url(self):
         return reverse("project_detail", args=[self.pk])
@@ -223,7 +243,49 @@ class Project(SoftDeleteModel):
     def save(self, *args, **kwargs):
         if not self.number:
             self.number = f"PRJ-{Sequence.next('PRJ'):04d}"
+        self.status = self.compute_status()
         super().save(*args, **kwargs)
+
+    def compute_status(self):
+        if self.manual_status:
+            return self.manual_status
+        if not self.pk:
+            return self.Status.PENDING
+        loads = [s for s in self.shipments.all() if s.status != Status.CANCELLED]
+        if not loads:
+            return self.Status.PENDING
+        if all(s.status in LOCKING_STATUSES for s in loads):
+            return self.Status.DELIVERED
+        started = any(s.status in (Status.IN_TRANSIT, Status.IN_YARD, Status.DELIVERED, Status.CLOSED) for s in loads)
+        return self.Status.ACTIVE if started else self.Status.PENDING
+
+    def refresh_status(self):
+        new = self.compute_status()
+        if new != self.status:
+            self.status = new
+            Project.all_objects.filter(pk=self.pk).update(status=new)
+
+    @property
+    def is_open(self):
+        return self.status not in (self.Status.DONE, self.Status.CANCELLED)
+
+
+class Milestone(models.Model):
+    """Custom project milestones. Standard ones (first pickup, last delivery,
+    POD complete…) are derived from the loads and never stored."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="milestones")
+    name = models.CharField("节点", max_length=80)
+    planned_date = models.DateField("计划日期", null=True, blank=True)
+    done_date = models.DateField("完成日期", null=True, blank=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["planned_date", "id"]
+
+    def __str__(self):
+        return self.name
 
 
 class MasterBL(SoftDeleteModel):
@@ -273,6 +335,13 @@ class Status(models.TextChoices):
 LOCKING_STATUSES = (Status.DELIVERED, Status.CLOSED)
 
 
+class PodCheck(models.TextChoices):
+    PENDING = "PENDING", "待检查"
+    OK = "OK", "合规"
+    NO_SIGN = "NO_SIGN", "签字缺失"
+    DATE = "DATE", "日期问题"
+
+
 class Shipment(SoftDeleteModel):
     """One container, or one truckload of non-container freight."""
 
@@ -308,7 +377,7 @@ class Shipment(SoftDeleteModel):
         HOLD = Status.HOLD.value, "Hold"
         CANCELLED = Status.CANCELLED.value, "已取消"
 
-    number = models.CharField("运单号", max_length=20, unique=True, editable=False)
+    number = models.CharField("Load#", max_length=20, unique=True, editable=False)
     customer = models.ForeignKey(Customer, on_delete=models.PROTECT, related_name="shipments", verbose_name="客户")
     project = models.ForeignKey(
         Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="shipments", verbose_name="项目"
@@ -337,6 +406,9 @@ class Shipment(SoftDeleteModel):
     )
 
     pod_link = models.URLField("POD 链接", max_length=500, blank=True)
+    pod_received = models.DateField("POD 收到日期", null=True, blank=True)
+    pod_check = models.CharField("POD 审核", max_length=10, choices=PodCheck.choices, blank=True)
+    empty_return_due = models.DateField("还空期限", null=True, blank=True, help_text="Per Diem / 车架免费期最后一天")
     photos_link = models.URLField("照片链接", max_length=500, blank=True)
     inspection_link = models.URLField("检验报告链接", max_length=500, blank=True)
     other_docs_link = models.URLField("其他文件链接", max_length=500, blank=True)
@@ -371,6 +443,8 @@ class Shipment(SoftDeleteModel):
         if self.status in LOCKING_STATUSES and old_status not in LOCKING_STATUSES:
             self.is_locked = True
         super().save(*args, **kwargs)
+        if self.project_id:
+            self.project.refresh_status()
 
     # -- status ------------------------------------------------------------
     def compute_status(self):
@@ -414,6 +488,8 @@ class Shipment(SoftDeleteModel):
             # Bypass history for status bookkeeping; the change that caused it
             # is already recorded on the child row.
             Shipment.all_objects.filter(pk=self.pk).update(**fields)
+            if self.project_id:
+                self.project.refresh_status()
 
     @property
     def lfd_warning(self):
@@ -421,6 +497,16 @@ class Shipment(SoftDeleteModel):
         if not self.lfd or self.status not in (Status.PLANNING, Status.AWAITING, Status.ARRIVED):
             return False
         return self.lfd <= timezone.localdate() + timedelta(days=settings.TMS_LFD_WARNING_DAYS)
+
+    @property
+    def delivered_on(self):
+        legs = list(self.legs.all())
+        return legs[-1].actual_delivery if legs and self.status in LOCKING_STATUSES else None
+
+    @property
+    def picked_up_on(self):
+        legs = list(self.legs.all())
+        return legs[0].actual_pickup if legs else None
 
     @property
     def current_leg(self):
@@ -541,6 +627,15 @@ class Leg(SoftDeleteModel):
     actual_pickup = models.DateField("实际提货", null=True, blank=True)
     scheduled_delivery = models.DateField("计划送达", null=True, blank=True)
     delivery_appt = models.TimeField("送达预约时间", null=True, blank=True)
+    pickup_appt_confirmed = models.BooleanField("提货预约已确认", default=False)
+    delivery_appt_confirmed = models.BooleanField("送货预约已确认", default=False)
+    permits_required = models.BooleanField("需要许可证 / 护送", default=False)
+    permits_confirmed = models.BooleanField("许可证 / 护送已确认", default=False)
+    pickup_arrived_at = models.DateTimeField("到达提货点", null=True, blank=True)
+    pickup_departed_at = models.DateTimeField("离开提货点", null=True, blank=True)
+    delivery_arrived_at = models.DateTimeField("到达收货点", null=True, blank=True)
+    delivery_departed_at = models.DateTimeField("离开收货点", null=True, blank=True)
+    last_tracking_at = models.DateTimeField("最近跟踪更新", null=True, blank=True)
     actual_delivery = models.DateField("实际送达", null=True, blank=True)
     tracking_url = models.URLField("跟踪链接", max_length=500, blank=True)
     bol_number = models.CharField("BOL 号（留空自动生成）", max_length=40, blank=True)
@@ -561,6 +656,25 @@ class Leg(SoftDeleteModel):
     @property
     def effective_bol_number(self):
         return self.bol_number or f"{self.shipment.number}-{self.sequence}"
+
+    @staticmethod
+    def _wait(arrived, departed, free_hours):
+        if not arrived:
+            return None
+        end = departed or timezone.now()
+        hours = Decimal(max((end - arrived).total_seconds(), 0)) / 3600
+        return {"hours": hours.quantize(Decimal("0.1")), "billable": max(hours - Decimal(free_hours), 0).quantize(Decimal("0.1")),
+                "running": departed is None}
+
+    def pickup_wait(self, free_hours=2):
+        if not self.pickup_departed_at and self.actual_pickup:
+            return None  # left already, but nobody recorded when: unknown, not "still waiting"
+        return self._wait(self.pickup_arrived_at, self.pickup_departed_at, free_hours)
+
+    def delivery_wait(self, free_hours=2):
+        if not self.delivery_departed_at and self.actual_delivery:
+            return None
+        return self._wait(self.delivery_arrived_at, self.delivery_departed_at, free_hours)
 
 
 class YardStay(SoftDeleteModel):
@@ -685,3 +799,62 @@ class Note(models.Model):
 
     def __str__(self):
         return self.text[:60]
+
+
+# --------------------------------------------------------------------------
+# Per-user workspace: dashboard layout and to-do preferences
+# --------------------------------------------------------------------------
+class Dashboard(models.Model):
+    """Widget layout: [{"id": "w1", "type": "todo", "size": "L", "config": {...}}, ...]"""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="dashboard")
+    layout = models.JSONField(default=list)
+    updated_at = models.DateTimeField(auto_now=True)
+
+
+class AlertSetting(models.Model):
+    """A user's override of one built-in to-do rule (see core/alerts.py)."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alert_settings")
+    rule = models.CharField(max_length=40)
+    enabled = models.BooleanField(default=True)
+    threshold = models.IntegerField(null=True, blank=True)
+    scope = models.CharField(max_length=4, default="mine")  # mine | all
+    level = models.CharField(max_length=6, default="")
+
+    class Meta:
+        unique_together = [("user", "rule")]
+
+
+class AlertSnooze(models.Model):
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="alert_snoozes")
+    key = models.CharField(max_length=120, db_index=True)  # rule:object
+    until = models.DateTimeField()
+
+    class Meta:
+        unique_together = [("user", "key")]
+
+
+class CustomRule(models.Model):
+    """"When a Load matches these conditions, remind me." Kept deliberately small."""
+
+    class Field(models.TextChoices):
+        CUSTOMER = "customer", "客户"
+        CARRIER = "carrier", "承运商"
+        PROJECT = "project", "项目"
+        STATUS = "status", "状态"
+        PICKUP_WITHIN = "pickup_within", "计划提货在 N 天内"
+        DELIVERY_WITHIN = "delivery_within", "计划送达在 N 天内"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="custom_rules")
+    name = models.CharField("提醒标题", max_length=120)
+    field1 = models.CharField("条件一", max_length=20, choices=Field.choices)
+    value1 = models.CharField("值", max_length=120)
+    field2 = models.CharField("条件二（可选）", max_length=20, choices=Field.choices, blank=True)
+    value2 = models.CharField("值", max_length=120, blank=True)
+    level = models.CharField("级别", max_length=6, default="today")
+    enabled = models.BooleanField(default=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    def __str__(self):
+        return self.name

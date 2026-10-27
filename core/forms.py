@@ -9,6 +9,7 @@ from .models import (
     Leg,
     Location,
     MasterBL,
+    Milestone,
     Profile,
     Project,
     Shipment,
@@ -31,6 +32,13 @@ class TimeInput(forms.TimeInput):
         super().__init__(format="%H:%M", **kwargs)
 
 
+class DateTimeInput(forms.DateTimeInput):
+    input_type = "datetime-local"
+
+    def __init__(self, **kwargs):
+        super().__init__(format="%Y-%m-%dT%H:%M", **kwargs)
+
+
 class BaseForm(forms.ModelForm):
     """Date/time pickers everywhere + protection against overwriting someone
     else's edit made after this form was opened."""
@@ -40,7 +48,10 @@ class BaseForm(forms.ModelForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         for f in self.fields.values():
-            if isinstance(f, forms.DateField):
+            if isinstance(f, forms.DateTimeField):
+                f.widget = DateTimeInput()
+                f.input_formats = ["%Y-%m-%dT%H:%M", "%Y-%m-%d %H:%M"]
+            elif isinstance(f, forms.DateField):
                 f.widget = DateInput()
             elif isinstance(f, forms.TimeField):
                 f.widget = TimeInput()
@@ -82,10 +93,17 @@ class ProjectForm(BaseForm):
     class Meta:
         model = Project
         fields = [
-            "customer", "name", "monday_item_id", "status", "default_shipper", "default_consignee",
+            "company", "customer", "name", "owners", "monday_item_id", "start_date", "end_date", "manual_status",
+            "default_shipper", "default_consignee",
             "cargo_description", "un_number", "hazard_class", "nmfc", "freight_class",
-            "emergency_contact", "bol_instructions", "notes",
+            "emergency_contact", "bol_instructions", "detention_free_hours", "detention_rate", "terms", "notes",
         ]
+        widgets = {"owners": forms.CheckboxSelectMultiple}
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["owners"].queryset = get_user_model().objects.filter(is_active=True).order_by("first_name", "email")
+        self.fields["owners"].label_from_instance = lambda u: u.get_full_name() or u.email or u.username
 
 
 class ShipmentForm(BaseForm):
@@ -126,7 +144,8 @@ class ShipmentDocsForm(BaseForm):
 
     class Meta:
         model = Shipment
-        fields = ["pod_link", "photos_link", "inspection_link", "other_docs_link", "empty_return_date", "empty_return_location"]
+        fields = ["pod_received", "pod_check", "pod_link", "photos_link", "inspection_link", "other_docs_link",
+                  "empty_return_due", "empty_return_date", "empty_return_location"]
 
 
 class MasterBLForm(BaseForm):
@@ -141,9 +160,11 @@ class LegForm(BaseForm):
         fields = [
             "sequence", "kind", "origin", "destination", "carrier", "carrier_load_number", "equipment",
             "driver_name", "driver_phone", "truck_trailer",
-            "scheduled_pickup", "pickup_appt", "actual_pickup",
-            "scheduled_delivery", "delivery_appt", "actual_delivery",
-            "tracking_url", "bol_number", "bol_instructions", "notes",
+            "scheduled_pickup", "pickup_appt", "pickup_appt_confirmed", "actual_pickup",
+            "scheduled_delivery", "delivery_appt", "delivery_appt_confirmed", "actual_delivery",
+            "permits_required", "permits_confirmed",
+            "pickup_arrived_at", "pickup_departed_at", "delivery_arrived_at", "delivery_departed_at",
+            "tracking_url", "last_tracking_at", "bol_number", "bol_instructions", "notes",
         ]
 
     def clean(self):
@@ -154,6 +175,13 @@ class LegForm(BaseForm):
         if pu and dl and dl < pu:
             self.add_error("actual_delivery", "送达日期早于提货日期")
         return data
+
+
+class MilestoneForm(forms.ModelForm):
+    class Meta:
+        model = Milestone
+        fields = ["name", "planned_date", "done_date"]
+        widgets = {"planned_date": DateInput(), "done_date": DateInput()}
 
 
 class CargoLineForm(BaseForm):

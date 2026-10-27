@@ -1,0 +1,2 @@
+{% for s in d.loads %}{% with leg=s.current_leg %}<div class="wg-li"><a href="{{ s.get_absolute_url }}"><b>{{ s.container_number|default:s.number }}</b></a><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span><span class="wg-sub">{% if leg %}{{ leg.carrier|default:"" }} {{ leg.scheduled_delivery|default:"" }}{% endif %}</span></div>{% endwith %}
+{% empty %}<p class="wg-sub">在 Load 页点「关注」，就会出现在这里。</p>{% endfor %}

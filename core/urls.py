@@ -1,9 +1,22 @@
 from django.urls import path
 
-from . import views
+from . import views, views_workspace as ws
 
 urlpatterns = [
-    path("", views.shipment_list, name="shipment_list"),
+    path("", ws.home, name="home"),
+    path("dashboard/save/", ws.dashboard_save, name="dashboard_save"),
+    path("dashboard/reset/", ws.dashboard_reset, name="dashboard_reset"),
+    path("dashboard/widget/<str:wid>/", ws.widget_config, name="widget_config"),
+    path("todo/", ws.todo, name="todo"),
+    path("todo/snooze/", ws.snooze, name="snooze"),
+    path("todo/settings/", ws.alert_settings, name="alert_settings"),
+    path("todo/settings/reset/", ws.alert_settings_reset, name="alert_settings_reset"),
+    path("todo/custom/add/", ws.custom_rule_add, name="custom_rule_add"),
+    path("todo/custom/<int:pk>/delete/", ws.custom_rule_delete, name="custom_rule_delete"),
+    path("search/suggest/", ws.suggest, name="search_suggest"),
+    path("projects/<int:pk>/pin/", ws.pin_project, name="pin_project"),
+    path("shipments/<int:pk>/watch/", ws.watch_load, name="watch_load"),
+    path("loads/", views.shipment_list, name="shipment_list"),
     path("shipments/export.csv", views.shipment_export, name="shipment_export"),
     path("shipments/new/", views.shipment_create, name="shipment_create"),
     path("shipments/bol/", views.bulk_bol, name="bulk_bol"),
@@ -29,6 +42,8 @@ urlpatterns = [
     path("projects/<int:pk>/edit/", views.project_edit, name="project_edit"),
     path("projects/<int:pk>/note/", views.project_note, name="project_note"),
     path("projects/<int:pk>/bulk/", views.project_bulk_shipments, name="project_bulk"),
+    path("projects/<int:pk>/milestones/new/", views.milestone_edit, name="milestone_create"),
+    path("projects/<int:pk>/milestones/<int:mid>/", views.milestone_edit, name="milestone_edit"),
     path("data/<str:kind>/", views.master_list, name="master_list"),
     path("data/<str:kind>/new/", views.master_edit, name="master_create"),
     path("data/<str:kind>/<int:pk>/", views.master_detail, name="master_detail"),
@@ -36,7 +51,7 @@ urlpatterns = [
     path("search/", views.search, name="search"),
     path("history/<str:key>/<int:history_id>/revert/", views.history_revert, name="history_revert"),
     path("team/", views.team, name="team"),
-    path("tools/import-trina/", views.import_trina_upload, name="import_trina"),
+    path("tools/import/", views.import_upload, name="import_upload"),
     path("healthz", views.healthz, name="healthz"),
     path("dev-login/", views.DevLoginView.as_view(), name="dev_login"),
 ]

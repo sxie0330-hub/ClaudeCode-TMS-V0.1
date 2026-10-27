@@ -1,0 +1,2 @@
+<div class="wg-big">{{ d.count }}</div><div class="wg-sub">在堆场 / 待下一段</div>
+{% if size != "S" %}{% for s in d.items %}<div class="wg-sub"><a href="{{ s.get_absolute_url }}">{{ s.container_number|default:s.number }}</a> · {{ s.project.name|default:"" }}</div>{% endfor %}{% endif %}
