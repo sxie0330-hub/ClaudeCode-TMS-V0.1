@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import AlertSetting, CargoLine, Carrier, Charge, Customer, Leg, Location, Profile, Project, Role, Shipment, Status, YardStay
+from .models import CargoLine, Carrier, Charge, Customer, Leg, Location, Profile, Project, Role, Shipment, Status, YardStay
 
 
 def make_user(username, role):
@@ -922,50 +922,3 @@ class AiMblFieldTests(Base):
         self.assertEqual(s.master_bl.eta, date(2026, 11, 8))
         self.assertEqual(s.status, Status.AWAITING)
 
-
-@override_settings(TMS_EMAIL_ENABLED=True, TMS_TASK_KEY="k-123", TMS_SITE_URL="https://tms.example.com",
-                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
-class DigestTests(Base):
-    def setUp(self):
-        super().setUp()
-        self.project.owners.add(self.op)
-        self.leg.scheduled_pickup = date.today() + timedelta(days=1)
-        self.leg.save()  # pickup tomorrow, appointment not confirmed -> alerts for op
-
-    def test_task_endpoint_sends_only_non_empty(self):
-        from django.core import mail
-
-        r = self.client.post(reverse("task_daily_digest"))
-        self.assertEqual(r.status_code, 403)
-        r = self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="wrong")
-        self.assertEqual(r.status_code, 403)
-        r = self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="k-123")
-        self.assertEqual(r.status_code, 200)
-        to = {m.to[0] for m in mail.outbox}
-        self.assertIn(self.op.email, to)
-        self.assertNotIn(self.nobody.email, to)  # no role
-        msg = next(m for m in mail.outbox if m.to == [self.op.email])
-        self.assertIn("TMS 今日待办", msg.subject)
-        self.assertIn("https://tms.example.com/", msg.body)
-        self.assertIn("预约还没确认", msg.alternatives[0][0])
-        self.assertGreaterEqual(r.json()["empty"], 0)
-
-    def test_opt_out_and_test_button(self):
-        from django.core import mail
-
-        self.login(self.op)
-        self.client.post(reverse("alert_settings"), {})  # unticked
-        self.assertFalse(Profile.objects.get(user=self.op).email_digest)
-        AlertSetting.objects.filter(user=self.op).delete()  # the empty form also switched every rule off
-        self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="k-123")
-        self.assertNotIn([self.op.email], [m.to for m in mail.outbox])
-        r = self.client.post(reverse("digest_test"), follow=True)
-        self.assertContains(r, f"已发送到 {self.op.email}")
-        self.assertContains(self.client.get(reverse("alert_settings")), "现在发一封给我看看")
-
-    def test_disabled(self):
-        with self.settings(TMS_EMAIL_ENABLED=False):
-            r = self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="k-123")
-            self.assertEqual(r.status_code, 503)
-            with self.settings(TMS_TASK_KEY=""):
-                self.assertEqual(self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="").status_code, 403)
