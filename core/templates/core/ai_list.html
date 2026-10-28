@@ -1,0 +1,24 @@
+{% extends "core/base.html" %}
+{% block title %}AI 识别{% endblock %}
+{% block content %}
+<div class="head"><h1>AI 识别记录</h1>
+  <div class="actions">
+    <a class="btn" href="?all={% if mine %}1{% else %}0{% endif %}">{% if mine %}看全部人的{% else %}只看我的{% endif %}</a>
+    {% if enabled %}<a class="btn primary" href="{% url 'ai_new' %}">+ 粘贴邮件识别</a>{% endif %}
+  </div></div>
+<section class="panel"><div class="body" style="overflow-x:auto">
+<table class="t">
+  <thead><tr><th>#</th><th>时间</th><th>谁</th><th>范围</th><th>概要</th><th>状态</th></tr></thead>
+  <tbody>
+  {% for e in items %}
+  <tr><td><a href="{{ e.get_absolute_url }}">#{{ e.pk }}</a></td>
+    <td>{{ e.created_at|date:"m-d H:i" }}</td>
+    <td>{{ e.created_by.get_full_name|default:e.created_by.email }}</td>
+    <td>{% if e.shipment %}{{ e.shipment.container_number|default:e.shipment.number }}{% elif e.project %}{{ e.project.name }}{% else %}全部{% endif %}</td>
+    <td>{{ e.summary|truncatechars:80 }}</td>
+    <td>{% if e.status == 'PENDING' %}<b class="lfd-warn">待确认</b>{% else %}{{ e.get_status_display }}{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="muted">还没有识别记录</td></tr>{% endfor %}
+  </tbody>
+</table>
+</div></section>
+{% endblock %}

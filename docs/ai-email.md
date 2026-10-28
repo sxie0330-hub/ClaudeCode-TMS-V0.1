@@ -1,0 +1,93 @@
+# AI 识别邮件：开通与使用
+
+TMS 内置“粘贴邮件 → AI 识别 → 人工确认 → 写入”。识别用的是 Google 的 **Gemini**，调用由公司的 Google Cloud 项目（`atsstms`）统一付费：
+- 同事不需要任何 AI 订阅；
+- 只有登录 TMS 的人能用，且限于操作（OP）和管理层。
+
+## 它会做什么、不会做什么
+
+- **会**：
+  - 从邮件里识别提货、送达的计划日期和实际日期，预约时刻和是否已确认，到场和离场时间，司机、电话、车牌，承运商单号，跟踪链接，LFD，POD 收到日期和链接，还空期限和还空日期；
+  - 把其他事实（延误原因、故障、签收人等）记成时间线备注。
+- **不会**：
+  - 识别或修改任何金额、费用；
+  - 未经确认写入任何东西。
+- **写入时会再检查一遍**：
+  - **权限**：和网页上一样。已送达锁定的 Load，只有管理层能改运输字段；POD、还空这类文件字段不受锁定限制。
+  - **期间有没有人改过**：识别之后如果有人手动改过同一个字段，这一项不会覆盖，并标为“已被他人修改”。
+- **留痕**：每次写入都会在修改记录里留下“AI 邮件识别 #编号”，像其他修改一样可以撤回。
+
+## 开通（在 Cloud Shell 里做一次，约 5 分钟）
+
+打开 Google Cloud 控制台右上角的 Cloud Shell，按顺序粘贴下面各段。
+
+**1. 启用 Vertex AI**
+```bash
+gcloud config set project atsstms
+gcloud services enable aiplatform.googleapis.com
+```
+
+**2. 先确认模型能用。** 默认模型名是 `gemini-3.8-flash`：
+```bash
+curl -s -X POST -H "Authorization: Bearer $(gcloud auth print-access-token)" -H "Content-Type: application/json" \
+  "https://aiplatform.googleapis.com/v1/projects/atsstms/locations/global/publishers/google/models/gemini-3.8-flash:generateContent" \
+  -d '{"contents":[{"role":"user","parts":[{"text":"Reply with the single word OK"}]}]}' | head -c 600; echo
+```
+- 输出里有 `"text": "OK"`，说明模型可用。
+- 如果是 404 或 `NOT_FOUND`，说明模型名不对：到控制台的 **Vertex AI → Model Garden** 搜索 Gemini Flash，找到当前的模型名，替换上面命令里的名字，再测一次。后面第 4 步的 `TMS_AI_MODEL` 也用这个名字。
+
+**3. 允许网站调用 Gemini**
+```bash
+gcloud projects add-iam-policy-binding atsstms \
+  --member=serviceAccount:668605433770-compute@developer.gserviceaccount.com \
+  --role=roles/aiplatform.user --condition=None --quiet >/dev/null && echo 已授权
+```
+
+**4. 更新网站并开启 AI 识别**
+```bash
+cd ~/tms && git pull
+gcloud run deploy tms --source . --region us-central1 \
+  --update-env-vars TMS_AI_ENABLED=1,TMS_AI_MODEL=gemini-3.8-flash
+```
+> 注意这里用的是 `--update-env-vars`（只增改这两项），**不要**写成 `--set-env-vars`，那样会清掉其他已有的设置。
+
+部署完成后，导航栏会出现 **AI 识别**，项目页和 Load 页会出现 **粘贴邮件 · AI 识别** 按钮。
+
+## 使用
+
+1. 在项目页（或某个 Load 页）点 **粘贴邮件 · AI 识别**。
+   - 从项目页进入：只在这个项目的 Load 里找对应；
+   - 从 Load 页进入：只更新这一个 Load。
+2. 把邮件整封复制进去，含往来回复都可以，点 **开始识别**，等 5–20 秒。
+3. 在确认页逐行核对“现在 → 改为”和“邮件依据”。
+   - 默认全部勾选，把不对的取消勾选。
+   - 标注“邮件没写时区，按太平洋时间”的行要特别看一下：邮件没写时区时，系统按太平洋时间处理。
+4. 点 **写入勾选的内容**。
+   - 没勾选的会标为“未采用”；
+   - 无法写入的会标明原因，比如 Load 已锁定，或者已被他人修改。
+
+所有识别记录都在 **AI 识别** 页，可以查看邮件原文和每一项的处理结果。
+
+## 费用
+
+- 按 Gemini 的使用量计费，从 `atsstms` 的结算账号扣，试用期内用 $300 额度抵扣。
+- 单价：据第三方汇总，Gemini 3.8 Flash 截至 2026-12-31 的优惠价是每百万 token 输入 $0.75、输出 $3.75，2027 年起翻倍。
+- 一封邮件加上 Load 列表，大约是几千 token 的输入、几百 token 的输出。按这个价格，**每封估计在 1 美分以内**。这是估算，实际以 Billing → Reports 为准。
+- 每人每 24 小时最多识别 200 次（`TMS_AI_DAILY_LIMIT`），防止误操作产生大量费用。
+
+## 可调整的设置（Cloud Run 环境变量）
+
+| 变量 | 默认 | 说明 |
+|---|---|---|
+| `TMS_AI_ENABLED` | 关 | `1` 开启 |
+| `TMS_AI_MODEL` | `gemini-3.8-flash` | Vertex AI 上的 Gemini 模型名 |
+| `TMS_AI_LOCATION` | `global` | Vertex AI 区域 |
+| `TMS_AI_PROJECT` | 网站所在项目 | 一般不用设 |
+| `TMS_AI_DAILY_LIMIT` | `200` | 每人每 24 小时的识别次数上限 |
+
+## 出错时
+
+- **“无法获得 Google Cloud 凭据”**：第 3 步的授权没生效，等两分钟再试。
+- **“Gemini 返回错误 403”**：第 1 步或第 3 步没完成。
+- **“Gemini 返回错误 404”**：模型名不对，按第 2 步找到正确的名字，再用第 4 步的命令更新 `TMS_AI_MODEL`。
+- 其他问题，查看网站日志：`gcloud run services logs read tms --region us-central1 --limit 50`。

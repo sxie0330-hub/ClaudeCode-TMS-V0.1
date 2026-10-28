@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from datetime import datetime
 
 from django.db import models
+from django.utils import timezone
 
 from .models import CargoLine, Charge, Leg, MasterBL, Note, Project, Shipment, Unit, YardStay
 from .permissions import visible_sides
@@ -67,6 +68,9 @@ def _display(model, field_name, value):
         return str(obj) if obj else f"#{value}"
     if isinstance(f, models.BooleanField):
         return "是" if value else "否"
+    if isinstance(f, models.DateTimeField) and isinstance(value, datetime):
+        local = timezone.localtime(value) if timezone.is_aware(value) else value
+        return local.strftime("%Y-%m-%d %H:%M ") + (local.tzname() or "")
     return str(value)
 
 

@@ -858,3 +858,95 @@ class CustomRule(models.Model):
 
     def __str__(self):
         return self.name
+
+
+# --------------------------------------------------------------------------
+# AI email reading (see core/ai.py)
+# --------------------------------------------------------------------------
+class AiExtraction(models.Model):
+    """One pasted email and what Gemini proposed from it."""
+
+    class State(models.TextChoices):
+        PENDING = "PENDING", "待确认"
+        DONE = "DONE", "已处理"
+        DISCARDED = "DISCARDED", "已放弃"
+
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True)
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    shipment = models.ForeignKey(Shipment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    source_text = models.TextField("邮件内容")
+    model_name = models.CharField(max_length=80, blank=True)
+    summary = models.TextField(blank=True)
+    unmatched = models.TextField(blank=True)
+    raw_result = models.JSONField(default=dict, blank=True)
+    usage = models.JSONField(default=dict, blank=True)
+    status = models.CharField(max_length=10, choices=State.choices, default=State.PENDING, db_index=True)
+    reviewed_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    reviewed_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"AI #{self.pk}"
+
+    def get_absolute_url(self):
+        return reverse("ai_review", args=[self.pk])
+
+
+class AiChange(models.Model):
+    """One proposed field change (or timeline note) for one Load."""
+
+    class State(models.TextChoices):
+        PENDING = "PENDING", "待确认"
+        APPLIED = "APPLIED", "已写入"
+        REJECTED = "REJECTED", "未采用"
+        STALE = "STALE", "已被他人修改"
+        BLOCKED = "BLOCKED", "无法写入"
+
+    extraction = models.ForeignKey(AiExtraction, on_delete=models.CASCADE, related_name="changes")
+    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name="+")
+    leg = models.ForeignKey(Leg, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    field = models.CharField(max_length=40)
+    old_value = models.CharField(max_length=500, blank=True)
+    new_value = models.TextField()
+    evidence = models.TextField(blank=True)
+    tz_assumed = models.BooleanField(default=False)
+    status = models.CharField(max_length=10, choices=State.choices, default=State.PENDING)
+    result = models.CharField(max_length=200, blank=True)
+    decided_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    decided_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["shipment_id", "id"]
+
+    def _spec(self):
+        from .ai import FIELDS
+
+        return FIELDS.get(self.field)
+
+    @property
+    def is_note(self):
+        from .ai import NOTE_FIELD
+
+        return self.field == NOTE_FIELD
+
+    @property
+    def label(self):
+        spec = self._spec()
+        return spec.label if spec else "时间线备注"
+
+    @property
+    def old_display(self):
+        from .ai import display
+
+        spec = self._spec()
+        return display(spec.kind, self.old_value) if spec else ""
+
+    @property
+    def new_display(self):
+        from .ai import display
+
+        spec = self._spec()
+        return display(spec.kind, self.new_value) if spec else self.new_value

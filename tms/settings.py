@@ -145,6 +145,14 @@ TMS_COMPANY_ADDRESS = os.environ.get("TMS_COMPANY_ADDRESS", "")
 TMS_COMPANY_PHONE = os.environ.get("TMS_COMPANY_PHONE", "")
 TMS_LFD_WARNING_DAYS = int(os.environ.get("TMS_LFD_WARNING_DAYS", "3"))
 
+# --- AI email reading (Gemini on Vertex AI, see core/ai.py) ----------------
+# Uses the Cloud Run service account; no API key. Off until TMS_AI_ENABLED=1.
+TMS_AI_ENABLED = env_bool("TMS_AI_ENABLED", False)
+TMS_AI_MODEL = os.environ.get("TMS_AI_MODEL", "gemini-3.8-flash")
+TMS_AI_LOCATION = os.environ.get("TMS_AI_LOCATION", "global")
+TMS_AI_PROJECT = os.environ.get("TMS_AI_PROJECT", "")  # default: the project Cloud Run runs in
+TMS_AI_DAILY_LIMIT = int(os.environ.get("TMS_AI_DAILY_LIMIT", "200"))  # per user per 24 h
+
 LANGUAGE_CODE = "zh-hans"
 TIME_ZONE = os.environ.get("TMS_TIME_ZONE", "America/Los_Angeles")
 USE_I18N = True

@@ -174,7 +174,7 @@ gcloud run deploy tms --source . --region $REGION \
 
 ## 第 9 步：检查和导入数据
 
-1. 打开 `https://tms-PROJECT_NUMBER.us-central1.run.app/healthz`，应该显示 ok。
+1. 打开 `https://tms-PROJECT_NUMBER.us-central1.run.app/health/`，应该显示 ok。（注意不能用 `/healthz`：Cloud Run 会拦截以 z 结尾的路径。）
 2. 打开首页，用 Google 登录。你应该直接是管理层。
 3. 新数据库是空的：
    - 进 **团队 → 导入数据**，上传 `PTT-4475.json`（不用勾"清空旧数据"）。

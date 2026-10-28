@@ -208,3 +208,7 @@ table.t tr.cat td { background: #f1f3f6; font-weight: 700; font-size: 12.5px; co
 
 .sugg a { color: var(--accent); }
 .sugg .si, .sugg .si:hover, .sugg .si.on { color: var(--ink); }
+
+/* AI email reading */
+.card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 14px; padding: 10px 12px; }
+.card textarea { min-height: 260px; }

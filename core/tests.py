@@ -465,3 +465,206 @@ class SuggestTests(Base):
         self.login(self.ar)
         data = self.client.get(reverse("search_suggest"), {"q": "INV-AP-77"}).json()
         self.assertFalse(any(g["label"] == "发票" for g in data["groups"]))
+
+
+# --------------------------------------------------------------------------
+# AI email reading — Gemini is replaced by a fake that returns fixed JSON
+# --------------------------------------------------------------------------
+def fake_gemini(result):
+    calls = []
+
+    def caller(email_text, context, today):
+        calls.append((email_text, context, today))
+        return result, {"totalTokenCount": 123}
+
+    caller.calls = calls
+    return caller
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiEmailTests(Base):
+    EMAIL = "CYMU2523606 picked up 1/5, arrived site 1/6 09:20 ET, unloaded. Driver Mike."
+
+    def result(self, **extra):
+        load = {"container_number": "CYMU2523606", "carrier_load_number": "BLN30784", "note": "Driver Mike unloaded fine",
+                "updates": [
+                    {"field": "actual_pickup", "value": "2026-01-05", "evidence": "picked up 1/5"},
+                    {"field": "delivery_arrived_at", "value": "2026-01-06T09:20:00-05:00", "evidence": "arrived site 1/6 09:20 ET"},
+                    {"field": "driver_name", "value": "Mike", "evidence": "Driver Mike"},
+                ]}
+        load.update(extra)
+        return {"summary": "Picked up and arrived", "loads": [load], "unmatched": ""}
+
+    def run_extract(self, result, user=None, **scope):
+        from . import ai
+
+        return ai.extract(self.EMAIL, user or self.op, caller=fake_gemini(result), **scope)
+
+    def test_extract_matches_load_and_stores_pending_changes(self):
+        ext = self.run_extract(self.result(), project=self.project)
+        changes = {c.field: c for c in ext.changes.all()}
+        self.assertEqual(set(changes), {"actual_pickup", "delivery_arrived_at", "driver_name", "note"})
+        self.assertEqual(changes["actual_pickup"].shipment, self.s)
+        self.assertEqual(changes["actual_pickup"].leg, self.leg)
+        self.assertEqual(changes["delivery_arrived_at"].new_value, "2026-01-06T14:20Z")  # stored in UTC
+        self.assertFalse(changes["delivery_arrived_at"].tz_assumed)
+        # Nothing written yet.
+        self.leg.refresh_from_db()
+        self.assertIsNone(self.leg.actual_pickup)
+
+    def test_apply_writes_with_history_and_status(self):
+        from . import ai
+
+        ext = self.run_extract(self.result(), project=self.project)
+        ids = [c.pk for c in ext.changes.all()]
+        applied, skipped = ai.apply_changes(ext, self.op, ids)
+        self.assertEqual((len(applied), len(skipped)), (4, 0))
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.actual_pickup, date(2026, 1, 5))
+        self.assertEqual(self.leg.driver_name, "Mike")
+        self.assertEqual(self.leg.history.first().history_change_reason, f"AI 邮件识别 #{ext.pk}")
+        self.s.refresh_from_db()
+        self.assertEqual(self.s.status, Status.IN_TRANSIT)
+        texts = list(self.s.timeline_notes.values_list("text", flat=True))
+        self.assertTrue(any("Driver Mike unloaded fine" in t for t in texts))
+        self.assertTrue(any(t.startswith(f"通过 AI 邮件识别 #{ext.pk} 更新") for t in texts))
+
+    def test_unticked_changes_are_rejected(self):
+        from . import ai
+        from .models import AiChange
+
+        ext = self.run_extract(self.result(), project=self.project)
+        keep = ext.changes.get(field="driver_name")
+        ai.apply_changes(ext, self.op, [keep.pk])
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.driver_name, "Mike")
+        self.assertIsNone(self.leg.actual_pickup)
+        self.assertEqual(ext.changes.filter(status=AiChange.State.REJECTED).count(), 3)
+
+    def test_stale_value_is_not_overwritten(self):
+        from . import ai
+        from .models import AiChange
+
+        ext = self.run_extract(self.result(), project=self.project)
+        self.leg.driver_name = "Someone else"
+        self.leg.save()
+        ai.apply_changes(ext, self.op, [c.pk for c in ext.changes.all()])
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.driver_name, "Someone else")
+        self.assertEqual(ext.changes.get(field="driver_name").status, AiChange.State.STALE)
+        self.assertEqual(self.leg.actual_pickup, date(2026, 1, 5))  # others still applied
+
+    def test_locked_load_blocks_ops_fields_but_not_pod(self):
+        from . import ai
+        from .models import AiChange
+
+        self.leg.actual_pickup, self.leg.actual_delivery = date(2026, 1, 5), date(2026, 1, 6)
+        self.leg.save()
+        self.s.refresh_from_db()
+        self.assertTrue(self.s.is_locked)
+        res = {"summary": "", "unmatched": "", "loads": [{"container_number": "CYMU2523606", "carrier_load_number": "", "note": "",
+                "updates": [{"field": "pod_received", "value": "2026-01-09", "evidence": "POD attached"},
+                            {"field": "driver_name", "value": "Mike", "evidence": "Driver Mike"}]}]}
+        ext = self.run_extract(res, project=self.project)
+        ai.apply_changes(ext, self.op, [c.pk for c in ext.changes.all()])
+        self.s.refresh_from_db()
+        self.assertEqual(self.s.pod_received, date(2026, 1, 9))
+        self.assertEqual(ext.changes.get(field="driver_name").status, AiChange.State.BLOCKED)
+        # Management may write to a locked Load.
+        ext2 = self.run_extract(res, user=self.mgmt, project=self.project)
+        ai.apply_changes(ext2, self.mgmt, [c.pk for c in ext2.changes.all()])
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.driver_name, "Mike")
+
+    def test_unchanged_values_unknown_loads_and_bad_values(self):
+        self.leg.driver_name = "Mike"
+        self.leg.save()
+        res = self.result()
+        res["loads"][0]["updates"].append({"field": "actual_delivery", "value": "next week", "evidence": "x"})
+        res["loads"].append({"container_number": "ZZZU0000000", "carrier_load_number": "", "note": "",
+                             "updates": [{"field": "actual_pickup", "value": "2026-01-01", "evidence": "x"}]})
+        ext = self.run_extract(res, project=self.project)
+        fields = set(ext.changes.values_list("field", flat=True))
+        self.assertNotIn("driver_name", fields)  # already correct
+        self.assertNotIn("actual_delivery", fields)  # unparseable
+        self.assertIn("找不到 ZZZU0000000", ext.unmatched)
+        self.assertIn("无法识别", ext.unmatched)
+
+    def test_match_by_carrier_load_number_and_naive_time(self):
+        self.leg.carrier_load_number = "BLN30784"
+        self.leg.save()
+        res = self.result(container_number="")
+        res["loads"][0]["updates"] = [{"field": "delivery_arrived_at", "value": "2026-01-06T09:20", "evidence": "09:20"}]
+        ext = self.run_extract(res)  # global scope
+        c = ext.changes.get(field="delivery_arrived_at")
+        self.assertEqual(c.shipment, self.s)
+        self.assertTrue(c.tz_assumed)
+        self.assertEqual(c.new_value, "2026-01-06T17:20Z")  # 09:20 Pacific
+
+    def test_money_and_unknown_fields_are_ignored(self):
+        res = self.result()
+        res["loads"][0]["updates"] = [{"field": "unit_price", "value": "9999", "evidence": "rate"}]
+        ext = self.run_extract(res, project=self.project)
+        self.assertEqual(list(ext.changes.exclude(field="note")), [])
+
+    def test_permissions_and_limits(self):
+        from . import ai
+
+        for user in (self.ar, self.ap):
+            with self.assertRaises(ai.AiError):
+                self.run_extract(self.result(), user=user)
+        with self.assertRaises(ai.AiError):
+            ai.extract("", self.op, caller=fake_gemini(self.result()))
+        with self.assertRaises(ai.AiError):
+            ai.extract("x" * (ai.MAX_EMAIL_CHARS + 1), self.op, caller=fake_gemini(self.result()))
+        with self.settings(TMS_AI_DAILY_LIMIT=1):
+            self.run_extract(self.result())
+            with self.assertRaises(ai.AiError):
+                self.run_extract(self.result())
+        self.login(self.ar)
+        self.assertEqual(self.client.get(reverse("ai_new")).status_code, 403)
+
+    def test_pages(self):
+        from unittest import mock
+
+        from . import ai
+
+        self.login(self.op)
+        r = self.client.get(reverse("ai_new") + f"?load={self.s.pk}")
+        self.assertContains(r, "开始识别")
+        with mock.patch.object(ai, "call_gemini", fake_gemini(self.result())):
+            r = self.client.post(reverse("ai_new"), {"text": self.EMAIL, "load": self.s.pk})
+        self.assertEqual(r.status_code, 302)
+        ext_url = r["Location"]
+        r = self.client.get(ext_url)
+        self.assertContains(r, "实际提货")
+        self.assertContains(r, "2026-01-06 06:20 PST")  # 09:20 EST shown in Pacific
+        pk = int(ext_url.rstrip("/").split("/")[-1])
+        ids = list(map(str, __import__("core.models", fromlist=["AiChange"]).AiChange.objects.filter(extraction_id=pk).values_list("pk", flat=True)))
+        r = self.client.post(reverse("ai_apply", args=[pk]), {"action": "apply", "change": ids})
+        self.assertEqual(r.status_code, 302)
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.actual_pickup, date(2026, 1, 5))
+        self.assertContains(self.client.get(reverse("ai_list")), f"#{pk}")
+        # Discard on an already-processed extraction does nothing.
+        r = self.client.post(reverse("ai_apply", args=[pk]), {"action": "discard"}, follow=True)
+        self.assertContains(r, "已经处理过了")
+
+    def test_disabled_shows_setup_note(self):
+        self.login(self.op)
+        with self.settings(TMS_AI_ENABLED=False):
+            r = self.client.get(reverse("ai_new"))
+        self.assertContains(r, "还没有开启")
+
+    def test_health_alias(self):
+        self.assertEqual(self.client.get("/health/").status_code, 200)
+
+
+class AuditDisplayTests(TestCase):
+    def test_datetimes_shown_in_local_time(self):
+        from datetime import datetime, timezone as dt_tz
+
+        from .audit import _display
+
+        v = datetime(2026, 10, 28, 11, 45, tzinfo=dt_tz.utc)
+        self.assertEqual(_display(Leg, "delivery_arrived_at", v), "2026-10-28 04:45 PDT")

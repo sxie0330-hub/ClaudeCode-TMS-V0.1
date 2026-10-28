@@ -12,6 +12,7 @@
   <div class="actions">
     <form method="post" action="{% url 'watch_load' s.pk %}" class="inline">{% csrf_token %}<button>关注</button></form>
     <a class="btn" href="{% url 'shipment_bol' s.pk %}" target="_blank">生成 BOL</a>
+    {% if perm.edit_ops %}<a class="btn" href="{% url 'ai_new' %}?load={{ s.pk }}">粘贴邮件 · AI 识别</a>{% endif %}
     {% if can_edit %}<a class="btn primary" href="{% url 'shipment_edit' s.pk %}">编辑 Load</a>{% endif %}
     {% if perm.mgmt %}
       {% if s.status == 'DELIVERED' or s.status == 'CLOSED' %}
