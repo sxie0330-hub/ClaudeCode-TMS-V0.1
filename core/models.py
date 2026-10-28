@@ -358,18 +358,33 @@ class Shipment(SoftDeleteModel):
         OTHER = "OTHER", "Other"
 
     class Equipment(models.TextChoices):
+        # Ocean containers
         C20GP = "20GP", "20' GP"
         C20HC = "20HC", "20' HC"
+        C20OT = "20OT", "20' Open Top"
+        C20FR = "20FR", "20' Flat Rack"
+        C20RF = "20RF", "20' Reefer"
+        C20TK = "20TK", "20' Tank"
         C20SOC = "20SOC", "20' SOC (BESS)"
         C40GP = "40GP", "40' GP"
         C40HC = "40HC", "40' HC"
-        C40FR = "40FR", "40' Flat Rack"
         C40OT = "40OT", "40' Open Top"
+        C40FR = "40FR", "40' Flat Rack"
+        C40RF = "40RF", "40' Reefer"
+        C40SOC = "40SOC", "40' SOC"
         C45HC = "45HC", "45' HC"
+        C53CTR = "53CTR", "53' Domestic Container"
+        # Trucks and trailers
         DRY_VAN = "53DV", "53' Dry Van"
+        REEFER = "53RF", "53' Reefer"
         FLATBED = "FLAT", "Flatbed / Step Deck"
+        CONESTOGA = "CONE", "Conestoga"
+        DOUBLE_DROP = "DD", "Double Drop"
         RGN = "RGN", "RGN / Lowboy"
         MULTI_AXLE = "MULTI", "Multi-axle / Perimeter / Schnabel"
+        HOTSHOT = "HOTSHOT", "Hot Shot"
+        BOX = "BOX", "Box Truck / Straight Truck"
+        POWER_ONLY = "PO", "Power Only"
         OTHER = "OTHER", "Other"
 
     class ManualStatus(models.TextChoices):

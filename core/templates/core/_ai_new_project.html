@@ -4,7 +4,7 @@
   <div class="body">
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
       <label>项目名称 *<input name="np_name" value="{{ prop.name }}" required></label>
-      <label>客户 *{% if not prop.customer_exists and prop.customer %} <small class="lfd-warn">新客户</small>{% endif %}
+      <label>客户 *{% if prop.customer_was_own %} <small class="lfd-warn">AI 把我方公司当成了客户，请填写真正的委托方</small>{% elif not prop.customer_exists and prop.customer %} <small class="lfd-warn">新客户</small>{% endif %}
         <input name="np_customer" value="{{ prop.customer }}" required></label>
       <label>公司<select name="np_company">{% for v, l in companies %}<option value="{{ v }}" {% if v == prop.company %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
       <label>项目编号（Monday）<input name="np_monday_item_id" value="{{ prop.monday_item_id }}"></label>
