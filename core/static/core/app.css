@@ -212,3 +212,7 @@ table.t tr.cat td { background: #f1f3f6; font-weight: 700; font-size: 12.5px; co
 /* AI email reading */
 .card { background: var(--panel); border: 1px solid var(--line); border-radius: 6px; margin-bottom: 14px; padding: 10px 12px; }
 .card textarea { min-height: 260px; }
+.np-form { max-width: none; }
+.np-form table.t input, .np-form table.t select { min-width: 9em; }
+.np-form table.t td:nth-child(2) input { min-width: 12em; }
+.np-form table.t td:last-child input { min-width: 16em; }

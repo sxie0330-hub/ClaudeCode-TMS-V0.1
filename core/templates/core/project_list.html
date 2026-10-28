@@ -2,7 +2,8 @@
 {% block title %}项目{% endblock %}
 {% block content %}
 <div class="head"><h1>项目</h1><span class="muted">{{ page.paginator.count }} 个</span>
-  <div class="actions">{% if perm.edit_ops %}<a class="btn primary" href="{% url 'project_create' %}">+ 新建项目</a>{% endif %}</div>
+  <div class="actions">{% if perm.edit_ops %}<a class="btn" href="{% url 'ai_new' %}">粘贴邮件 · AI 新建项目</a>
+    <a class="btn primary" href="{% url 'project_create' %}">+ 新建项目</a>{% endif %}</div>
 </div>
 <form class="filters" method="get">
   <input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="项目名 / 编号 / Monday ID / 客户">

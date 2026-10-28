@@ -22,7 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
-from .models import AiChange, AiExtraction, Leg, Note, Shipment, Status
+from .models import AiChange, AiExtraction, Carrier, Company, Customer, Leg, Location, Note, Project, Shipment, Status
 from .permissions import can_edit_ops, can_edit_shipment_ops
 
 log = logging.getLogger(__name__)
@@ -67,8 +67,44 @@ FIELDS = {
 }
 NOTE_FIELD = "note"  # a timeline note, not a field
 
-MAX_EMAIL_CHARS = 30000
+MAX_EMAIL_CHARS = 60000
 MAX_CANDIDATES = 300
+
+
+def sheet_to_text(upload):
+    """An uploaded .xlsx / .csv / .tsv / .txt file -> tab-separated text for the model."""
+    name = upload.name.lower()
+    if upload.size > 5 * 1024 * 1024:
+        raise AiError("表格文件太大（超过 5MB），请只保留需要的工作表和行")
+    if name.endswith(".xlsx"):
+        from openpyxl import load_workbook
+
+        try:
+            wb = load_workbook(upload, read_only=True, data_only=True)
+        except Exception as e:  # noqa: BLE001
+            raise AiError(f"无法读取这个 Excel 文件：{e}") from e
+        parts = []
+        for ws in wb.worksheets:
+            rows = []
+            for row in ws.iter_rows(values_only=True):
+                cells = ["" if v is None else (v.strftime("%Y-%m-%d %H:%M").removesuffix(" 00:00") if hasattr(v, "strftime") else str(v).strip())
+                         for v in row]
+                while cells and cells[-1] == "":
+                    cells.pop()
+                if cells:
+                    rows.append("\t".join(cells))
+            if rows:
+                parts.append(f"## 工作表：{ws.title}\n" + "\n".join(rows))
+        wb.close()
+        return "\n\n".join(parts)
+    if name.endswith((".csv", ".tsv", ".txt")):
+        raw = upload.read()
+        for enc in ("utf-8-sig", "gb18030", "latin-1"):
+            try:
+                return raw.decode(enc)
+            except UnicodeDecodeError:
+                continue
+    raise AiError("只支持 .xlsx、.csv、.tsv、.txt 文件（Google Sheets 请用 文件 → 下载 → .xlsx）")
 
 
 def enabled():
@@ -217,6 +253,16 @@ def _current(obj, key):
 # ---------------------------------------------------------------------------
 # Gemini call
 # ---------------------------------------------------------------------------
+_LOCATION_SCHEMA = {
+    "type": "OBJECT",
+    "properties": {
+        "code": {"type": "STRING", "description": "地址库代号；已有地址请用完全相同的代号，新地址起一个简短代号"},
+        "name": {"type": "STRING"}, "address": {"type": "STRING"}, "city": {"type": "STRING"},
+        "state": {"type": "STRING", "description": "两位州代码"}, "postal_code": {"type": "STRING"},
+    },
+    "required": ["code", "name", "address", "city", "state", "postal_code"],
+}
+
 RESPONSE_SCHEMA = {
     "type": "OBJECT",
     "properties": {
@@ -246,8 +292,38 @@ RESPONSE_SCHEMA = {
             },
         },
         "unmatched": {"type": "STRING", "description": "邮件中提到但无法对应到任何 Load 的信息"},
+        "new_project": {
+            "type": "OBJECT",
+            "description": "邮件宣布了系统里还没有的新项目/新货时填写，否则 is_new=false 其余留空",
+            "properties": {
+                "is_new": {"type": "BOOLEAN"},
+                "name": {"type": "STRING", "description": "项目名，参照已有项目的命名方式"},
+                "company": {"type": "STRING", "description": "我方公司：ATS 或 PTT，不确定留空"},
+                "customer": {"type": "STRING", "description": "客户名称；已有客户请用完全相同的名字"},
+                "customer_ref": {"type": "STRING"},
+                "monday_item_id": {"type": "STRING", "description": "项目编号，如 #4560 写 P-04560"},
+                "start_date": {"type": "STRING", "description": "YYYY-MM-DD"},
+                "cargo_description": {"type": "STRING"},
+                "notes": {"type": "STRING", "description": "中文：待办事项、注意事项（如 DO 未放、需确认的信息）"},
+                "shipper": _LOCATION_SCHEMA,
+                "consignee": _LOCATION_SCHEMA,
+                "milestones": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+                    "name": {"type": "STRING"}, "planned_date": {"type": "STRING", "description": "YYYY-MM-DD"}},
+                    "required": ["name", "planned_date"]}},
+                "loads": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
+                    "container_number": {"type": "STRING", "description": "柜号，未知留空"},
+                    "equipment": {"type": "STRING", "description": "柜型代码之一：" + ", ".join(Shipment.Equipment.values)},
+                    "service": {"type": "STRING", "description": "服务代码之一：" + ", ".join(Shipment.Service.values)},
+                    "mbl": {"type": "STRING"},
+                    "carrier": {"type": "STRING", "description": "承运商/车队名称；已有承运商请用完全相同的名字"},
+                    "notes": {"type": "STRING", "description": "中文，如 HBL 号、DO 状态、品名"}},
+                    "required": ["container_number", "equipment", "service", "mbl", "carrier", "notes"]}},
+            },
+            "required": ["is_new", "name", "company", "customer", "customer_ref", "monday_item_id", "start_date",
+                         "cargo_description", "notes", "shipper", "consignee", "milestones", "loads"],
+        },
     },
-    "required": ["summary", "loads", "unmatched"],
+    "required": ["summary", "loads", "unmatched", "new_project"],
 }
 
 SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助手。用户会粘贴一封与运输相关的邮件（承运商、司机、客户或堆场发来的），以及系统里可能相关的 Load 列表。
@@ -269,7 +345,16 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
 8. evidence 填邮件里支持该值的原句（原文语言，尽量短）。
 9. 其他值得记录的事实（延误原因、故障、改约、现场情况、签收人等）用中文简短写进该 Load 的 note。
 10. 绝不提取任何金额、费率、费用。
-11. 如果邮件和列表中的任何 Load 都无关，loads 返回空数组，在 unmatched 里说明。"""
+11. 如果邮件和列表中的任何 Load 都无关，loads 返回空数组，在 unmatched 里说明。
+12. 如果邮件是“项目开始”、新订单、新货物安排等，说的是系统里还没有的项目或货物，填写 new_project（is_new=true）：
+   - 每一个柜子 / 每一车货写一条 loads（“×2”就写两条）；柜号未知就留空。
+   - 客户、承运商、地址如果在“已有资料”里，必须用完全相同的名字或代号。
+   - 送货地址写进 consignee；港口、码头或提货地写进 shipper（只有港口名时 code 写港口名、地址留空）。
+   - ETA、计划开始日等写进 milestones（例如 name=“船到港 ETA”）。
+   - 待确认事项（如 DO 未放、柜号待定、车队待定）用中文写进 notes。
+   - 不要编造：邮件没写的就留空。
+   此时 loads（更新已有 Load）通常为空。
+13. 内容也可能是从表格复制或上传的数据（制表符分隔，可能带“工作表”标题）：按表头理解各列，通常每行是一个柜子 / 一车货。表里已有的柜号按规则 1–11 更新，系统里没有的柜号按规则 12 放进 new_project.loads。"""
 
 
 def _context_block(cands, single):
@@ -285,7 +370,16 @@ def _context_block(cands, single):
                         for k in FIELDS if (leg if FIELDS[k].target == "leg" else s) is not None},
         })
     head = "这封邮件就是关于下面这一个 Load 的（只需输出一个 Load）。" if single else "系统里可能相关的 Load："
-    return head + "\n" + json.dumps(rows, ensure_ascii=False)
+    text = head + "\n" + json.dumps(rows, ensure_ascii=False)
+    if not single:
+        ref = {
+            "customers": list(Customer.objects.values_list("name", flat=True)[:300]),
+            "carriers": list(Carrier.objects.values_list("name", flat=True)[:300]),
+            "locations": list(Location.objects.values_list("code", flat=True)[:300]),
+            "recent_project_names": list(Project.objects.order_by("-created_at").values_list("name", flat=True)[:15]),
+        }
+        text += "\n\n已有资料（新建项目时用来对应名字）：\n" + json.dumps(ref, ensure_ascii=False)
+    return text
 
 
 def call_gemini(email_text, context, today):
@@ -310,7 +404,7 @@ def call_gemini(email_text, context, today):
         "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA},
     }
     try:
-        r = requests.post(url, json=body, headers={"Authorization": f"Bearer {creds.token}"}, timeout=50)
+        r = requests.post(url, json=body, headers={"Authorization": f"Bearer {creds.token}"}, timeout=170)
     except requests.RequestException as e:
         raise AiError(f"连接 Gemini 失败：{e}") from e
     if r.status_code != 200:
@@ -342,7 +436,7 @@ def extract(email_text, user, project=None, shipment=None, caller=None):
         raise AiError(f"今天已识别 {settings.TMS_AI_DAILY_LIMIT} 次，达到每人每日上限")
 
     cands = candidates(project, shipment)
-    if not cands:
+    if not cands and (project is not None or shipment is not None):
         raise AiError("范围内没有 Load 可以对应")
     context = _context_block(cands, shipment is not None)
     result, usage = (caller or call_gemini)(email_text, context, timezone.localdate())
@@ -453,7 +547,8 @@ def apply_changes(ext, user, approve_ids):
         if items:
             text = "；".join(f"{FIELDS[c.field].label} {c.new_display}" for c in items)
             Note.objects.create(shipment=s, created_by=user, kind=Note.Kind.SYSTEM, text=f"通过 AI 邮件识别 #{ext.pk} 更新：{text}")
-    ext.status = AiExtraction.State.DONE
+    if not (proposal(ext) and "created_project_id" not in ext.raw_result):
+        ext.status = AiExtraction.State.DONE  # else the new-project proposal is still waiting
     ext.reviewed_by, ext.reviewed_at = user, now
     ext.save(update_fields=["status", "reviewed_by", "reviewed_at"])
     return applied, skipped
@@ -464,3 +559,119 @@ def discard(ext, user):
     ext.status = AiExtraction.State.DISCARDED
     ext.reviewed_by, ext.reviewed_at = user, timezone.now()
     ext.save(update_fields=["status", "reviewed_by", "reviewed_at"])
+
+
+# ---------------------------------------------------------------------------
+# New project proposal (for "project start" / new-order emails)
+# ---------------------------------------------------------------------------
+LOC_FIELDS = ("code", "name", "address", "city", "state", "postal_code")
+
+
+def _s(v, n=255):
+    return str(v or "").strip()[:n]
+
+
+def proposal(ext):
+    """The cleaned-up new-project proposal of an extraction, or None."""
+    np = (ext.raw_result or {}).get("new_project") or {}
+    if not np.get("is_new"):
+        return None
+    loads = []
+    for ld in np.get("loads") or []:
+        cntr = re.sub(r"\s", "", _s(ld.get("container_number"), 20)).upper()
+        loads.append({
+            "container_number": cntr,
+            "equipment": ld.get("equipment") if ld.get("equipment") in Shipment.Equipment.values else "",
+            "service": ld.get("service") if ld.get("service") in Shipment.Service.values else Shipment.Service.OTR,
+            "mbl": _s(ld.get("mbl"), 40).upper(),
+            "carrier": _s(ld.get("carrier"), 120),
+            "notes": _s(ld.get("notes"), 1000),
+            "exists": bool(cntr) and Shipment.objects.filter(container_number=cntr).exists(),
+        })
+    locs = {}
+    for role in ("shipper", "consignee"):
+        loc = {k: _s((np.get(role) or {}).get(k), 160) for k in LOC_FIELDS}
+        loc["code"] = loc["code"][:60]
+        loc["exists"] = bool(loc["code"]) and Location.objects.filter(code=loc["code"]).exists()
+        locs[role] = loc
+    start = np.get("start_date")
+    try:
+        start = parse_value("date", start).isoformat() if start else ""
+    except ValueError:
+        start = ""
+    milestones = []
+    for m in np.get("milestones") or []:
+        try:
+            d = parse_value("date", m.get("planned_date")).isoformat()
+        except ValueError:
+            continue
+        if _s(m.get("name")):
+            milestones.append({"name": _s(m.get("name"), 120), "planned_date": d})
+    customer = _s(np.get("customer"), 120)
+    return {
+        "name": _s(np.get("name"), 200), "company": np.get("company") if np.get("company") in Company.values else "",
+        "customer": customer, "customer_exists": Customer.objects.filter(name=customer).exists(),
+        "customer_ref": _s(np.get("customer_ref"), 80), "monday_item_id": _s(np.get("monday_item_id"), 40),
+        "start_date": start, "cargo_description": _s(np.get("cargo_description")), "notes": _s(np.get("notes"), 2000),
+        "shipper": locs["shipper"], "consignee": locs["consignee"], "milestones": milestones, "loads": loads,
+    }
+
+
+def create_project(ext, user, form):
+    """Create the project and its Loads from the (edited) proposal form. Returns the Project."""
+    from .importer import ImportError_, import_data
+
+    if not can_edit_ops(user):
+        raise AiError("没有新建项目的权限")
+    g = lambda k, n=255: _s(form.get(k), n)  # noqa: E731
+    name, customer = g("np_name", 200), g("np_customer", 120)
+    if not name or not customer:
+        raise AiError("项目名称和客户必须填写")
+    data = {"customers": [{"name": customer}], "carriers": [], "locations": [], "projects": []}
+    proj = {
+        "name": name, "customer": customer, "company": g("np_company") if g("np_company") in Company.values else Company.ATS,
+        "monday_item_id": g("np_monday_item_id", 40), "start_date": g("np_start_date", 10) or None,
+        "cargo_description": g("np_cargo_description"), "notes": g("np_notes", 2000),
+        "owners": [user.email] if user.email else [], "source": f"AI 邮件识别 #{ext.pk}",
+        "milestones": [m for m in proposal(ext)["milestones"]] if form.get("np_milestones") else [],
+        "timeline": [{"date": timezone.localdate().isoformat(), "text": f"由 AI 邮件识别 #{ext.pk} 创建（{user.get_full_name() or user.email}）"}],
+        "loads": [],
+    }
+    for role in ("shipper", "consignee"):
+        code = g(f"np_{role}_code", 60)
+        if code:
+            loc = {k: g(f"np_{role}_{k}", 160) for k in LOC_FIELDS}
+            loc["code"] = code
+            loc["kind"] = Location.Kind.SITE if role == "consignee" else Location.Kind.TERMINAL
+            data["locations"].append(loc)
+            proj[f"default_{role}"] = code
+    n = int(form.get("np_load_count") or 0)
+    for i in range(min(n, 200)):
+        if not form.get(f"np_load_{i}_include"):
+            continue
+        carrier = g(f"np_load_{i}_carrier", 120)
+        service = g(f"np_load_{i}_service")
+        ld = {
+            "container_number": re.sub(r"\s", "", g(f"np_load_{i}_container_number", 20)).upper(),
+            "equipment": g(f"np_load_{i}_equipment") if g(f"np_load_{i}_equipment") in Shipment.Equipment.values else "",
+            "service": service if service in Shipment.Service.values else Shipment.Service.OTR,
+            "mbl": g(f"np_load_{i}_mbl", 40), "notes": g(f"np_load_{i}_notes", 1000), "customer_ref": g("np_customer_ref", 80),
+        }
+        if carrier:
+            data["carriers"].append({"name": carrier})
+            ld["legs"] = [{"kind": Leg.Kind.DRAYAGE if ld["service"].startswith("DRAY") else Leg.Kind.OTR, "carrier": carrier}]
+        proj["loads"].append(ld)
+    data["projects"].append(proj)
+    if Project.objects.filter(customer__name=customer, name=name).exists():
+        raise AiError(f"客户「{customer}」下已经有同名项目「{name}」，请改个名字")
+    try:
+        log_lines = import_data(data, user=user)
+    except (ImportError_, ValueError) as e:
+        raise AiError(f"创建失败：{e}") from e
+    p = Project.objects.get(customer__name=customer, name=name)
+    ext.raw_result = {**ext.raw_result, "created_project_id": p.pk, "create_log": log_lines}
+    if not ext.changes.filter(status=AiChange.State.PENDING).exists():
+        ext.status = AiExtraction.State.DONE
+    ext.reviewed_by, ext.reviewed_at = user, timezone.now()
+    ext.save(update_fields=["raw_result", "status", "reviewed_by", "reviewed_at"])
+    return p

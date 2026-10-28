@@ -14,4 +14,4 @@ COPY . .
 RUN DJANGO_SECRET_KEY=build-only python manage.py collectstatic --noinput
 
 # Cloud Run sends traffic to $PORT. Migrations run on start, like on Render.
-CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn tms.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 2 --timeout 60"]
+CMD ["sh", "-c", "python manage.py migrate --noinput && exec gunicorn tms.wsgi:application --bind 0.0.0.0:${PORT:-8080} --workers 2 --threads 2 --timeout 180"]
