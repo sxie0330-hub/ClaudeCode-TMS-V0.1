@@ -668,3 +668,146 @@ class AuditDisplayTests(TestCase):
 
         v = datetime(2026, 10, 28, 11, 45, tzinfo=dt_tz.utc)
         self.assertEqual(_display(Leg, "delivery_arrived_at", v), "2026-10-28 04:45 PDT")
+
+
+NEW_PROJECT_RESULT = {
+    "summary": "新项目 #4560 启动", "loads": [], "unmatched": "",
+    "new_project": {
+        "is_new": True, "name": "PTT#4560 环世 → Moreno Valley", "company": "PTT", "customer": "环世 Worldwide Logistics USA",
+        "customer_ref": "", "monday_item_id": "P-04560", "start_date": "2026-10-28", "cargo_description": "电池柜",
+        "notes": "DO 未放（客户待提供）",
+        "shipper": {"code": "Port of LA", "name": "Port of Los Angeles", "address": "", "city": "Los Angeles", "state": "CA", "postal_code": ""},
+        "consignee": {"code": "MVUSD Bus Charging", "name": "Moreno Valley Unified School District - Bus Charging Station",
+                      "address": "13911 Perris Blvd", "city": "Moreno Valley", "state": "CA", "postal_code": "92553"},
+        "milestones": [{"name": "船到港 ETA", "planned_date": "2026-11-08"}, {"name": "bad", "planned_date": "soon"}],
+        "loads": [
+            {"container_number": "", "equipment": "20GP", "service": "DRAY", "mbl": "", "carrier": "B E Jordan Trucking", "notes": "电池柜，DO 待放"},
+            {"container_number": "TEXU 0009861", "equipment": "40FR", "service": "DRAY", "mbl": "shz8660350", "carrier": "", "notes": "HBL WLC61002517"},
+            {"container_number": "CYMU2523606", "equipment": "XX", "service": "??", "mbl": "", "carrier": "", "notes": "已存在"},
+        ],
+    },
+}
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiNewProjectTests(Base):
+    def extract(self):
+        from . import ai
+
+        return ai.extract("项目开始 #4560 …", self.op, caller=fake_gemini(NEW_PROJECT_RESULT))
+
+    def form_from_proposal(self, prop):
+        form = {"np_name": prop["name"], "np_customer": prop["customer"], "np_company": prop["company"],
+                "np_monday_item_id": prop["monday_item_id"], "np_start_date": prop["start_date"],
+                "np_cargo_description": prop["cargo_description"], "np_notes": prop["notes"], "np_milestones": "1",
+                "np_load_count": str(len(prop["loads"]))}
+        for role in ("shipper", "consignee"):
+            for k in ("code", "name", "address", "city", "state", "postal_code"):
+                form[f"np_{role}_{k}"] = prop[role][k]
+        for i, ld in enumerate(prop["loads"]):
+            for k in ("container_number", "equipment", "service", "mbl", "carrier", "notes"):
+                form[f"np_load_{i}_{k}"] = ld[k]
+            if not ld["exists"]:
+                form[f"np_load_{i}_include"] = "1"
+        return form
+
+    def test_proposal_is_cleaned(self):
+        from . import ai
+
+        prop = ai.proposal(self.extract())
+        self.assertEqual(prop["company"], "PTT")
+        self.assertFalse(prop["customer_exists"])
+        self.assertEqual(prop["loads"][1]["container_number"], "TEXU0009861")
+        self.assertEqual(prop["loads"][1]["mbl"], "SHZ8660350")
+        self.assertTrue(prop["loads"][2]["exists"])  # CYMU2523606 is already in TMS
+        self.assertEqual(prop["loads"][2]["equipment"], "")  # invalid code dropped
+        self.assertEqual(prop["milestones"], [{"name": "船到港 ETA", "planned_date": "2026-11-08"}])
+
+    def test_review_page_and_create(self):
+        from . import ai
+        from .models import AiExtraction, Location, Milestone
+
+        ext = self.extract()
+        self.login(self.op)
+        r = self.client.get(ext.get_absolute_url())
+        self.assertContains(r, "这封邮件是新项目")
+        self.assertContains(r, "系统里已有这个柜号")
+        r = self.client.post(reverse("ai_create_project", args=[ext.pk]), self.form_from_proposal(ai.proposal(ext)))
+        p = Project.objects.get(name="PTT#4560 环世 → Moreno Valley")
+        self.assertRedirects(r, p.get_absolute_url(), fetch_redirect_response=False)
+        self.assertEqual(p.company, "PTT")
+        self.assertEqual(p.customer.name, "环世 Worldwide Logistics USA")
+        self.assertEqual(list(p.owners.all()), [self.op])
+        self.assertEqual(p.default_consignee.address, "13911 Perris Blvd")
+        self.assertEqual(Location.objects.get(code="MVUSD Bus Charging").kind, Location.Kind.SITE)
+        loads = list(p.shipments.order_by("id"))
+        self.assertEqual(len(loads), 2)  # the existing container was not re-created
+        self.assertEqual(loads[1].container_number, "TEXU0009861")
+        self.assertEqual(loads[1].master_bl.number, "SHZ8660350")
+        self.assertEqual(loads[0].legs.get().carrier.name, "B E Jordan Trucking")
+        self.assertEqual(loads[0].legs.get().kind, Leg.Kind.DRAYAGE)
+        self.assertTrue(Milestone.objects.filter(project=p, name="船到港 ETA", planned_date=date(2026, 11, 8)).exists())
+        ext.refresh_from_db()
+        self.assertEqual(ext.status, AiExtraction.State.DONE)
+        self.assertEqual(ext.raw_result["created_project_id"], p.pk)
+        self.assertContains(self.client.get(ext.get_absolute_url()), "已根据这封邮件新建项目")
+        # A second submit does nothing.
+        r = self.client.post(reverse("ai_create_project", args=[ext.pk]), self.form_from_proposal(ai.proposal(ext)), follow=True)
+        self.assertContains(r, "已经处理过了")
+        self.assertEqual(Project.objects.filter(name=p.name).count(), 1)
+
+    def test_create_requires_name_and_rejects_duplicates(self):
+        from . import ai
+
+        ext = self.extract()
+        form = self.form_from_proposal(ai.proposal(ext))
+        with self.assertRaises(ai.AiError):
+            ai.create_project(ext, self.op, {**form, "np_name": ""})
+        with self.assertRaises(ai.AiError):
+            ai.create_project(ext, self.op, {**form, "np_name": self.project.name, "np_customer": self.customer.name})
+        with self.assertRaises(ai.AiError):
+            ai.create_project(ext, self.ar, form)
+
+    def test_works_with_empty_system(self):
+        Shipment.all_objects.all().delete()
+        ext = self.extract()
+        self.assertIsNotNone(ext.pk)
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiSheetUploadTests(Base):
+    def test_xlsx_and_csv_become_text(self):
+        import io
+        from datetime import datetime as dt
+        from unittest import mock
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+        from openpyxl import Workbook
+
+        from . import ai
+
+        wb = Workbook()
+        ws = wb.active
+        ws.title = "柜号"
+        ws.append(["Container", "MBL", "ETA"])
+        ws.append(["TEXU0009861", "SHZ8660350", dt(2026, 11, 8)])
+        buf = io.BytesIO()
+        wb.save(buf)
+        text = ai.sheet_to_text(SimpleUploadedFile("list.xlsx", buf.getvalue()))
+        self.assertIn("## 工作表：柜号", text)
+        self.assertIn("TEXU0009861\tSHZ8660350\t2026-11-08", text)
+        self.assertIn("柜号,MBL", ai.sheet_to_text(SimpleUploadedFile("a.csv", "柜号,MBL\nX,Y".encode("gb18030"))))
+        with self.assertRaises(ai.AiError):
+            ai.sheet_to_text(SimpleUploadedFile("a.pdf", b"%PDF"))
+
+        captured = {}
+
+        def caller(email_text, context, today):
+            captured["text"] = email_text
+            return {"summary": "", "loads": [], "unmatched": "", "new_project": {"is_new": False}}, {}
+
+        self.login(self.op)
+        with mock.patch.object(ai, "call_gemini", caller):
+            r = self.client.post(reverse("ai_new"), {"text": "", "sheet": SimpleUploadedFile("list.xlsx", buf.getvalue())})
+        self.assertEqual(r.status_code, 302)
+        self.assertIn("附带表格：list.xlsx", captured["text"])

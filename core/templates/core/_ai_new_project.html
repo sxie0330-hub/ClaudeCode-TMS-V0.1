@@ -1,0 +1,69 @@
+<form method="post" action="{% url 'ai_create_project' ext.pk %}" class="panel form np-form">{% csrf_token %}
+  <header><h2 style="margin:0;font-size:1rem">这封邮件是新项目 · 核对后新建</h2>
+    <span class="muted" style="font-size:13px">AI 预填，所有内容都可以改；没写的留空即可，建好后还能在项目里补</span></header>
+  <div class="body">
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
+      <label>项目名称 *<input name="np_name" value="{{ prop.name }}" required></label>
+      <label>客户 *{% if not prop.customer_exists and prop.customer %} <small class="lfd-warn">新客户</small>{% endif %}
+        <input name="np_customer" value="{{ prop.customer }}" required></label>
+      <label>公司<select name="np_company">{% for v, l in companies %}<option value="{{ v }}" {% if v == prop.company %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+      <label>项目编号（Monday）<input name="np_monday_item_id" value="{{ prop.monday_item_id }}"></label>
+      <label>客户参考号 / PO<input name="np_customer_ref" value="{{ prop.customer_ref }}"></label>
+      <label>开始日期<input type="date" name="np_start_date" value="{{ prop.start_date }}"></label>
+      <label style="grid-column:1/-1">货物描述<input name="np_cargo_description" value="{{ prop.cargo_description }}"></label>
+      <label style="grid-column:1/-1">备注 / 待确认事项<textarea name="np_notes" rows="2">{{ prop.notes }}</textarea></label>
+    </div>
+
+    <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:14px;margin-top:12px">
+      {% with loc=prop.consignee %}
+      <fieldset style="border:1px solid var(--line);border-radius:6px;padding:8px 10px">
+        <legend>送货地（收货方）{% if loc.code and not loc.exists %} <small class="lfd-warn">新地址，会加入地址库</small>{% elif loc.exists %} <small class="muted">地址库已有</small>{% endif %}</legend>
+        <label>代号<input name="np_consignee_code" value="{{ loc.code }}"></label>
+        <label>名称<input name="np_consignee_name" value="{{ loc.name }}"></label>
+        <label>地址<input name="np_consignee_address" value="{{ loc.address }}"></label>
+        <div style="display:flex;gap:6px"><label>城市<input name="np_consignee_city" value="{{ loc.city }}"></label>
+          <label>州<input name="np_consignee_state" value="{{ loc.state }}" maxlength="40"></label>
+          <label>邮编<input name="np_consignee_postal_code" value="{{ loc.postal_code }}"></label></div>
+      </fieldset>
+      {% endwith %}
+      {% with loc=prop.shipper %}
+      <fieldset style="border:1px solid var(--line);border-radius:6px;padding:8px 10px">
+        <legend>提货地（港口 / 发货方）{% if loc.code and not loc.exists %} <small class="lfd-warn">新地址，会加入地址库</small>{% elif loc.exists %} <small class="muted">地址库已有</small>{% endif %}</legend>
+        <label>代号<input name="np_shipper_code" value="{{ loc.code }}"></label>
+        <label>名称<input name="np_shipper_name" value="{{ loc.name }}"></label>
+        <label>地址<input name="np_shipper_address" value="{{ loc.address }}"></label>
+        <div style="display:flex;gap:6px"><label>城市<input name="np_shipper_city" value="{{ loc.city }}"></label>
+          <label>州<input name="np_shipper_state" value="{{ loc.state }}" maxlength="40"></label>
+          <label>邮编<input name="np_shipper_postal_code" value="{{ loc.postal_code }}"></label></div>
+      </fieldset>
+      {% endwith %}
+    </div>
+
+    {% if prop.milestones %}
+    <p style="margin:12px 0 4px"><label><input type="checkbox" name="np_milestones" value="1" checked> 同时建立里程碑：
+      {% for m in prop.milestones %}{{ m.name }} {{ m.planned_date }}{% if not forloop.last %}；{% endif %}{% endfor %}</label></p>
+    {% endif %}
+
+    <h3 style="font-size:.95rem;margin:14px 0 6px">Load（{{ prop.loads|length }} 个）</h3>
+    <input type="hidden" name="np_load_count" value="{{ prop.loads|length }}">
+    <div style="overflow-x:auto"><table class="t">
+      <thead><tr><th>建</th><th>柜号</th><th>柜型</th><th>服务</th><th>MBL</th><th>承运商 / 车队</th><th>备注</th></tr></thead>
+      <tbody>
+      {% for ld in prop.loads %}
+      <tr>
+        <td><input type="checkbox" name="np_load_{{ forloop.counter0 }}_include" value="1" {% if not ld.exists %}checked{% endif %} aria-label="新建这个 Load"></td>
+        <td><input name="np_load_{{ forloop.counter0 }}_container_number" value="{{ ld.container_number }}" size="13" placeholder="待定">
+          {% if ld.exists %}<br><small class="lfd-warn">系统里已有这个柜号</small>{% endif %}</td>
+        <td><select name="np_load_{{ forloop.counter0 }}_equipment"><option value="">—</option>{% for v, l in equipments %}<option value="{{ v }}" {% if v == ld.equipment %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
+        <td><select name="np_load_{{ forloop.counter0 }}_service">{% for v, l in services %}<option value="{{ v }}" {% if v == ld.service %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
+        <td><input name="np_load_{{ forloop.counter0 }}_mbl" value="{{ ld.mbl }}" size="12"></td>
+        <td><input name="np_load_{{ forloop.counter0 }}_carrier" value="{{ ld.carrier }}" size="18" placeholder="待定"></td>
+        <td class="wrap"><input name="np_load_{{ forloop.counter0 }}_notes" value="{{ ld.notes }}" size="28"></td>
+      </tr>
+      {% empty %}<tr><td colspan="7" class="muted">邮件里没有具体的柜子或车次，可以先建项目，之后再添加 Load</td></tr>{% endfor %}
+      </tbody>
+    </table></div>
+    <p style="margin-top:12px"><button class="primary" type="submit">新建项目和勾选的 Load</button>
+      <span class="muted" style="font-size:13px">负责人默认是你；建好后在项目页可以改。不会录入任何费用。</span></p>
+  </div>
+</form>

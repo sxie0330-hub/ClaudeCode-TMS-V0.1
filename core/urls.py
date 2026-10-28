@@ -56,6 +56,7 @@ urlpatterns = [
     path("ai/new/", views_ai.ai_new, name="ai_new"),
     path("ai/<int:pk>/", views_ai.ai_review, name="ai_review"),
     path("ai/<int:pk>/apply/", views_ai.ai_apply, name="ai_apply"),
+    path("ai/<int:pk>/create-project/", views_ai.ai_create_project, name="ai_create_project"),
     path("healthz", views.healthz, name="healthz"),
     path("health/", views.healthz, name="health"),  # Cloud Run blocks paths ending in "z"
     path("dev-login/", views.DevLoginView.as_view(), name="dev_login"),

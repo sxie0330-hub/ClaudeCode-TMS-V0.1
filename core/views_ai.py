@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from . import ai
-from .models import AiChange, AiExtraction, Project, Shipment
+from .models import AiChange, AiExtraction, Company, Project, Shipment
 from .permissions import can_edit_ops
 from .views import _need
 
@@ -22,6 +22,9 @@ def ai_new(request):
     text = request.POST.get("text", "")
     if request.method == "POST" and ai.enabled():
         try:
+            if request.FILES.get("sheet"):
+                sheet = ai.sheet_to_text(request.FILES["sheet"])
+                text = (text + "\n\n=== 附带表格：" + request.FILES["sheet"].name + " ===\n" + sheet).strip()
             ext = ai.extract(text, request.user, project=project, shipment=shipment)
         except ai.AiError as e:
             messages.error(request, str(e))
@@ -41,9 +44,31 @@ def ai_review(request, pk):
     for c in changes:
         c.blocked = ai.blocked_reason(c, request.user) if c.status == AiChange.State.PENDING else ""
         groups.setdefault(c.shipment, []).append(c)
+    prop = ai.proposal(ext)
+    created = None
+    if (ext.raw_result or {}).get("created_project_id"):
+        created = Project.objects.filter(pk=ext.raw_result["created_project_id"]).first()
     return render(request, "core/ai_review.html", {
         "ext": ext, "groups": groups, "pending": any(c.status == AiChange.State.PENDING for c in changes),
+        "prop": prop if ext.status == AiExtraction.State.PENDING and not created else None, "created": created,
+        "companies": Company.choices, "equipments": Shipment.Equipment.choices, "services": Shipment.Service.choices,
     })
+
+
+@require_POST
+def ai_create_project(request, pk):
+    _need(can_edit_ops(request.user))
+    ext = get_object_or_404(AiExtraction, pk=pk)
+    if ext.status != AiExtraction.State.PENDING or (ext.raw_result or {}).get("created_project_id"):
+        messages.warning(request, "这次识别已经处理过了")
+        return redirect(ext)
+    try:
+        p = ai.create_project(ext, request.user, request.POST)
+    except ai.AiError as e:
+        messages.error(request, str(e))
+        return redirect(ext)
+    messages.success(request, f"已创建项目 {p.number}：{p.shipments.count()} 个 Load")
+    return redirect(p)
 
 
 @require_POST
