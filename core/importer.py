@@ -18,6 +18,7 @@ Shape (every key optional except where noted):
       "timeline": [{"date": "2026-10-11", "text": "..."}],
       "loads": [{
           "container_number": "SHPU2204302", "equipment": "20SOC", "service": "OTR", "customer_ref": "...",
+          "mbl": "SHZ8660350", "mbl_eta": "2026-11-08",
           "shipper": "<code>", "consignee": "<code>", "pod_received": "2026-10-16", "pod_check": "OK", "notes": "...",
           "cargo":   [{"handling_qty": 1, "handling_type": "UNIT", "description": "...", "weight_lbs": 88185}],
           "units":   [{"serial_number": "...", "product": "...", "config": "A"}],
@@ -187,6 +188,9 @@ def _import(data, user):
             )
             if ld.get("mbl"):
                 s.master_bl = MasterBL.objects.get_or_create(number=ld["mbl"].upper())[0]
+                if ld.get("mbl_eta") and not s.master_bl.eta:
+                    s.master_bl.eta = _d(ld["mbl_eta"])
+                    s.master_bl.save()
             s.save()
             for c in ld.get("cargo", []):
                 CargoLine.objects.create(shipment=s, **_pick(c, ["handling_qty", "handling_type", "pieces", "description", "weight_lbs",

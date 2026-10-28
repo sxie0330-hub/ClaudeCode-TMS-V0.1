@@ -2,17 +2,19 @@
 import json
 from datetime import timedelta
 
+from django.conf import settings
 from django.contrib import messages
 from django.db.models import Q
 from django.http import Http404, JsonResponse
 from django.shortcuts import get_object_or_404, redirect, render
 from django.urls import reverse
 from django.utils import timezone
+from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import alerts as alert_engine
 from . import widgets as W
-from .models import AlertSetting, AlertSnooze, Carrier, Charge, Customer, CustomRule, Location, Project, Shipment, Status
+from .models import AlertSetting, AlertSnooze, Carrier, Charge, Customer, CustomRule, Location, Profile, Project, Shipment, Status
 from .permissions import visible_sides
 
 
@@ -163,6 +165,9 @@ def alert_settings(request):
     user = request.user
     if request.method == "POST":
         p = request.POST
+        profile, _ = Profile.objects.get_or_create(user=user)
+        profile.email_digest = p.get("email_digest") == "on"
+        profile.save(update_fields=["email_digest"])
         for st in alert_engine.effective_settings(user):
             r = st["rule"]
             thr = p.get(f"{r.key}_threshold")
@@ -178,8 +183,10 @@ def alert_settings(request):
     groups = {}
     for st in settings_:
         groups.setdefault(st["rule"].category, []).append(st)
+    profile = Profile.objects.filter(user=user).first()
     return render(request, "core/alert_settings.html", {
         "groups": groups.items(), "levels": alert_engine.LEVELS,
+        "email_digest": profile.email_digest if profile else True, "email_enabled": settings.TMS_EMAIL_ENABLED,
         "custom": CustomRule.objects.filter(user=user), "fields": CustomRule.Field.choices,
     })
 
@@ -314,3 +321,40 @@ def suggest(request):
                 {"title": c.invoice_number, "sub": f"{c.side} · {c.shipment.container_number or c.shipment.number}",
                  "url": c.shipment.get_absolute_url() + "#charges", "tag": "发票"} for c in inv]})
     return JsonResponse({"groups": groups, "all_url": reverse("search") + "?q=" + q})
+
+
+@require_POST
+def digest_test(request):
+    from . import digest
+
+    if not settings.TMS_EMAIL_ENABLED:
+        messages.error(request, "邮件还没有开通，请管理员按 docs/notifications.md 设置")
+    elif not request.user.email:
+        messages.error(request, "你的账号没有邮箱")
+    else:
+        try:
+            sent = digest.send_to(request.user)
+        except Exception as e:  # noqa: BLE001
+            messages.error(request, f"发送失败：{e}")
+        else:
+            if sent:
+                messages.success(request, f"已发送到 {request.user.email}")
+            else:
+                messages.info(request, "你今天没有待办，所以不会发邮件（正式发送时也一样）")
+    return redirect("alert_settings")
+
+
+@csrf_exempt
+@require_POST
+def task_daily_digest(request):
+    """Called by Cloud Scheduler with header X-TMS-Task-Key."""
+    from django.utils.crypto import constant_time_compare
+
+    from . import digest
+
+    key = settings.TMS_TASK_KEY
+    if not key or not constant_time_compare(request.headers.get("X-TMS-Task-Key", ""), key):
+        return JsonResponse({"error": "forbidden"}, status=403)
+    if not settings.TMS_EMAIL_ENABLED:
+        return JsonResponse({"error": "email not configured"}, status=503)
+    return JsonResponse(digest.send_all())

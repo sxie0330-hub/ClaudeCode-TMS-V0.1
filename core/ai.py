@@ -22,7 +22,7 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
-from .models import AiChange, AiExtraction, Carrier, Company, Customer, Leg, Location, Note, Project, Shipment, Status
+from .models import AiChange, AiExtraction, Carrier, Company, Customer, Leg, Location, MasterBL, Note, Project, Shipment, Status
 from .permissions import can_edit_ops, can_edit_shipment_ops
 
 log = logging.getLogger(__name__)
@@ -34,7 +34,7 @@ class AiError(Exception):
 
 @dataclass(frozen=True)
 class FieldSpec:
-    target: str  # "leg" or "shipment"
+    target: str  # "leg", "shipment" or "mbl" (the Load's master bill of lading)
     kind: str  # date / time / datetime / bool / text / url
     label: str
     lock_exempt: bool = False  # editable after delivery (documents, POD)
@@ -59,6 +59,8 @@ FIELDS = {
     "truck_trailer": FieldSpec("leg", "text", "车牌 / 拖车号"),
     "carrier_load_number": FieldSpec("leg", "text", "承运商 Load# / PRO#"),
     "tracking_url": FieldSpec("leg", "url", "跟踪链接"),
+    "eta": FieldSpec("mbl", "date", "预计到港 ETA"),
+    "ata": FieldSpec("mbl", "date", "实际到港 ATA"),
     "lfd": FieldSpec("shipment", "date", "LFD"),
     "pod_received": FieldSpec("shipment", "date", "POD 收到日期", lock_exempt=True),
     "pod_link": FieldSpec("shipment", "url", "POD 链接", lock_exempt=True),
@@ -245,6 +247,14 @@ def match(item, cands, single=None):
     return None
 
 
+def target_obj(spec, shipment, leg):
+    if spec.target == "leg":
+        return leg
+    if spec.target == "mbl":
+        return shipment.master_bl
+    return shipment
+
+
 def _current(obj, key):
     spec = FIELDS[key]
     return serialize(spec.kind, getattr(obj, key) if obj is not None else None)
@@ -342,6 +352,7 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
    - pickup_arrived_at / pickup_departed_at：司机到达 / 离开提货点的时间；delivery_arrived_at / delivery_departed_at：到达 / 离开收货点的时间。
    - pod_received：收到签收单（POD）的日期；pod_link：POD 文件链接。
    - lfd：码头免费期最后一天；empty_return_due：还空期限；empty_return_date：实际还空日期。
+   - eta / ata：船预计 / 实际到港日期（属于这个柜子的提单）。
 8. evidence 填邮件里支持该值的原句（原文语言，尽量短）。
 9. 其他值得记录的事实（延误原因、故障、改约、现场情况、签收人等）用中文简短写进该 Load 的 note。
 10. 绝不提取任何金额、费率、费用。
@@ -367,8 +378,8 @@ def _context_block(cands, single):
             "carrier_load_numbers": [leg.carrier_load_number for leg in s.legs.all() if leg.carrier_load_number],
             "project": s.project.name if s.project_id else "",
             "status": s.get_status_display(),
-            "current": {k: display(FIELDS[k].kind, _current(leg if FIELDS[k].target == "leg" else s, k))
-                        for k in FIELDS if (leg if FIELDS[k].target == "leg" else s) is not None},
+            "current": {k: display(FIELDS[k].kind, _current(target_obj(FIELDS[k], s, leg), k))
+                        for k in FIELDS if target_obj(FIELDS[k], s, leg) is not None},
         })
     head = "这封邮件就是关于下面这一个 Load 的（只需输出一个 Load）。" if single else "系统里可能相关的 Load："
     text = head + "\n" + json.dumps(rows, ensure_ascii=False)
@@ -460,9 +471,10 @@ def extract(email_text, user, project=None, shipment=None, caller=None):
             if key not in FIELDS:
                 continue
             spec = FIELDS[key]
-            obj = leg if spec.target == "leg" else s
+            obj = target_obj(spec, s, leg)
             if obj is None:
-                unmatched.append(f"{label} 还没有运输段，无法写入「{spec.label}」")
+                what = "MBL" if spec.target == "mbl" else "运输段"
+                unmatched.append(f"{label} 还没有{what}，无法写入「{spec.label}」")
                 continue
             try:
                 new = serialize(spec.kind, parse_value(spec.kind, u.get("value")))
@@ -500,6 +512,8 @@ def blocked_reason(change, user):
         return "Load 已送达锁定，需管理层解锁"
     if spec.target == "leg" and (change.leg is None or change.leg.is_deleted):
         return "运输段已不存在"
+    if spec.target == "mbl" and s.master_bl_id is None:
+        return "这个 Load 没有 MBL"
     return ""
 
 
@@ -523,10 +537,11 @@ def apply_changes(ext, user, approve_ids):
             applied.append(c)
         else:
             spec = FIELDS[c.field]
-            obj = c.leg if spec.target == "leg" else c.shipment
+            obj = target_obj(spec, c.shipment, c.leg)
             key = (spec.target, obj.pk)
             if key not in by_obj:
-                by_obj[key] = (Leg if spec.target == "leg" else Shipment).all_objects.select_for_update().get(pk=obj.pk)
+                model = {"leg": Leg, "mbl": MasterBL, "shipment": Shipment}[spec.target]
+                by_obj[key] = model.all_objects.select_for_update().get(pk=obj.pk)
             obj = by_obj[key]
             if _current(obj, c.field) != c.old_value:
                 c.status, c.result = AiChange.State.STALE, f"识别后已被改为 {display(spec.kind, _current(obj, c.field))}，未覆盖"
@@ -539,9 +554,12 @@ def apply_changes(ext, user, approve_ids):
         c.save()
 
     reason = f"AI 邮件识别 #{ext.pk}"
-    for obj in by_obj.values():
+    for (target, _), obj in by_obj.items():
         obj._change_reason = reason
         obj.save()
+        if target == "mbl":  # ATA moves its Loads from 待到港 to 已到港
+            for s in obj.shipments.all():
+                s.refresh_status()
     # Shipment.save() / the Leg signal recompute status and locking.
     for s in {c.shipment for c in applied}:
         items = [c for c in applied if c.shipment_id == s.pk and c.field != NOTE_FIELD]
@@ -685,6 +703,11 @@ def create_project(ext, user, form):
             data["carriers"].append({"name": carrier})
             ld["legs"] = [{"kind": Leg.Kind.DRAYAGE if ld["service"].startswith("DRAY") else Leg.Kind.OTR, "carrier": carrier}]
         proj["loads"].append(ld)
+    eta = next((m["planned_date"] for m in proposal(ext)["milestones"] if "ETA" in m["name"].upper() or "到港" in m["name"]), None)
+    if eta:
+        for ld in proj["loads"]:
+            if ld["mbl"]:
+                ld["mbl_eta"] = eta
     data["projects"].append(proj)
     if Project.objects.filter(customer__name=customer, name=name).exists():
         raise AiError(f"客户「{customer}」下已经有同名项目「{name}」，请改个名字")

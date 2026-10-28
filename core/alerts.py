@@ -21,6 +21,7 @@ from .models import (
     Charge,
     CustomRule,
     Leg,
+    Milestone,
     Project,
     Shipment,
     Status,
@@ -139,6 +140,40 @@ def _group(ctx, rule_key, tag, items, title_fn, detail_fn=None, level=None):
 # --------------------------------------------------------------------------
 # 港口与堆场
 # --------------------------------------------------------------------------
+@rule(key="eta", category="港口与堆场 · 会产生滞期费", label="柜子即将到港 / 已过 ETA 未确认到港", why="提前安排 DO、车队和提柜，避免产生滞期费",
+      level="today", threshold=3, unit="天前")
+def r_eta(ctx):
+    horizon = ctx.today + timedelta(days=ctx.n)
+    qs = ctx.loads().filter(status=Status.AWAITING, master_bl__eta__isnull=False, master_bl__eta__lte=horizon, master_bl__ata__isnull=True)
+    for s in qs.select_related("project", "master_bl").prefetch_related("legs"):
+        eta = s.master_bl.eta
+        d = _days(eta, ctx.today)
+        missing = []
+        if not any(leg.carrier_id for leg in s.legs.all()):
+            missing.append("车队")
+        if not s.lfd:
+            missing.append("LFD")
+        if d < 0:
+            title, level = f"{_load_label(s)} 已过 ETA {-d} 天（{eta:%m-%d}），还没确认到港", "urgent"
+        else:
+            title, level = f"{_load_label(s)} {'今天' if d == 0 else f'{d} 天后'}到港（ETA {eta:%m-%d}）", None
+        detail = _proj(s) + (f" · 还没有：{'、'.join(missing)}" if missing else " · 确认 DO、提柜预约")
+        yield ctx.alert("eta", s.pk, "到港", title, detail, s.get_absolute_url(), s.project, eta, level=level)
+
+
+@rule(key="milestone", category="开工前检查 · 没确认就会延误", label="项目节点（里程碑）临近或已过期未完成", why="例如船到港 ETA、开工日",
+      level="today", threshold=3, unit="天前")
+def r_milestone(ctx):
+    horizon = ctx.today + timedelta(days=ctx.n)
+    qs = Milestone.objects.filter(project__in=ctx.projects(), done_date__isnull=True, planned_date__isnull=False, planned_date__lte=horizon)
+    for m in qs.select_related("project"):
+        d = _days(m.planned_date, ctx.today)
+        when = f"已过期 {-d} 天" if d < 0 else ("今天" if d == 0 else f"{d} 天后")
+        yield ctx.alert("milestone", m.pk, "节点", f"{m.project.name}：{m.name} {when}（{m.planned_date:%m-%d}）",
+                        "完成后在项目页填上完成日期", m.project.get_absolute_url(), m.project, m.planned_date,
+                        level="urgent" if d < 0 else None)
+
+
 @rule(key="lfd", category="港口与堆场 · 会产生滞期费", label="LFD 临近，柜子还没提", why="逾期按天计 Demurrage",
       level="urgent", threshold=2, unit="天内")
 def r_lfd(ctx):

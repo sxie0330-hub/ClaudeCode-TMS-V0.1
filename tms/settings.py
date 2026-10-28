@@ -152,6 +152,21 @@ TMS_AI_MODEL = os.environ.get("TMS_AI_MODEL", "gemini-3.8-flash")
 TMS_AI_LOCATION = os.environ.get("TMS_AI_LOCATION", "global")
 TMS_AI_PROJECT = os.environ.get("TMS_AI_PROJECT", "")  # default: the project Cloud Run runs in
 TMS_AI_DAILY_LIMIT = int(os.environ.get("TMS_AI_DAILY_LIMIT", "200"))  # per user per 24 h
+# --- Daily to-do email (see core/digest.py, docs/notifications.md) ---------
+# Sent through a Google Workspace mailbox with an app password. Off until both are set.
+EMAIL_HOST = os.environ.get("TMS_EMAIL_HOST", "smtp.gmail.com")
+EMAIL_PORT = int(os.environ.get("TMS_EMAIL_PORT", "587"))
+EMAIL_USE_TLS = True
+EMAIL_HOST_USER = os.environ.get("TMS_EMAIL_USER", "")
+EMAIL_HOST_PASSWORD = os.environ.get("TMS_EMAIL_PASSWORD", "")
+EMAIL_TIMEOUT = 20
+DEFAULT_FROM_EMAIL = f"TMS <{EMAIL_HOST_USER}>" if EMAIL_HOST_USER else "TMS <noreply@localhost>"
+TMS_EMAIL_ENABLED = bool(EMAIL_HOST_USER and EMAIL_HOST_PASSWORD)
+if not TMS_EMAIL_ENABLED and DEBUG:
+    EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+TMS_TASK_KEY = os.environ.get("TMS_TASK_KEY", "")  # shared secret for Cloud Scheduler calls
+TMS_SITE_URL = os.environ.get("TMS_SITE_URL", "").rstrip("/")
+
 # Our own companies: never accepted as a customer. Lower-case letters/digits, matched as prefixes.
 TMS_OWN_COMPANY_ALIASES = {
     "ATS": ["ats", "atsinc", "atsllc", "advantagetransport"],
