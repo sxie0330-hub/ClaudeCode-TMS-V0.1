@@ -19,6 +19,13 @@ TMS 内置“粘贴邮件 → AI 识别 → 人工确认 → 写入”。识别�
 
 ## 开通（在 Cloud Shell 里做一次，约 5 分钟）
 
+**一行完成：** 打开 Cloud Shell，粘贴下面这行。脚本会依次启用 Vertex AI、自动找到能用的 Gemini 模型、授权、部署新版本并打开开关：
+```bash
+cd ~/tms && git pull && bash scripts/enable_ai.sh
+```
+
+下面是脚本做的事情，分步写出来，方便排查：
+
 打开 Google Cloud 控制台右上角的 Cloud Shell，按顺序粘贴下面各段。
 
 **1. 启用 Vertex AI**
