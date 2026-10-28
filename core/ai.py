@@ -299,7 +299,7 @@ RESPONSE_SCHEMA = {
                 "is_new": {"type": "BOOLEAN"},
                 "name": {"type": "STRING", "description": "项目名，参照已有项目的命名方式"},
                 "company": {"type": "STRING", "description": "我方公司：ATS 或 PTT，不确定留空"},
-                "customer": {"type": "STRING", "description": "客户名称；已有客户请用完全相同的名字"},
+                "customer": {"type": "STRING", "description": "真正付钱/委托我们的客户名称（绝不能是 ATS 或 PTT）；已有客户请用完全相同的名字"},
                 "customer_ref": {"type": "STRING"},
                 "monday_item_id": {"type": "STRING", "description": "项目编号，如 #4560 写 P-04560"},
                 "start_date": {"type": "STRING", "description": "YYYY-MM-DD"},
@@ -312,7 +312,7 @@ RESPONSE_SCHEMA = {
                     "required": ["name", "planned_date"]}},
                 "loads": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
                     "container_number": {"type": "STRING", "description": "柜号，未知留空"},
-                    "equipment": {"type": "STRING", "description": "柜型代码之一：" + ", ".join(Shipment.Equipment.values)},
+                    "equipment": {"type": "STRING", "description": "柜型/车型代码，必须是其中之一：" + "; ".join(f"{v}={l}" for v, l in Shipment.Equipment.choices) + "。列表里没有的写 OTHER，并把原文柜型写进 notes"},
                     "service": {"type": "STRING", "description": "服务代码之一：" + ", ".join(Shipment.Service.values)},
                     "mbl": {"type": "STRING"},
                     "carrier": {"type": "STRING", "description": "承运商/车队名称；已有承运商请用完全相同的名字"},
@@ -347,7 +347,8 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
 10. 绝不提取任何金额、费率、费用。
 11. 如果邮件和列表中的任何 Load 都无关，loads 返回空数组，在 unmatched 里说明。
 12. 如果邮件是“项目开始”、新订单、新货物安排等，说的是系统里还没有的项目或货物，填写 new_project（is_new=true）：
-   - 每一个柜子 / 每一车货写一条 loads（“×2”就写两条）；柜号未知就留空。
+   - ATS 和 PTT 是我们自己的公司，只能填在 company，**绝不能填成 customer**。内部邮件里写“客户: PTT”时，指的是这单由 PTT 接，真正的客户是邮件里的发货方 / 委托方（例如“发货方: 环世 Worldwide Logistics USA”就填它）。
+   - 每一个柜子 / 每一车货写一条 loads（“×2”就写两条）；柜号未知就留空。柜型按列表代码填（如 20' 框架箱 / 20FR / 20' Flat Rack 填 20FR，海柜 20' 普柜填 20GP）。
    - 客户、承运商、地址如果在“已有资料”里，必须用完全相同的名字或代号。
    - 送货地址写进 consignee；港口、码头或提货地写进 shipper（只有港口名时 code 写港口名、地址留空）。
    - ETA、计划开始日等写进 milestones（例如 name=“船到港 ETA”）。
@@ -579,13 +580,18 @@ def proposal(ext):
     loads = []
     for ld in np.get("loads") or []:
         cntr = re.sub(r"\s", "", _s(ld.get("container_number"), 20)).upper()
+        eq = _s(ld.get("equipment"), 20).upper().replace("'", "").replace(" ", "")
+        notes = _s(ld.get("notes"), 1000)
+        if eq and eq not in Shipment.Equipment.values:
+            notes = f"柜型：{ld.get('equipment')}" + (f"；{notes}" if notes else "")
+            eq = Shipment.Equipment.OTHER
         loads.append({
             "container_number": cntr,
-            "equipment": ld.get("equipment") if ld.get("equipment") in Shipment.Equipment.values else "",
+            "equipment": eq,
             "service": ld.get("service") if ld.get("service") in Shipment.Service.values else Shipment.Service.OTR,
             "mbl": _s(ld.get("mbl"), 40).upper(),
             "carrier": _s(ld.get("carrier"), 120),
-            "notes": _s(ld.get("notes"), 1000),
+            "notes": notes,
             "exists": bool(cntr) and Shipment.objects.filter(container_number=cntr).exists(),
         })
     locs = {}
@@ -608,13 +614,29 @@ def proposal(ext):
         if _s(m.get("name")):
             milestones.append({"name": _s(m.get("name"), 120), "planned_date": d})
     customer = _s(np.get("customer"), 120)
+    company = np.get("company") if np.get("company") in Company.values else ""
+    own = own_company(customer)
+    if own:  # the model put our own company in as the customer
+        company, customer = company or own, ""
     return {
-        "name": _s(np.get("name"), 200), "company": np.get("company") if np.get("company") in Company.values else "",
+        "name": _s(np.get("name"), 200), "company": company, "customer_was_own": bool(own),
         "customer": customer, "customer_exists": Customer.objects.filter(name=customer).exists(),
         "customer_ref": _s(np.get("customer_ref"), 80), "monday_item_id": _s(np.get("monday_item_id"), 40),
         "start_date": start, "cargo_description": _s(np.get("cargo_description")), "notes": _s(np.get("notes"), 2000),
         "shipper": locs["shipper"], "consignee": locs["consignee"], "milestones": milestones, "loads": loads,
     }
+
+
+def own_company(name):
+    """'PTT' if a name is really one of our own companies, else ''."""
+    n = re.sub(r"[^a-z0-9]", "", (name or "").lower())
+    if not n:
+        return ""
+    for code, aliases in settings.TMS_OWN_COMPANY_ALIASES.items():
+        # Short codes must match exactly (so "PTTEP Co" is not PTT); longer names may have a suffix.
+        if any(n == a if len(a) <= 4 else n.startswith(a) for a in aliases):
+            return code
+    return ""
 
 
 def create_project(ext, user, form):
@@ -627,6 +649,8 @@ def create_project(ext, user, form):
     name, customer = g("np_name", 200), g("np_customer", 120)
     if not name or not customer:
         raise AiError("项目名称和客户必须填写")
+    if own_company(customer):
+        raise AiError(f"「{customer}」是我们自己的公司，请在“公司”里选它，客户填真正的委托方")
     data = {"customers": [{"name": customer}], "carriers": [], "locations": [], "projects": []}
     proj = {
         "name": name, "customer": customer, "company": g("np_company") if g("np_company") in Company.values else Company.ATS,

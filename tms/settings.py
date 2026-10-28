@@ -152,6 +152,11 @@ TMS_AI_MODEL = os.environ.get("TMS_AI_MODEL", "gemini-3.8-flash")
 TMS_AI_LOCATION = os.environ.get("TMS_AI_LOCATION", "global")
 TMS_AI_PROJECT = os.environ.get("TMS_AI_PROJECT", "")  # default: the project Cloud Run runs in
 TMS_AI_DAILY_LIMIT = int(os.environ.get("TMS_AI_DAILY_LIMIT", "200"))  # per user per 24 h
+# Our own companies: never accepted as a customer. Lower-case letters/digits, matched as prefixes.
+TMS_OWN_COMPANY_ALIASES = {
+    "ATS": ["ats", "atsinc", "atsllc", "advantagetransport"],
+    "PTT": ["ptt", "pttinc", "pttllc", "pttspecialized", "pacifictandt", "pacifictt"],
+}
 
 LANGUAGE_CODE = "zh-hans"
 TIME_ZONE = os.environ.get("TMS_TIME_ZONE", "America/Los_Angeles")

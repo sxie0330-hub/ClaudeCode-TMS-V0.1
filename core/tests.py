@@ -682,7 +682,7 @@ NEW_PROJECT_RESULT = {
         "milestones": [{"name": "船到港 ETA", "planned_date": "2026-11-08"}, {"name": "bad", "planned_date": "soon"}],
         "loads": [
             {"container_number": "", "equipment": "20GP", "service": "DRAY", "mbl": "", "carrier": "B E Jordan Trucking", "notes": "电池柜，DO 待放"},
-            {"container_number": "TEXU 0009861", "equipment": "40FR", "service": "DRAY", "mbl": "shz8660350", "carrier": "", "notes": "HBL WLC61002517"},
+            {"container_number": "TEXU 0009861", "equipment": "20FR", "service": "DRAY", "mbl": "shz8660350", "carrier": "", "notes": "HBL WLC61002517"},
             {"container_number": "CYMU2523606", "equipment": "XX", "service": "??", "mbl": "", "carrier": "", "notes": "已存在"},
         ],
     },
@@ -720,7 +720,8 @@ class AiNewProjectTests(Base):
         self.assertEqual(prop["loads"][1]["container_number"], "TEXU0009861")
         self.assertEqual(prop["loads"][1]["mbl"], "SHZ8660350")
         self.assertTrue(prop["loads"][2]["exists"])  # CYMU2523606 is already in TMS
-        self.assertEqual(prop["loads"][2]["equipment"], "")  # invalid code dropped
+        self.assertEqual(prop["loads"][2]["equipment"], "OTHER")  # unknown type kept as text in notes
+        self.assertTrue(prop["loads"][2]["notes"].startswith("柜型：XX"))
         self.assertEqual(prop["milestones"], [{"name": "船到港 ETA", "planned_date": "2026-11-08"}])
 
     def test_review_page_and_create(self):
@@ -743,6 +744,7 @@ class AiNewProjectTests(Base):
         loads = list(p.shipments.order_by("id"))
         self.assertEqual(len(loads), 2)  # the existing container was not re-created
         self.assertEqual(loads[1].container_number, "TEXU0009861")
+        self.assertEqual(loads[1].equipment, "20FR")
         self.assertEqual(loads[1].master_bl.number, "SHZ8660350")
         self.assertEqual(loads[0].legs.get().carrier.name, "B E Jordan Trucking")
         self.assertEqual(loads[0].legs.get().kind, Leg.Kind.DRAYAGE)
@@ -767,6 +769,27 @@ class AiNewProjectTests(Base):
             ai.create_project(ext, self.op, {**form, "np_name": self.project.name, "np_customer": self.customer.name})
         with self.assertRaises(ai.AiError):
             ai.create_project(ext, self.ar, form)
+
+    def test_own_company_is_never_the_customer(self):
+        import copy
+
+        from . import ai
+
+        self.assertEqual(ai.own_company("PTT"), "PTT")
+        self.assertEqual(ai.own_company("ptt specialized"), "PTT")
+        self.assertEqual(ai.own_company("Advantage Transport Solution Inc"), "ATS")
+        self.assertEqual(ai.own_company("PTTEP Co"), "")
+        self.assertEqual(ai.own_company("环世 Worldwide Logistics USA"), "")
+        res = copy.deepcopy(NEW_PROJECT_RESULT)
+        res["new_project"].update(customer="PTT", company="")
+        ext = ai.extract("x", self.op, caller=fake_gemini(res))
+        prop = ai.proposal(ext)
+        self.assertEqual((prop["customer"], prop["company"], prop["customer_was_own"]), ("", "PTT", True))
+        self.login(self.op)
+        self.assertContains(self.client.get(ext.get_absolute_url()), "AI 把我方公司当成了客户")
+        form = self.form_from_proposal(prop)
+        with self.assertRaises(ai.AiError):
+            ai.create_project(ext, self.op, {**form, "np_customer": "PTT"})
 
     def test_works_with_empty_system(self):
         Shipment.all_objects.all().delete()
