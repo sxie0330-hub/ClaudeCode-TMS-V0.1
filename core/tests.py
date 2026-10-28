@@ -5,7 +5,7 @@ from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
 
-from .models import CargoLine, Carrier, Charge, Customer, Leg, Location, Profile, Project, Role, Shipment, Status, YardStay
+from .models import AlertSetting, CargoLine, Carrier, Charge, Customer, Leg, Location, Profile, Project, Role, Shipment, Status, YardStay
 
 
 def make_user(username, role):
@@ -834,3 +834,138 @@ class AiSheetUploadTests(Base):
             r = self.client.post(reverse("ai_new"), {"text": "", "sheet": SimpleUploadedFile("list.xlsx", buf.getvalue())})
         self.assertEqual(r.status_code, 302)
         self.assertIn("附带表格：list.xlsx", captured["text"])
+
+
+class EtaAndMilestoneAlertTests(Base):
+    def setUp(self):
+        super().setUp()
+        from .models import MasterBL
+
+        self.project.owners.add(self.op)
+        today = date.today()
+        self.mbl = MasterBL.objects.create(number="SHZ8660350", eta=today + timedelta(days=2))
+        self.s.master_bl = self.mbl
+        self.s.save()
+
+    def keys(self, user=None):
+        from . import alerts
+
+        return {a.key: a for a in alerts.collect(user or self.op)}
+
+    def test_eta_soon_and_overdue(self):
+        self.s.refresh_from_db()
+        self.assertEqual(self.s.status, Status.AWAITING)
+        a = self.keys()[f"eta:{self.s.pk}"]
+        self.assertIn("2 天后到港", a.title)
+        self.assertIn("LFD", a.detail)
+        self.mbl.eta = date.today() - timedelta(days=1)
+        self.mbl.save()
+        a = self.keys()[f"eta:{self.s.pk}"]
+        self.assertEqual(a.level, "urgent")
+        self.assertIn("已过 ETA", a.title)
+        self.mbl.eta = date.today() + timedelta(days=10)
+        self.mbl.save()
+        self.assertNotIn(f"eta:{self.s.pk}", self.keys())
+
+    def test_arrived_stops_eta_alert(self):
+        self.mbl.ata = date.today()
+        self.mbl.save()
+        self.s.refresh_status()
+        self.assertNotIn(f"eta:{self.s.pk}", self.keys())
+
+    def test_milestone_due_and_done(self):
+        from .models import Milestone
+
+        m = Milestone.objects.create(project=self.project, name="船到港 ETA", planned_date=date.today() + timedelta(days=1))
+        self.assertIn(f"milestone:{m.pk}", self.keys())
+        m.done_date = date.today()
+        m.save()
+        self.assertNotIn(f"milestone:{m.pk}", self.keys())
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiMblFieldTests(Base):
+    def test_ata_updates_mbl_and_status(self):
+        from . import ai
+        from .models import MasterBL
+
+        self.s.master_bl = MasterBL.objects.create(number="SHZ1", eta=date(2026, 11, 8))
+        self.s.save()
+        res = {"summary": "", "unmatched": "", "new_project": {"is_new": False}, "loads": [
+            {"container_number": "CYMU2523606", "carrier_load_number": "", "note": "",
+             "updates": [{"field": "ata", "value": "2026-11-09", "evidence": "vessel discharged 11/9"},
+                         {"field": "eta", "value": "2026-11-09", "evidence": "ETA revised"}]}]}
+        ext = ai.extract("x", self.op, project=self.project, caller=fake_gemini(res))
+        self.assertEqual(set(ext.changes.values_list("field", flat=True)), {"ata", "eta"})
+        ai.apply_changes(ext, self.op, list(ext.changes.values_list("pk", flat=True)))
+        self.s.refresh_from_db()
+        self.assertEqual(self.s.master_bl.ata, date(2026, 11, 9))
+        self.assertEqual(self.s.status, Status.ARRIVED)
+
+    def test_no_mbl_is_reported(self):
+        from . import ai
+
+        res = {"summary": "", "unmatched": "", "new_project": {"is_new": False}, "loads": [
+            {"container_number": "CYMU2523606", "carrier_load_number": "", "note": "",
+             "updates": [{"field": "eta", "value": "2026-11-09", "evidence": "ETA"}]}]}
+        ext = ai.extract("x", self.op, project=self.project, caller=fake_gemini(res))
+        self.assertFalse(ext.changes.exists())
+        self.assertIn("还没有MBL", ext.unmatched)
+
+    def test_new_project_eta_goes_onto_mbl(self):
+        from . import ai
+
+        ext = ai.extract("x", self.op, caller=fake_gemini(NEW_PROJECT_RESULT))
+        form = AiNewProjectTests.form_from_proposal(None, ai.proposal(ext))
+        p = ai.create_project(ext, self.op, form)
+        s = p.shipments.get(container_number="TEXU0009861")
+        self.assertEqual(s.master_bl.eta, date(2026, 11, 8))
+        self.assertEqual(s.status, Status.AWAITING)
+
+
+@override_settings(TMS_EMAIL_ENABLED=True, TMS_TASK_KEY="k-123", TMS_SITE_URL="https://tms.example.com",
+                   EMAIL_BACKEND="django.core.mail.backends.locmem.EmailBackend")
+class DigestTests(Base):
+    def setUp(self):
+        super().setUp()
+        self.project.owners.add(self.op)
+        self.leg.scheduled_pickup = date.today() + timedelta(days=1)
+        self.leg.save()  # pickup tomorrow, appointment not confirmed -> alerts for op
+
+    def test_task_endpoint_sends_only_non_empty(self):
+        from django.core import mail
+
+        r = self.client.post(reverse("task_daily_digest"))
+        self.assertEqual(r.status_code, 403)
+        r = self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="wrong")
+        self.assertEqual(r.status_code, 403)
+        r = self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="k-123")
+        self.assertEqual(r.status_code, 200)
+        to = {m.to[0] for m in mail.outbox}
+        self.assertIn(self.op.email, to)
+        self.assertNotIn(self.nobody.email, to)  # no role
+        msg = next(m for m in mail.outbox if m.to == [self.op.email])
+        self.assertIn("TMS 今日待办", msg.subject)
+        self.assertIn("https://tms.example.com/", msg.body)
+        self.assertIn("预约还没确认", msg.alternatives[0][0])
+        self.assertGreaterEqual(r.json()["empty"], 0)
+
+    def test_opt_out_and_test_button(self):
+        from django.core import mail
+
+        self.login(self.op)
+        self.client.post(reverse("alert_settings"), {})  # unticked
+        self.assertFalse(Profile.objects.get(user=self.op).email_digest)
+        AlertSetting.objects.filter(user=self.op).delete()  # the empty form also switched every rule off
+        self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="k-123")
+        self.assertNotIn([self.op.email], [m.to for m in mail.outbox])
+        r = self.client.post(reverse("digest_test"), follow=True)
+        self.assertContains(r, f"已发送到 {self.op.email}")
+        self.assertContains(self.client.get(reverse("alert_settings")), "现在发一封给我看看")
+
+    def test_disabled(self):
+        with self.settings(TMS_EMAIL_ENABLED=False):
+            r = self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="k-123")
+            self.assertEqual(r.status_code, 503)
+            with self.settings(TMS_TASK_KEY=""):
+                self.assertEqual(self.client.post(reverse("task_daily_digest"), HTTP_X_TMS_TASK_KEY="").status_code, 403)

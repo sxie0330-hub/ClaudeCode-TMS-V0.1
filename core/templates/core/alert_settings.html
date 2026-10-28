@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
-{% block title %}待办设置{% endblock %}
+{% block title %}待办设置<form method="post" action="{% url 'digest_test' %}" id="digest-test">{% csrf_token %}</form>
+{% endblock %}
 {% block content %}
 <div class="head">
   <h1>我的待办规则</h1>
@@ -10,6 +11,12 @@
   </div>
 </div>
 <form method="post" id="rules">{% csrf_token %}
+<div class="panel"><div class="body" style="display:flex;gap:12px;align-items:center;flex-wrap:wrap">
+  <label style="display:flex;gap:6px;align-items:center;margin:0"><input type="checkbox" name="email_digest" {% if email_digest %}checked{% endif %}>
+    每个工作日早上把我的今日待办发到 <b>{{ user.email }}</b>（没有待办就不发）</label>
+  {% if email_enabled %}<button type="submit" form="digest-test" class="sm">现在发一封给我看看</button>
+  {% else %}<span class="muted" style="font-size:13px">邮件功能还没开通（管理员按 docs/notifications.md 设置）</span>{% endif %}
+</div></div>
 <div class="panel"><div class="tablewrap"><table class="t">
   <thead><tr><th>开启</th><th>规则</th><th>阈值</th><th>范围</th><th>级别</th><th>为什么</th></tr></thead>
   <tbody>
@@ -53,4 +60,5 @@
     <p class="muted" style="margin:6px 0 0;font-size:12.5px">状态可填：待安排、待到港、已到港、运输中、在堆场、已送达；"计划提货 / 送达在 N 天内"填数字。</p>
   </div>
 </div>
+<form method="post" action="{% url 'digest_test' %}" id="digest-test">{% csrf_token %}</form>
 {% endblock %}

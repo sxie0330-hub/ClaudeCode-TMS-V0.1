@@ -70,6 +70,7 @@ class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
     role = models.CharField("角色", max_length=4, choices=Role.choices, blank=True)
     phone = models.CharField("电话", max_length=40, blank=True)
+    email_digest = models.BooleanField("每天早上邮件发送今日待办", default=True)
 
     history = HistoricalRecords()
 
