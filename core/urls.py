@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_workspace as ws
+from . import views, views_ai, views_workspace as ws
 
 urlpatterns = [
     path("", ws.home, name="home"),
@@ -52,6 +52,11 @@ urlpatterns = [
     path("history/<str:key>/<int:history_id>/revert/", views.history_revert, name="history_revert"),
     path("team/", views.team, name="team"),
     path("tools/import/", views.import_upload, name="import_upload"),
+    path("ai/", views_ai.ai_list, name="ai_list"),
+    path("ai/new/", views_ai.ai_new, name="ai_new"),
+    path("ai/<int:pk>/", views_ai.ai_review, name="ai_review"),
+    path("ai/<int:pk>/apply/", views_ai.ai_apply, name="ai_apply"),
     path("healthz", views.healthz, name="healthz"),
+    path("health/", views.healthz, name="health"),  # Cloud Run blocks paths ending in "z"
     path("dev-login/", views.DevLoginView.as_view(), name="dev_login"),
 ]

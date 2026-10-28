@@ -3,7 +3,7 @@ from django.shortcuts import redirect, render
 
 from .permissions import has_access
 
-PUBLIC_PREFIXES = ("/accounts/", "/static/", "/healthz", "/dev-login/", "/admin/login/")
+PUBLIC_PREFIXES = ("/accounts/", "/static/", "/healthz", "/health/", "/dev-login/", "/admin/login/")
 
 
 class RequireLoginMiddleware:

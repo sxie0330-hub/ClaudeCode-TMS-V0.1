@@ -9,6 +9,7 @@
   <div class="actions">
     <form method="post" action="{% url 'pin_project' p.pk %}" class="inline">{% csrf_token %}<button>置顶到工作台</button></form>
     {% if perm.edit_ops %}
+      <a class="btn" href="{% url 'ai_new' %}?project={{ p.pk }}">粘贴邮件 · AI 识别</a>
       <a class="btn" href="{% url 'project_edit' p.pk %}">编辑项目</a>
       <a class="btn" href="{% url 'project_bulk' p.pk %}">批量新建 Load</a>
       <a class="btn primary" href="{% url 'shipment_create' %}?project={{ p.pk }}">+ 新建 Load</a>

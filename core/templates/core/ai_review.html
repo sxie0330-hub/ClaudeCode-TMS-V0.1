@@ -1,0 +1,50 @@
+{% extends "core/base.html" %}
+{% block title %}AI 识别 #{{ ext.pk }}{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'ai_list' %}">AI 识别</a> / #{{ ext.pk }}</div>
+<div class="head"><h1>AI 识别 #{{ ext.pk }}</h1>
+  <span class="b">{{ ext.get_status_display }}</span>
+  <span class="muted">{{ ext.created_by.get_full_name|default:ext.created_by.email }} · {{ ext.created_at|date:"Y-m-d H:i" }}</span>
+  <div class="actions"><a class="btn" href="{% url 'ai_new' %}{% if ext.shipment %}?load={{ ext.shipment.pk }}{% elif ext.project %}?project={{ ext.project.pk }}{% endif %}">再识别一封</a></div></div>
+
+{% if ext.summary %}<div class="card"><b>邮件概要：</b>{{ ext.summary }}</div>{% endif %}
+
+<form method="post" action="{% url 'ai_apply' ext.pk %}">{% csrf_token %}
+{% for s, rows in groups.items %}
+<section class="panel">
+  <header><h2 style="margin:0;font-size:1rem"><a href="{{ s.get_absolute_url }}">{{ s.container_number|default:s.number }}</a>
+    <span class="b b-{{ s.status }}">{{ s.get_status_display }}</span>
+    {% if s.project %}<span class="muted" style="font-weight:normal;font-size:13px">{{ s.project.name }}</span>{% endif %}</h2></header>
+  <div class="body" style="overflow-x:auto"><table class="t">
+    <thead><tr><th style="width:32px"></th><th>项目</th><th>现在</th><th>改为</th><th>邮件依据</th><th>状态</th></tr></thead>
+    <tbody>
+    {% for c in rows %}
+    <tr>
+      <td>{% if c.status == 'PENDING' %}<input type="checkbox" name="change" value="{{ c.pk }}" {% if not c.blocked %}checked{% else %}disabled{% endif %} aria-label="采用 {{ c.label }}">{% endif %}</td>
+      <td>{{ c.label }}{% if c.leg %}<br><small class="muted">运输段 #{{ c.leg.sequence }}{% if c.leg.carrier_load_number %} · {{ c.leg.carrier_load_number }}{% endif %}</small>{% endif %}</td>
+      <td class="muted">{% if c.is_note %}—{% else %}{{ c.old_display }}{% endif %}</td>
+      <td><b>{{ c.new_display }}</b>{% if c.tz_assumed %}<br><small class="lfd-warn">邮件没写时区，按太平洋时间</small>{% endif %}</td>
+      <td class="wrap" style="max-width:360px"><small>{{ c.evidence|default:"—" }}</small></td>
+      <td>{% if c.status == 'PENDING' %}{% if c.blocked %}<span class="lfd-warn">{{ c.blocked }}</span>{% else %}待确认{% endif %}{% else %}{{ c.get_status_display }}{% if c.result %}<br><small class="muted">{{ c.result }}</small>{% endif %}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% empty %}
+<div class="card"><p>AI 没有找到需要更新的内容（可能邮件里的信息系统里已经是对的，或者无法对应到 Load）。</p></div>
+{% endfor %}
+
+{% if ext.unmatched %}<div class="card" style="background:#fffbf3"><b>没有写入的信息：</b><pre style="white-space:pre-wrap;margin:6px 0 0">{{ ext.unmatched }}</pre></div>{% endif %}
+
+{% if pending %}
+<div class="card" style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+  <button class="primary" type="submit" name="action" value="apply">写入勾选的内容</button>
+  <button type="submit" name="action" value="discard">全部放弃</button>
+  <span class="muted" style="font-size:13px">没勾选的会标为“未采用”。写入后在 Load 的修改记录里能看到，并可撤回。</span>
+</div>
+{% endif %}
+</form>
+
+<details class="card"><summary>邮件原文</summary><pre style="white-space:pre-wrap">{{ ext.source_text }}</pre></details>
+{% endblock %}

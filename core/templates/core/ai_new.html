@@ -1,0 +1,23 @@
+{% extends "core/base.html" %}
+{% block title %}AI 识别邮件{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'ai_list' %}">AI 识别</a> / 新识别</div>
+<div class="head"><h1>粘贴邮件，AI 识别</h1>
+  <div class="actions"><a class="btn" href="{% url 'ai_list' %}">识别记录</a></div></div>
+{% if not enabled %}
+<div class="card"><p class="lfd-warn">AI 识别还没有开启。管理员需要按 <code>docs/ai-email.md</code> 开通 Gemini，并设置 <code>TMS_AI_ENABLED=1</code>。</p></div>
+{% else %}
+<form method="post" class="card form">{% csrf_token %}
+  {% if shipment %}<input type="hidden" name="load" value="{{ shipment.pk }}">
+  <p>范围：只更新 Load <b><a href="{{ shipment.get_absolute_url }}">{{ shipment.container_number|default:shipment.number }}</a></b></p>
+  {% elif project %}<input type="hidden" name="project" value="{{ project.pk }}">
+  <p>范围：项目 <b><a href="{{ project.get_absolute_url }}">{{ project.name }}</a></b> 下的 Load（按柜号或承运商单号自动对应）</p>
+  {% else %}<p>范围：所有未结案的 Load（按柜号或承运商单号自动对应）。从项目或 Load 页面进入会更准确。</p>{% endif %}
+  <label for="ai-text">邮件内容（可以整封复制，含往来回复）</label>
+  <textarea id="ai-text" name="text" rows="16" maxlength="{{ max_chars }}" required
+    placeholder="例如：SHPU2204302 picked up 10/9, arrived at site 10/13 09:20 ET, unloaded…">{{ text }}</textarea>
+  <p class="muted" style="font-size:13px">AI 只会提出修改建议，<b>确认之前不会写入任何数据</b>；费用金额不会被识别或修改。识别大约需要 5–20 秒。</p>
+  <button class="primary" type="submit" onclick="this.disabled=true;this.textContent='识别中…';this.form.submit()">开始识别</button>
+</form>
+{% endif %}
+{% endblock %}
