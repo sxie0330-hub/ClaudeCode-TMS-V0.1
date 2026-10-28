@@ -1,9 +1,0 @@
-{% autoescape off %}{{ user.get_full_name|default:user.email }}，早上好。今天 TMS 里有 {{ total }} 件需要你处理的事：
-{% for key, label, items in levels %}{% if items %}
-【{{ label }}】{% for a in items %}
-- {{ a.title }}{% if a.detail %}（{{ a.detail }}）{% endif %}
-  {{ a.abs_url }}{% endfor %}
-{% endif %}{% endfor %}
-打开今日待办：{{ todo_url }}
-不想收这封邮件或要改提醒规则：{{ settings_url }}
-{% endautoescape %}
