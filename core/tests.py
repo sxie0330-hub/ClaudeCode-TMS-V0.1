@@ -1805,6 +1805,22 @@ class LeadFlowTests(Base):
         res = oog.screen_lane(lane, [steel], list(TrailerType.objects.all()))
         self.assertEqual(res["rows"][0]["permits"], [])
 
+    def test_oog_20ft_bess_lands_on_step_decks(self):
+        from types import SimpleNamespace
+
+        from . import oog
+        from .models import TrailerType
+
+        lane = SimpleNamespace(origin="Savannah, GA", destination="Seneca, SC", origin_state="", destination_state="",
+                               via_states="", trucks=1, trailer_id=None, trailer=None)
+        trailers = list(TrailerType.objects.all())
+        picks = {}
+        for w in (40000, 66000, 95000):
+            bess = SimpleNamespace(qty=1, weight_lbs=Decimal(w), length_ft=Decimal(20), width_ft=Decimal(8), height_ft=Decimal("9.5"),
+                                   divisible=False, hazmat=False, description="BESS")
+            picks[w] = oog.screen_lane(lane, [bess], trailers)["trailer"].key
+        self.assertEqual(picks, {40000: "stepdeck48", 66000: "stepdeck_tri", 95000: "stepdeck_tri_tritractor"})
+
     def test_trailer_library_pages(self):
         from .models import TrailerType
 
