@@ -922,3 +922,172 @@ class AiMblFieldTests(Base):
         self.assertEqual(s.master_bl.eta, date(2026, 11, 8))
         self.assertEqual(s.status, Status.AWAITING)
 
+
+
+@override_settings(TMS_AI_ENABLED=True, TMS_TASK_KEY="k-1")
+class MailScanTests(Base):
+    def setUp(self):
+        super().setUp()
+        from . import mailscan
+        from .models import GmailConnection, MasterBL
+
+        self.project.owners.add(self.op)
+        self.s.master_bl = MasterBL.objects.create(number="SHZ8660350")
+        self.s.save()
+        self.leg.carrier_load_number = "BLN30784"
+        self.leg.save()
+        self.conn = GmailConnection.objects.create(user=self.op, email=self.op.email, refresh_token=mailscan.encrypt("r-tok"))
+        self.inbox = {
+            "m1": {"id": "m1", "subject": "CYMU2523606 delivered", "from": "a@carrier.com", "date": "Wed, 28 Oct 2026 10:00:00 -0700",
+                   "text": "CYMU2523606 delivered 10/28, POD attached"},
+            "m2": {"id": "m2", "subject": "Re: BLN30784", "from": "b@carrier.com", "date": "Wed, 28 Oct 2026 11:00:00 -0700",
+                   "text": "Driver Mike on BLN30784"},
+            "m3": {"id": "m3", "subject": "lunch", "from": "c@x.com", "date": "", "text": "nothing relevant ABCDEF1"},
+        }
+        self.calls = []
+
+    def fake_get(self, token, path, params=None):
+        if path == "/messages":
+            return {"messages": [{"id": k} for k in self.inbox]}
+        raise AssertionError(path)
+
+    def run_scan(self, result=None):
+        from unittest import mock
+
+        from . import mailscan
+
+        res = result or {"summary": "已送达", "unmatched": "", "new_project": {"is_new": False}, "loads": [
+            {"container_number": "CYMU2523606", "carrier_load_number": "", "note": "",
+             "updates": [{"field": "actual_delivery", "value": "2026-10-28", "evidence": "delivered 10/28"}]}]}
+
+        def caller(text, context, today):
+            self.calls.append(text)
+            return res, {}
+
+        with mock.patch.object(mailscan, "_access_token", return_value="a-tok"), \
+             mock.patch.object(mailscan, "_get", side_effect=self.fake_get), \
+             mock.patch.object(mailscan, "read_message", side_effect=lambda tok, mid: self.inbox[mid]):
+            return mailscan.scan_one(self.conn, caller=caller)
+
+    def test_identifiers_and_query(self):
+        from datetime import datetime, timezone as dt_tz
+
+        from . import mailscan
+
+        ids = mailscan.identifiers(mailscan.open_loads())
+        self.assertEqual(set(ids), {"CYMU2523606", "SHZ8660350", "BLN30784"})
+        q = list(mailscan._queries(ids, datetime(2026, 10, 28, tzinfo=dt_tz.utc)))
+        self.assertEqual(len(q), 1)
+        self.assertIn('"CYMU2523606" OR', q[0])
+        self.assertTrue(q[0].startswith("after:"))
+
+    def test_scan_groups_by_project_and_marks_messages(self):
+        from .models import AiChange, AiExtraction, ScannedMessage
+
+        res = self.run_scan()
+        self.assertIn("2 封相关邮件", res["result"])
+        self.assertEqual(len(self.calls), 1)  # both relevant e-mails in ONE AI call for the project
+        self.assertIn("CYMU2523606 delivered", self.calls[0])
+        self.assertIn("Driver Mike", self.calls[0])
+        ext = AiExtraction.objects.get(source=AiExtraction.Source.GMAIL)
+        self.assertEqual((ext.project, ext.created_by, ext.status), (self.project, self.op, AiExtraction.State.PENDING))
+        self.assertEqual(AiChange.objects.filter(extraction=ext).count(), 1)
+        self.assertEqual(set(ScannedMessage.objects.values_list("message_id", flat=True)), {"m1", "m2", "m3"})
+        self.conn.refresh_from_db()
+        self.assertIsNotNone(self.conn.last_scan_at)
+        # Nothing is written before a person confirms.
+        self.leg.refresh_from_db()
+        self.assertIsNone(self.leg.actual_delivery)
+        # Shows up in the owner's to-do list.
+        from . import alerts
+
+        self.assertIn(f"ai_pending:{ext.pk}", {a.key for a in alerts.collect(self.op)})
+        # A second run reads nothing again.
+        self.calls.clear()
+        self.run_scan()
+        self.assertEqual(self.calls, [])
+
+    def test_no_news_is_not_a_todo(self):
+        from .models import AiExtraction
+
+        self.leg.actual_delivery = date(2026, 10, 28)  # already correct
+        self.leg.save()
+        self.run_scan({"summary": "", "unmatched": "", "new_project": {"is_new": False}, "loads": [
+            {"container_number": "CYMU2523606", "carrier_load_number": "", "note": "",
+             "updates": [{"field": "actual_delivery", "value": "2026-10-28", "evidence": "x"}]}]})
+        ext = AiExtraction.objects.get(source=AiExtraction.Source.GMAIL)
+        self.assertEqual(ext.status, AiExtraction.State.DONE)
+
+    def test_ai_failure_keeps_window_and_retries(self):
+        from unittest import mock
+
+        from . import ai
+        from .models import ScannedMessage
+
+        with mock.patch.object(ai, "extract", side_effect=ai.AiError("Gemini 返回错误 500")):
+            res = self.run_scan()
+        self.assertIn("Gemini 返回错误 500", res["result"])
+        self.conn.refresh_from_db()
+        self.assertIsNone(self.conn.last_scan_at)  # same window next time
+        self.assertEqual(set(ScannedMessage.objects.values_list("message_id", flat=True)), {"m3"})
+
+    def test_access_errors_are_recorded(self):
+        from unittest import mock
+
+        from . import mailscan
+
+        with mock.patch.object(mailscan, "_access_token", side_effect=mailscan.ScanError("邮箱授权已失效，请重新连接邮箱")):
+            res = mailscan.scan_one(self.conn)
+        self.assertIn("授权已失效", res["error"])
+        self.conn.refresh_from_db()
+        self.assertIn("授权已失效", self.conn.last_error)
+
+    def test_connect_only_own_mailbox(self):
+        from unittest import mock
+
+        from django.core import signing
+        from django.test import RequestFactory
+
+        from . import mailscan
+        from .models import GmailConnection
+
+        self.conn.delete()
+        req = RequestFactory().get("/mail/callback/")
+        state = signing.dumps({"u": self.op.pk}, salt="gmail-connect")
+        tok = mock.Mock(status_code=200, json=lambda: {"access_token": "a", "refresh_token": "r2", "scope": mailscan.SCOPE})
+        with self.settings(SOCIALACCOUNT_PROVIDERS={"google": {"APP": {"client_id": "cid", "secret": "sec"}}}), \
+             mock.patch.object(mailscan.requests, "post", return_value=tok):
+            with mock.patch.object(mailscan, "_get", return_value={"emailAddress": "someone@else.com"}):
+                with self.assertRaises(mailscan.ScanError):
+                    mailscan.finish_connect(req, self.op, "code", state)
+            with mock.patch.object(mailscan, "_get", return_value={"emailAddress": self.op.email}):
+                conn = mailscan.finish_connect(req, self.op, "code", state)
+            with self.assertRaises(mailscan.ScanError):
+                mailscan.finish_connect(req, self.mgmt, "code", state)  # state belongs to another user
+        self.assertEqual(GmailConnection.objects.get().pk, conn.pk)
+        self.assertNotEqual(conn.refresh_token, "r2")  # stored encrypted
+        self.assertEqual(mailscan.decrypt(conn.refresh_token), "r2")
+
+    def test_pages_and_task_endpoint(self):
+        from unittest import mock
+
+        from . import mailscan
+
+        self.login(self.op)
+        r = self.client.get(reverse("mail_settings"))
+        self.assertContains(r, self.op.email)
+        self.assertContains(r, "现在扫描一次")
+        self.login(self.ar)
+        self.assertEqual(self.client.get(reverse("mail_settings")).status_code, 403)
+        self.client.logout()
+        self.assertEqual(self.client.post(reverse("task_scan_email")).status_code, 403)
+        with mock.patch.object(mailscan, "scan_all", return_value=[{"mailbox": "x", "result": "ok"}]) as m:
+            r = self.client.post(reverse("task_scan_email"), HTTP_X_TMS_TASK_KEY="k-1")
+        self.assertEqual(r.status_code, 200)
+        m.assert_called_once()
+        with mock.patch.object(mailscan.requests, "post"):
+            self.login(self.op)
+            self.client.post(reverse("mail_disconnect"))
+        from .models import GmailConnection
+
+        self.assertFalse(GmailConnection.objects.exists())

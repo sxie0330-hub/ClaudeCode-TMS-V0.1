@@ -4,6 +4,7 @@
 <div class="head"><h1>AI 识别记录</h1>
   <div class="actions">
     <a class="btn" href="?all={% if mine %}1{% else %}0{% endif %}">{% if mine %}看全部人的{% else %}只看我的{% endif %}</a>
+    <a class="btn" href="{% url 'mail_settings' %}">邮箱自动扫描</a>
     {% if enabled %}<a class="btn primary" href="{% url 'ai_new' %}">+ 粘贴邮件识别</a>{% endif %}
   </div></div>
 <section class="panel"><div class="body" style="overflow-x:auto">
@@ -15,7 +16,7 @@
     <td>{{ e.created_at|date:"m-d H:i" }}</td>
     <td>{{ e.created_by.get_full_name|default:e.created_by.email }}</td>
     <td>{% if e.shipment %}{{ e.shipment.container_number|default:e.shipment.number }}{% elif e.project %}{{ e.project.name }}{% else %}全部{% endif %}</td>
-    <td>{{ e.summary|truncatechars:80 }}</td>
+    <td>{% if e.source == 'GMAIL' %}<span class="b">邮箱扫描</span> {% endif %}{{ e.summary|truncatechars:80 }}</td>
     <td>{% if e.status == 'PENDING' %}<b class="lfd-warn">待确认</b>{% else %}{{ e.get_status_display }}{% endif %}</td></tr>
   {% empty %}<tr><td colspan="6" class="muted">还没有识别记录</td></tr>{% endfor %}
   </tbody>

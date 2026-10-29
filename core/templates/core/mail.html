@@ -1,0 +1,37 @@
+{% extends "core/base.html" %}
+{% block title %}邮箱自动扫描{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'ai_list' %}">AI 识别</a> / 邮箱自动扫描</div>
+<div class="head"><h1>邮箱自动扫描</h1></div>
+
+<div class="card">
+  <p style="margin-top:0">每天傍晚 5:00（洛杉矶时间），TMS 只读地查看你的 Gmail：用<b>在执行项目</b>的柜号、MBL、承运商单号搜索当天的新邮件，
+    没提到这些单号的邮件不会被打开。同一项目的邮件合并交给 AI 识别一次，结果放进 <a href="{% url 'todo' %}">今日待办</a>，<b>你确认后才写入</b>。</p>
+  {% if conn %}
+    <p>已连接 <b>{{ conn.email }}</b>（{{ conn.connected_at|date:"Y-m-d" }} 起）·
+      上次扫描：{% if conn.last_scan_at %}{{ conn.last_scan_at|date:"m-d H:i" }}{% else %}还没有{% endif %}
+      {% if conn.last_result %}· {{ conn.last_result }}{% endif %} · 已读过 {{ scanned }} 封相关邮件</p>
+    {% if conn.last_error %}<p class="lfd-warn">上次出错：{{ conn.last_error }}</p>{% endif %}
+    <div style="display:flex;gap:8px;flex-wrap:wrap">
+      {% if ai_enabled %}<form method="post" action="{% url 'mail_scan_now' %}" class="inline">{% csrf_token %}
+        <button class="primary" type="submit" onclick="this.disabled=true;this.textContent='扫描中，可能要一两分钟…';this.form.submit()">现在扫描一次</button></form>{% endif %}
+      <form method="post" action="{% url 'mail_disconnect' %}" class="inline" onsubmit="return confirm('断开后 TMS 不会再读取你的邮件。确定？');">{% csrf_token %}<button type="submit">断开邮箱</button></form>
+    </div>
+  {% else %}
+    <p><a class="btn primary" href="{% url 'mail_connect' %}">连接我的邮箱（{{ user.email }}）</a></p>
+    <p class="muted" style="font-size:13px">会跳到 Google 授权页，权限是“查看您的电子邮件”（只读，不能发信、删信）。只能连接你自己的邮箱，随时可以断开。</p>
+  {% endif %}
+</div>
+
+{% if recent %}
+<section class="panel"><header><h2 style="margin:0;font-size:1rem">最近的自动扫描结果</h2></header>
+<div class="body" style="overflow-x:auto"><table class="t">
+  <thead><tr><th>#</th><th>时间</th><th>项目</th><th>概要</th><th>状态</th></tr></thead>
+  <tbody>{% for e in recent %}
+  <tr><td><a href="{{ e.get_absolute_url }}">#{{ e.pk }}</a></td><td>{{ e.created_at|date:"m-d H:i" }}</td>
+    <td>{{ e.project.name|default:"—" }}</td><td class="wrap">{{ e.summary|truncatechars:90 }}</td>
+    <td>{% if e.status == 'PENDING' %}<b class="lfd-warn">待确认</b>{% elif e.status == 'DONE' and not e.reviewed_by %}无更新{% else %}{{ e.get_status_display }}{% endif %}</td></tr>
+  {% endfor %}</tbody>
+</table></div></section>
+{% endif %}
+{% endblock %}

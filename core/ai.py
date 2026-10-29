@@ -434,7 +434,7 @@ def call_gemini(email_text, context, today):
 # ---------------------------------------------------------------------------
 # Extraction
 # ---------------------------------------------------------------------------
-def extract(email_text, user, project=None, shipment=None, caller=None):
+def extract(email_text, user, project=None, shipment=None, caller=None, source=AiExtraction.Source.PASTE):
     """Run Gemini on an email and store the proposed changes. Returns AiExtraction."""
     if not can_edit_ops(user):
         raise AiError("只有操作和管理层可以使用 AI 识别")
@@ -454,7 +454,7 @@ def extract(email_text, user, project=None, shipment=None, caller=None):
     result, usage = (caller or call_gemini)(email_text, context, timezone.localdate())
 
     ext = AiExtraction.objects.create(
-        created_by=user, project=project, shipment=shipment, source_text=email_text,
+        created_by=user, source=source, project=project, shipment=shipment, source_text=email_text,
         model_name=settings.TMS_AI_MODEL, summary=str(result.get("summary", ""))[:1000],
         raw_result=result, usage=usage or {},
     )
