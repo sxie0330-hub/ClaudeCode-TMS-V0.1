@@ -189,7 +189,7 @@ class CargoLineForm(BaseForm):
         model = CargoLine
         fields = [
             "handling_qty", "handling_type", "pieces", "description", "weight_lbs",
-            "length_in", "width_in", "height_in",
+            "length_ft", "width_ft", "height_ft",
             "hazmat", "un_number", "hazard_class", "packing_group", "nmfc", "freight_class",
         ]
 

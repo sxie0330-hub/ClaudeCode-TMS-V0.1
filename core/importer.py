@@ -193,8 +193,12 @@ def _import(data, user):
                     s.master_bl.save()
             s.save()
             for c in ld.get("cargo", []):
+                c = dict(c)
+                for dim in ("length", "width", "height"):  # older exports used inches
+                    if c.get(f"{dim}_in") is not None and c.get(f"{dim}_ft") is None:
+                        c[f"{dim}_ft"] = (Decimal(str(c[f"{dim}_in"])) / 12).quantize(Decimal("0.01"))
                 CargoLine.objects.create(shipment=s, **_pick(c, ["handling_qty", "handling_type", "pieces", "description", "weight_lbs",
-                                                                 "length_in", "width_in", "height_in", "hazmat", "un_number",
+                                                                 "length_ft", "width_ft", "height_ft", "hazmat", "un_number",
                                                                  "hazard_class", "packing_group", "nmfc", "freight_class"]))
             for u in ld.get("units", []):
                 Unit.objects.create(shipment=s, **_pick(u, ["serial_number", "product", "config", "tier", "new_serial_number", "notes"]))

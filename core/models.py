@@ -557,9 +557,9 @@ class CargoLine(SoftDeleteModel):
     pieces = models.PositiveIntegerField("件数", null=True, blank=True)
     description = models.CharField("货物描述", max_length=255)
     weight_lbs = models.DecimalField("该行总重 (lbs)", max_digits=10, decimal_places=1, null=True, blank=True)
-    length_in = models.DecimalField("长 (in)", max_digits=7, decimal_places=1, null=True, blank=True)
-    width_in = models.DecimalField("宽 (in)", max_digits=7, decimal_places=1, null=True, blank=True)
-    height_in = models.DecimalField("高 (in)", max_digits=7, decimal_places=1, null=True, blank=True)
+    length_ft = models.DecimalField("长 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
+    width_ft = models.DecimalField("宽 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
+    height_ft = models.DecimalField("高 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
     hazmat = models.BooleanField("危险品 HM", default=False)
     un_number = models.CharField("UN 编号", max_length=10, blank=True)
     hazard_class = models.CharField("类别", max_length=10, blank=True)
@@ -577,8 +577,8 @@ class CargoLine(SoftDeleteModel):
 
     @property
     def dims(self):
-        if self.length_in and self.width_in and self.height_in:
-            return " x ".join(_plain(v) for v in (self.length_in, self.width_in, self.height_in))
+        if self.length_ft and self.width_ft and self.height_ft:
+            return " x ".join(_plain(v) for v in (self.length_ft, self.width_ft, self.height_ft))
         return ""
 
     @property

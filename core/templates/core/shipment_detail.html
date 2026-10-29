@@ -102,7 +102,7 @@
       <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'cargo' %}">+ 添加</a>{% endif %}</div>
     </header>
     <div class="tablewrap"><table class="t">
-      <thead><tr><th>数量</th><th>描述</th><th>HM</th><th>尺寸 (in)</th><th class="num">重量 lbs</th><th></th></tr></thead>
+      <thead><tr><th>数量</th><th>描述</th><th>HM</th><th>尺寸 L×W×H (ft)</th><th class="num">重量 lbs</th><th></th></tr></thead>
       <tbody>
       {% for c in cargo %}
         <tr><td>{{ c.handling_qty }} {{ c.get_handling_type_display }}{% if c.pieces %} / {{ c.pieces }} pcs{% endif %}</td>
