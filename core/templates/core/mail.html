@@ -5,7 +5,7 @@
 <div class="head"><h1>邮箱自动扫描</h1></div>
 
 <div class="card">
-  <p style="margin-top:0">每天傍晚 5:00（洛杉矶时间），TMS 只读地查看你的 Gmail：用<b>在执行项目</b>的柜号、MBL、承运商单号搜索当天的新邮件，
+  <p style="margin-top:0">每天傍晚 5:00（洛杉矶时间），TMS 只读地查看你的 Gmail：用<b>在执行项目</b>的柜号、MBL、承运商单号（还没有柜号的项目用“项目编号 + 客户名”）搜索当天的新邮件，Excel / CSV 附件也会读取，
     没提到这些单号的邮件不会被打开。同一项目的邮件合并交给 AI 识别一次，结果放进 <a href="{% url 'todo' %}">今日待办</a>，<b>你确认后才写入</b>。</p>
   {% if conn %}
     <p>已连接 <b>{{ conn.email }}</b>（{{ conn.connected_at|date:"Y-m-d" }} 起）·
@@ -22,6 +22,20 @@
     <p class="muted" style="font-size:13px">会跳到 Google 授权页，权限是“查看您的电子邮件”（只读，不能发信、删信）。只能连接你自己的邮箱，随时可以断开。</p>
   {% endif %}
 </div>
+
+{% if conn and ai_enabled %}
+<form method="post" action="{% url 'mail_find' %}" class="card form" style="max-width:none">{% csrf_token %}
+  <h2 style="margin:0 0 6px;font-size:1rem">按邮件主题识别</h2>
+  <p class="muted" style="font-size:13px;margin:0 0 8px">不限日期，连同往来回复和 Excel / CSV 附件一起交给 AI（最多 15 封）。适合新项目的开工邮件、带柜号表格的邮件。
+    也可以用 Gmail 搜索写法，例如 <code>from:raymond@harrisbrokerage.com subject:4915</code>。</p>
+  <div style="display:grid;grid-template-columns:2fr 1fr auto;gap:8px;align-items:end">
+    <label>邮件主题<input name="q" required placeholder="例如：项目开始：Hithium#4475"></label>
+    <label>对应项目（可不选）<select name="project"><option value="">让 AI 判断（可新建项目）</option>
+      {% for p in projects %}<option value="{{ p.pk }}">{{ p.number }} {{ p.name }}</option>{% endfor %}</select></label>
+    <button class="primary" type="submit" onclick="this.disabled=true;this.textContent='识别中…';this.form.submit()">查找并识别</button>
+  </div>
+</form>
+{% endif %}
 
 {% if recent %}
 <section class="panel"><header><h2 style="margin:0;font-size:1rem">最近的自动扫描结果</h2></header>

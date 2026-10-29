@@ -1301,3 +1301,85 @@ class MailScanProjectTermTests(Base):
         self.assertEqual(terms[self.project.pk], ("4915", "TRINA"))
         q = list(mailscan._queries({}, datetime(2026, 10, 28, tzinfo=dt_tz.utc), terms))[0]
         self.assertIn('("4915" "TRINA")', q)
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class MailFindTests(Base):
+    def setUp(self):
+        super().setUp()
+        import base64 as b64
+        import io
+
+        from openpyxl import Workbook
+
+        from . import mailscan
+        from .models import GmailConnection
+
+        self.conn = GmailConnection.objects.create(user=self.op, email=self.op.email, refresh_token=mailscan.encrypt("r"))
+        wb = Workbook()
+        wb.active.append(["Container", "MBL"])
+        wb.active.append(["TGHU7777777", "SHZ555"])
+        buf = io.BytesIO()
+        wb.save(buf)
+        self.xlsx = b64.urlsafe_b64encode(buf.getvalue()).decode()
+        body = b64.urlsafe_b64encode("项目开始 #4915，柜号见附件".encode()).decode()
+        self.msg = {"payload": {
+            "headers": [{"name": "Subject", "value": "项目开始 #4915 Sungrow"}, {"name": "From", "value": "Jack <jack@ptt.com>"},
+                        {"name": "Date", "value": "Mon, 20 Oct 2026 10:00:00 -0700"}],
+            "parts": [{"mimeType": "text/plain", "body": {"data": body}},
+                      {"mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "filename": "柜号.xlsx",
+                       "body": {"attachmentId": "att1", "size": 5000}},
+                      {"mimeType": "application/pdf", "filename": "BOL.pdf", "body": {"attachmentId": "att2", "size": 9000}}]}}
+        self.queries = []
+
+    def fake_get(self, token, path, params=None):
+        if path == "/messages":
+            self.queries.append(params["q"])
+            return {"messages": [{"id": "m9"}]}
+        if path == "/messages/m9":
+            return self.msg
+        if path == "/messages/m9/attachments/att1":
+            return {"data": self.xlsx}
+        raise AssertionError(path)
+
+    def test_query_building(self):
+        from . import mailscan
+
+        self.assertEqual(mailscan.gmail_query('项目开始 "#4915"'), 'subject:"项目开始  #4915 "')
+        self.assertEqual(mailscan.gmail_query("from:a@b.com subject:4915"), "from:a@b.com subject:4915")
+        with self.assertRaises(mailscan.ScanError):
+            mailscan.gmail_query("  ")
+
+    def test_find_reads_attachments_and_extracts(self):
+        from unittest import mock
+
+        from . import mailscan
+        from .models import AiExtraction, ScannedMessage
+
+        seen = {}
+
+        def caller(text, context, today):
+            seen["text"] = text
+            return {"summary": "新项目 #4915", "loads": [], "unmatched": "", "project_updates": [], "new_projects": [NEW_PROJECT_RESULT["new_project"]]}, {}
+
+        with mock.patch.object(mailscan, "_access_token", return_value="t"), mock.patch.object(mailscan, "_get", side_effect=self.fake_get):
+            ext, n = mailscan.find_and_extract(self.conn, "项目开始 #4915", caller=caller)
+        self.assertEqual(n, 1)
+        self.assertIn('subject:"项目开始 #4915"', self.queries[0])
+        self.assertIn("--- 附件：柜号.xlsx ---", seen["text"])
+        self.assertIn("TGHU7777777\tSHZ555", seen["text"])
+        self.assertIn("未读取的附件：BOL.pdf", seen["text"])
+        self.assertEqual(ext.source, AiExtraction.Source.GMAIL)
+        self.assertEqual(len(ext.raw_result["new_projects"]), 1)
+        self.assertTrue(ScannedMessage.objects.filter(message_id="m9", extraction=ext).exists())
+
+    def test_find_view(self):
+        from unittest import mock
+
+        from . import mailscan
+
+        self.login(self.op)
+        self.assertContains(self.client.get(reverse("mail_settings")), "按邮件主题识别")
+        with mock.patch.object(mailscan, "find_and_extract", side_effect=mailscan.ScanError("邮箱里没找到主题包含「x」的邮件")):
+            r = self.client.post(reverse("mail_find"), {"q": "x"}, follow=True)
+        self.assertContains(r, "没找到")
