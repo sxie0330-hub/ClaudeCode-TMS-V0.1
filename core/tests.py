@@ -1478,7 +1478,7 @@ class UnitTests(TestCase):
         from .units import parse_weight_lbs as W
 
         for text, lbs in [("44000", "44000.0"), ("44,000 lbs", "44000.0"), ("35,000 kg", "77161.8"), ("20 t", "44092.5"),
-                          ("20 MT", "44092.5"), ("10 tons", "20000.0"), ("20吨", "44092.5"), ("1000 公斤", "2204.6")]:
+                          ("20 MT", "44092.5"), ("10 tons", "22046.2"), ("10 short tons", "22046.2"), ("20吨", "44092.5"), ("1000 公斤", "2204.6")]:
             self.assertEqual(W(text), Decimal(lbs), text)
         with self.assertRaises(ValueError):
             W("20 stone-ish")

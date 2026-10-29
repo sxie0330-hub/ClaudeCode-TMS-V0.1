@@ -20,20 +20,21 @@ _LENGTH = {
     "cm": Decimal("0.03280839895"), "厘米": Decimal("0.03280839895"),
     "mm": Decimal("0.003280839895"), "毫米": Decimal("0.003280839895"),
 }
-# unit -> lbs per unit. "ton" in US freight means a short ton (2,000 lbs);
-# t / mt / tonne / 吨 is a metric ton (1,000 kg).
+# unit -> lbs per unit. Every "ton" is a metric ton (1,000 kg) in this TMS,
+# including "ton" / "tons" / "short ton": the company does not use short tons.
 _WEIGHT = {
     "lb": Decimal(1), "lbs": Decimal(1), "#": Decimal(1), "pound": Decimal(1), "pounds": Decimal(1), "磅": Decimal(1),
     "kg": Decimal("2.20462262"), "kgs": Decimal("2.20462262"), "kilo": Decimal("2.20462262"), "kilos": Decimal("2.20462262"),
     "kilogram": Decimal("2.20462262"), "kilograms": Decimal("2.20462262"), "公斤": Decimal("2.20462262"), "千克": Decimal("2.20462262"),
     "t": Decimal("2204.62262"), "mt": Decimal("2204.62262"), "tonne": Decimal("2204.62262"), "tonnes": Decimal("2204.62262"),
     "metric ton": Decimal("2204.62262"), "metric tons": Decimal("2204.62262"), "吨": Decimal("2204.62262"), "公吨": Decimal("2204.62262"),
-    "ton": Decimal(2000), "tons": Decimal(2000), "st": Decimal(2000), "short ton": Decimal(2000), "short tons": Decimal(2000),
+    "ton": Decimal("2204.62262"), "tons": Decimal("2204.62262"), "short ton": Decimal("2204.62262"),
+    "short tons": Decimal("2204.62262"), "long ton": Decimal("2204.62262"), "long tons": Decimal("2204.62262"),
 }
 
 _NUM = r"(\d+(?:\.\d+)?|\.\d+)"
 LENGTH_HELP = "数字默认是 ft；也可以写 13'6\"、162 in、4.1 m、410 cm"
-WEIGHT_HELP = "数字默认是 lbs；也可以写 15,000 kg、20 t（公吨）、10 ton（短吨 2,000 lbs）"
+WEIGHT_HELP = "数字默认是 lbs；也可以写 15,000 kg、20 t（吨一律按公吨 = 2,204.6 lbs）"
 
 
 def _num(s):
