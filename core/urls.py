@@ -62,6 +62,7 @@ urlpatterns = [
     path("mail/callback/", views_mail.mail_callback, name="mail_callback"),
     path("mail/disconnect/", views_mail.mail_disconnect, name="mail_disconnect"),
     path("mail/scan/", views_mail.mail_scan_now, name="mail_scan_now"),
+    path("mail/find/", views_mail.mail_find, name="mail_find"),
     path("tasks/scan-email/", views_mail.task_scan_email, name="task_scan_email"),
     path("healthz", views.healthz, name="healthz"),
     path("health/", views.healthz, name="health"),  # Cloud Run blocks paths ending in "z"

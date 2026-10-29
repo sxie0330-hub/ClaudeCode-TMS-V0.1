@@ -8,7 +8,7 @@ from django.views.decorators.csrf import csrf_exempt
 from django.views.decorators.http import require_POST
 
 from . import ai, mailscan
-from .models import AiExtraction, GmailConnection
+from .models import AiExtraction, GmailConnection, Project
 from .permissions import can_edit_ops
 from .views import _need
 
@@ -16,9 +16,10 @@ from .views import _need
 def mail_settings(request):
     _need(can_edit_ops(request.user))
     conn = GmailConnection.objects.filter(user=request.user).first()
+    projects = Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")
     recent = AiExtraction.objects.filter(source=AiExtraction.Source.GMAIL, created_by=request.user).select_related("project")[:20]
     return render(request, "core/mail.html", {
-        "conn": conn, "recent": recent, "ai_enabled": ai.enabled(),
+        "conn": conn, "recent": recent, "ai_enabled": ai.enabled(), "projects": projects if conn else [],
         "scanned": conn.scanned.count() if conn else 0,
     })
 
@@ -70,6 +71,24 @@ def mail_scan_now(request):
     else:
         messages.success(request, res["result"])
     return redirect("mail_settings")
+
+
+@require_POST
+def mail_find(request):
+    """Find e-mails by subject (any date, attachments included) and send them to AI."""
+    _need(can_edit_ops(request.user))
+    conn = GmailConnection.objects.filter(user=request.user).first()
+    if not conn or not ai.enabled():
+        return redirect("mail_settings")
+    pid = request.POST.get("project", "")
+    project = Project.objects.filter(pk=pid).first() if pid.isdigit() else None
+    try:
+        ext, n = mailscan.find_and_extract(conn, request.POST.get("q", ""), project=project)
+    except (mailscan.ScanError, Exception) as e:  # noqa: BLE001
+        messages.error(request, str(e))
+        return redirect("mail_settings")
+    messages.success(request, f"找到 {n} 封邮件，已交给 AI 识别")
+    return redirect(ext)
 
 
 @csrf_exempt

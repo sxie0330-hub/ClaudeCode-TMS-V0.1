@@ -219,15 +219,104 @@ def _body(payload):
     return html.unescape(re.sub(r"<[^>]+>", " ", text))
 
 
+SHEET_EXTS = (".xlsx", ".csv", ".tsv", ".txt")
+MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024
+MAX_CHARS_PER_ATTACHMENT = 20000
+
+
+def _attachments(payload):
+    """[(filename, attachment id or None, inline data or None, size)] of a message."""
+    out = []
+
+    def walk(part):
+        name = part.get("filename") or ""
+        body = part.get("body", {})
+        if name:
+            out.append((name, body.get("attachmentId"), body.get("data"), body.get("size", 0)))
+        for p in part.get("parts", []) or []:
+            walk(p)
+
+    walk(payload)
+    return out
+
+
+def _attachment_text(token, mid, name, aid, data, size):
+    """Text of a spreadsheet attachment, or None if it is not one we read."""
+    from django.core.files.uploadedfile import SimpleUploadedFile
+
+    if not name.lower().endswith(SHEET_EXTS) or size > MAX_ATTACHMENT_BYTES:
+        return None
+    if data is None and aid:
+        data = _get(token, f"/messages/{mid}/attachments/{aid}").get("data")
+    if not data:
+        return None
+    raw = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
+    try:
+        return ai.sheet_to_text(SimpleUploadedFile(name, raw))[:MAX_CHARS_PER_ATTACHMENT]
+    except ai.AiError:
+        return None
+
+
 def read_message(token, mid):
     m = _get(token, f"/messages/{mid}", {"format": "full"})
-    headers = {h["name"].lower(): h["value"] for h in m.get("payload", {}).get("headers", [])}
-    body = re.sub(r"[ \t]+", " ", _body(m.get("payload", {})))
+    payload = m.get("payload", {})
+    headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
+    body = re.sub(r"[ \t]+", " ", _body(payload))
     body = re.sub(r"\n\s*\n+", "\n\n", body).strip()[:MAX_CHARS_PER_MESSAGE]
+    extra, unread = [], []
+    for name, aid, data, size in _attachments(payload):
+        text = _attachment_text(token, mid, name, aid, data, size)
+        if text:
+            extra.append(f"--- 附件：{name} ---\n{text}")
+        else:
+            unread.append(name)
+    if extra:
+        body += "\n\n" + "\n\n".join(extra)
+    if unread:
+        body += "\n\n（未读取的附件：" + "、".join(unread[:20]) + "）"
     return {
         "id": mid, "subject": headers.get("subject", "")[:300], "from": parseaddr(headers.get("from", ""))[1] or headers.get("from", ""),
-        "date": headers.get("date", ""), "text": body,
+        "date": headers.get("date", ""), "text": body, "unread_attachments": unread,
     }
+
+
+def _messages_text(msgs):
+    return "\n\n".join(
+        f"=== 邮件 {i + 1}/{len(msgs)} ===\nFrom: {m['from']}\nDate: {m['date']}\nSubject: {m['subject']}\n\n{m['text']}"
+        for i, m in enumerate(msgs)
+    )[: ai.MAX_EMAIL_CHARS]
+
+
+def gmail_query(text):
+    """What the person typed -> a Gmail search: a subject, or Gmail syntax if they used operators."""
+    text = (text or "").strip()
+    if not text:
+        raise ScanError("请输入邮件主题")
+    if re.search(r"\b(subject|from|to|has|after|before|label|in|filename):", text, re.I):
+        return text
+    return 'subject:"' + text.replace('"', " ") + '"'
+
+
+MAX_FIND = 15
+
+
+def find_and_extract(conn, text, project=None, caller=None):
+    """Read the e-mails matching a subject (any date, with attachments) and run one AI extraction."""
+    token = _access_token(conn)
+    res = _get(token, "/messages", {"q": gmail_query(text) + " -in:chats -in:drafts", "maxResults": MAX_FIND})
+    ids = [m["id"] for m in res.get("messages", [])]
+    if not ids:
+        raise ScanError(f"邮箱里没找到主题包含「{text}」的邮件")
+    msgs = [read_message(token, mid) for mid in ids]
+    msgs.sort(key=lambda m: m["date"])
+    try:
+        ext = ai.extract(_messages_text(msgs), conn.user, project=project, caller=caller, source=AiExtraction.Source.GMAIL)
+    except ai.AiError as e:
+        raise ScanError(str(e)) from e
+    for m in msgs:
+        ScannedMessage.objects.update_or_create(connection=conn, message_id=m["id"],
+                                                defaults={"subject": m["subject"], "extraction": ext})
+    return ext, len(msgs)
 
 
 # ---------------------------------------------------------------------------
@@ -288,10 +377,7 @@ def scan_connection(conn, caller=None, now=None):
             errors.append("时间不够，剩余项目明天继续")
             break
         msgs.sort(key=lambda m: m["date"])
-        text = "\n\n".join(
-            f"=== 邮件 {i + 1}/{len(msgs)} ===\nFrom: {m['from']}\nDate: {m['date']}\nSubject: {m['subject']}\n\n{m['text']}"
-            for i, m in enumerate(msgs)
-        )[: ai.MAX_EMAIL_CHARS]
+        text = _messages_text(msgs)
         try:
             ext = ai.extract(text, conn.user, project=projects[pid], caller=caller, source=AiExtraction.Source.GMAIL)
         except ai.AiError as e:
