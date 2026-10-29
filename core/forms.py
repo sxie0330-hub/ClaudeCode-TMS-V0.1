@@ -1,4 +1,5 @@
 from django import forms
+import re
 from django.contrib.auth import get_user_model
 
 from . import units
@@ -14,6 +15,7 @@ from .models import (
     Lead,
     LeadCargo,
     LeadLane,
+    TrailerType,
     Leg,
     Location,
     MasterBL,
@@ -316,8 +318,25 @@ class LeadForm(BaseForm):
 class LeadLaneForm(BaseForm):
     class Meta:
         model = LeadLane
-        fields = ["sequence", "origin", "origin_zip", "destination", "destination_zip", "service", "equipment", "trucks",
-                  "ready_date", "deliver_by", "notes"]
+        fields = ["sequence", "origin", "origin_state", "origin_zip", "destination", "destination_state", "destination_zip",
+                  "via_states", "service", "equipment", "trailer", "trucks", "ready_date", "deliver_by", "notes"]
+        labels = {"trailer": "OOG 初筛按哪种车算"}
+        help_texts = {"trailer": "不选就自动挑最普通、装得下的车型"}
+
+    def clean_origin_state(self):
+        return (self.cleaned_data.get("origin_state") or "").strip().upper()
+
+    def clean_destination_state(self):
+        return (self.cleaned_data.get("destination_state") or "").strip().upper()
+
+    def clean_via_states(self):
+        from . import oog
+        raw = (self.cleaned_data.get("via_states") or "").upper()
+        codes = [c for c in re.split(r"[,\s/;]+", raw) if c]
+        bad = [c for c in codes if c not in oog.STATES]
+        if bad:
+            raise forms.ValidationError(f"不认识的州代码：{', '.join(bad)}")
+        return ",".join(codes)
 
 
 class LeadCargoForm(BaseForm):
@@ -328,13 +347,21 @@ class LeadCargoForm(BaseForm):
 
     class Meta:
         model = LeadCargo
-        fields = ["lane", "description", "qty", "handling_type", "weight_lbs", "length_ft", "width_ft", "height_ft", "hazmat", "notes"]
+        fields = ["lane", "description", "qty", "handling_type", "weight_lbs", "length_ft", "width_ft", "height_ft", "hazmat",
+                  "divisible", "notes"]
 
     def __init__(self, *args, lead=None, **kwargs):
         super().__init__(*args, **kwargs)
         lead = lead or getattr(self.instance, "lead", None)
         if lead is not None:
             self.fields["lane"].queryset = lead.lanes.all()
+
+
+class TrailerTypeForm(BaseForm):
+    class Meta:
+        model = TrailerType
+        fields = ["name", "key", "deck_height_in", "deck_length_ft", "deck_width_in", "trailer_tare_lbs", "tractor_tare_lbs",
+                  "trailer_length_ft", "max_extended_length_ft", "rated_capacity_lbs", "combo_axles", "enclosed", "sort", "active", "notes"]
 
 
 class CarrierQuoteForm(BaseForm):

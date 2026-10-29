@@ -46,17 +46,39 @@
     {% empty %}<tr><td colspan="7" class="muted">还没有运输段</td></tr>{% endfor %}</tbody>
   </table>
   <table class="t" style="margin-top:6px">
-    <thead><tr><th>货物</th><th>件数</th><th>L × W × H</th><th class="num">每件 lbs</th><th>段</th><th>OOG 初筛 / 建议车型</th><th></th></tr></thead>
-    <tbody>{% for c, flags, suggestion in screen %}<tr><td><b>{{ c.description }}</b>{% if c.hazmat %} <span class="b b-HOLD">HM</span>{% endif %}{% if c.notes %}<br><small class="muted">{{ c.notes }}</small>{% endif %}</td>
+    <thead><tr><th>货物</th><th>件数</th><th>L × W × H</th><th class="num">每件 lbs</th><th>段</th><th>性质</th><th></th></tr></thead>
+    <tbody>{% for c in cargo %}<tr><td><b>{{ c.description }}</b>{% if c.notes %}<br><small class="muted">{{ c.notes }}</small>{% endif %}</td>
       <td>{{ c.qty }} {{ c.get_handling_type_display }}</td>
       <td>{{ c.dims_text|default:"—" }}</td>
       <td class="num">{% if c.weight_lbs %}{{ c.weight_lbs|floatformat:"0g" }}{% else %}—{% endif %}</td><td>{% if c.lane %}{{ c.lane.sequence }}{% else %}—{% endif %}</td>
-      <td class="wrap" style="max-width:360px">{% if suggestion %}建议：<b>{{ suggestion }}</b><br>{% endif %}{% for f in flags %}<span class="flag">{{ f }}</span><br>{% empty %}{% if suggestion %}<span class="muted">尺寸重量在常规范围内</span>{% else %}<span class="muted">缺尺寸 / 重量</span>{% endif %}{% endfor %}</td>
+      <td>{% if c.hazmat %}<span class="b b-HOLD">危险品</span> {% endif %}{% if c.divisible %}<span class="flag">可拆分</span>{% else %}<span class="muted">不可拆分</span>{% endif %}</td>
       <td><a href="{% url 'lead_cargo_edit' lead.pk c.pk %}">改</a> · <a href="{% url 'lead_row_delete' lead.pk 'cargo' c.pk %}">删</a></td></tr>
     {% empty %}<tr><td colspan="7" class="muted">还没有货物</td></tr>{% endfor %}</tbody>
   </table></div>
-  <p class="muted" style="font-size:12.5px;margin:6px 12px 10px">OOG 初筛只按常见上限判断（宽 8'6"、总高 13'6"、长 53'、总重 80,000 lbs，平板 / 阶梯板 / 低平板的大致承载），各州规定和路线不同，以许可证办理结果为准。</p>
 </div>
+
+{% if screens %}<div class="panel"><header><h2>OOG 初筛（按州）</h2>
+  <div class="actions">{% if perm.edit_ops %}<a class="btn sm" href="{% url 'master_list' 'trailer' %}">车型库</a>{% endif %}</div></header>
+  {% for sc in screens %}<div class="oog">
+    <h3>第 {{ sc.lane.sequence }} 段：{{ sc.lane.origin }} → {{ sc.lane.destination }}
+      {% if sc.states %}<small class="muted">路线州：{{ sc.states|join:" → " }}</small>{% endif %}</h3>
+    {% for w in sc.warnings %}<p class="flag">{{ w }}</p>{% endfor %}
+    {% if sc.trailer %}<p>车型：<b>{{ sc.trailer.name }}</b> <small class="muted">（{{ sc.reason }}）</small><br>
+      <small>每车：货重 {{ sc.loaded.cargo_lbs|floatformat:"0g"|default:"?" }} + 车头挂车自重 {{ sc.loaded.tare_lbs|floatformat:"0g" }} = <b>总重 {{ sc.loaded.gross_lbs|floatformat:"0g"|default:"?" }} lbs</b>
+      · 装车后高 <b>{{ sc.loaded.height_in|in_ft }}</b>（板高 {{ sc.trailer.deck_height_in|floatformat:"-1" }}"）· 宽 <b>{{ sc.loaded.width_in|in_ft }}</b>
+      {% if sc.loaded.rear_overhang_ft %}· 后悬 {{ sc.loaded.rear_overhang_ft|floatformat:"-1" }} ft{% endif %}</small></p>
+    <table class="t"><thead><tr><th>州</th><th>许可证</th><th>护送 / 警车</th><th>Superload / 勘察</th><th>通行时间</th></tr></thead><tbody>
+    {% for r in sc.rows %}<tr><td><b>{{ r.state }}</b><br><small class="muted">{{ r.agency }} {{ r.phone }}</small></td>
+      <td class="wrap">{% for p in r.permits %}<span class="flag">{{ p }}</span><br>{% empty %}<span class="muted">{% if r.has_rules %}法定尺寸重量内{% else %}—{% endif %}</span>{% endfor %}
+        {% if r.permits and r.validity %}<small class="muted">有效期 {{ r.validity }}</small>{% endif %}{% for n in r.notes %}<small class="muted">{{ n }}</small>{% endfor %}</td>
+      <td class="wrap">{% for e in r.escorts %}{{ e }}<br>{% endfor %}{% for e in r.police %}<b>{{ e }}</b><br>{% endfor %}{% if not r.escorts and not r.police %}<span class="muted">—</span>{% endif %}</td>
+      <td class="wrap">{% for e in r.superload %}<span class="flag">{{ e }}</span><br>{% endfor %}{% for e in r.survey %}<span class="flag">{{ e }}</span><br>{% endfor %}{% if not r.superload and not r.survey %}<span class="muted">—</span>{% endif %}</td>
+      <td class="wrap" style="max-width:320px;font-size:12.5px">{% if r.permits %}{% for t in r.travel %}{{ t }}<br>{% endfor %}{% if r.frost %}<span class="muted">冻土期：{{ r.frost }}</span>{% endif %}{% else %}<span class="muted">—</span>{% endif %}</td></tr>
+    {% endfor %}</tbody></table>{% endif %}
+    {% if sc.hazmat %}<p class="flag">有危险品：需要有 Hazmat 资质的承运商</p>{% endif %}
+  </div>{% endfor %}
+  <p class="muted" style="font-size:12.5px;margin:6px 12px 10px">州规定来自公司整理的 48 州资料（oversizeloadassistant.com，2026-10，原文见 docs/state-regs/）；车型尺寸自重来自车型库。总重 = 货重 + 车头 + 挂车。超尺寸 / 超重许可只发给不可拆分货物。没有核算轴组重量（要看轴距）和路线净空，最终以各州 DOT 许可证为准。</p>
+</div>{% endif %}
 
 <div class="panel"><header><h2>找车询价 · 承运商报价</h2>
   <div class="actions"><a class="btn sm primary" href="{% url 'lead_rfq' lead.pk %}">起草询价邮件</a>

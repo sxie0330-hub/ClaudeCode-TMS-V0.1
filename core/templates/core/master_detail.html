@@ -5,7 +5,7 @@
 <div class="head"><h1>{{ obj }}</h1><span class="muted">{{ label }}</span>
   <div class="actions">
     {% if kind == 'customer' and perm.edit_ops %}<a class="btn" href="{% url 'project_create' %}?customer={{ obj.pk }}">+ 新建项目</a>{% endif %}
-    {% if perm.edit_ops %}<a class="btn primary" href="{% url 'master_edit' kind obj.pk %}">编辑</a>{% endif %}
+    {% if can_edit %}<a class="btn primary" href="{% url 'master_edit' kind obj.pk %}">编辑</a>{% endif %}
   </div></div>
 <div class="panel"><div class="body"><dl class="kv">
   {% for name, value in fields %}<dt>{{ name }}</dt><dd style="white-space:pre-wrap">{{ value|dash }}</dd>{% endfor %}

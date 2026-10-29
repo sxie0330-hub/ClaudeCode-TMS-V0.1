@@ -1116,6 +1116,48 @@ class Lead(SoftDeleteModel):
         return self.status in self.OPEN
 
 
+class TrailerType(models.Model):
+    """Equipment library for the OOG screen: deck height, deck length and combination tare weight.
+    Defaults come from manufacturer spec sheets; the team edits them to match the fleets they use."""
+
+    key = models.SlugField(unique=True)
+    name = models.CharField("车型", max_length=80)
+    deck_height_in = models.DecimalField("装货面离地高 (in)", max_digits=6, decimal_places=1, null=True, blank=True,
+                                         help_text="低平板 / 阶梯板填凹槽或下层板的高度")
+    deck_length_ft = models.DecimalField("可装货长度 (ft)", max_digits=6, decimal_places=1, null=True, blank=True,
+                                         help_text="阶梯板 / 低平板填下层板或凹槽长度")
+    deck_width_in = models.DecimalField("车板宽 (in)", max_digits=6, decimal_places=1, default=Decimal("102"))
+    trailer_tare_lbs = models.PositiveIntegerField("挂车自重 (lbs)", null=True, blank=True, help_text="多轴车含 jeep / booster")
+    tractor_tare_lbs = models.PositiveIntegerField("车头自重 (lbs)", default=17000)
+    trailer_length_ft = models.DecimalField("挂车总长 (ft)", max_digits=6, decimal_places=1, null=True, blank=True)
+    max_extended_length_ft = models.DecimalField("最大伸长 (ft)", max_digits=6, decimal_places=1, null=True, blank=True)
+    rated_capacity_lbs = models.PositiveIntegerField("额定载重 (lbs)", null=True, blank=True)
+    combo_axles = models.PositiveSmallIntegerField("车组总轴数", null=True, blank=True)
+    enclosed = models.BooleanField("厢式（只能装进厢内）", default=False)
+    sort = models.PositiveSmallIntegerField("推荐顺序", default=50, help_text="小的优先：越普通、越便宜的车排越前")
+    active = models.BooleanField("参与自动建议", default=True)
+    notes = models.TextField("说明 / 来源", blank=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["sort", "name"]
+
+    def __str__(self):
+        return self.name
+
+    @property
+    def combo_tare_lbs(self):
+        if self.trailer_tare_lbs is None or self.tractor_tare_lbs is None:
+            return None
+        return self.trailer_tare_lbs + self.tractor_tare_lbs
+
+    @property
+    def complete(self):
+        """Has what the OOG screen needs."""
+        return self.deck_height_in is not None and self.deck_length_ft is not None and self.combo_tare_lbs is not None
+
+
 class LeadLane(SoftDeleteModel):
     """One move in the scope of work: where from, where to, what equipment, how many trucks."""
 
@@ -1131,6 +1173,11 @@ class LeadLane(SoftDeleteModel):
     ready_date = models.DateField("可提货日", null=True, blank=True)
     deliver_by = models.DateField("最晚送达", null=True, blank=True)
     notes = models.TextField("要求 / 备注", blank=True, help_text="许可证、护送、吊装、预约、保险等")
+    origin_state = models.CharField("起点州", max_length=2, blank=True, help_text="两位州代码，如 GA")
+    destination_state = models.CharField("终点州", max_length=2, blank=True, help_text="如 TX")
+    via_states = models.CharField("途经州", max_length=80, blank=True, help_text="按路线顺序填，如 AL,MS,LA；不填只按起点和终点州判断")
+    trailer = models.ForeignKey("TrailerType", null=True, blank=True, on_delete=models.SET_NULL, related_name="+",
+                                verbose_name="指定车型（空 = 自动建议）")
 
     history = HistoricalRecords()
 
@@ -1154,6 +1201,8 @@ class LeadCargo(SoftDeleteModel):
     width_ft = models.DecimalField("宽 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
     height_ft = models.DecimalField("高 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
     hazmat = models.BooleanField("危险品", default=False)
+    divisible = models.BooleanField("可拆分（divisible）", default=False,
+                                    help_text="能拆开或减重分装的货物不能办超重 / 超尺寸许可，要拆分或多车运")
     notes = models.CharField("备注", max_length=255, blank=True)
 
     history = HistoricalRecords()

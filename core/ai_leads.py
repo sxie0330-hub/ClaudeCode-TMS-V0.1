@@ -40,14 +40,16 @@ LEAD_SCHEMA = {"type": "OBJECT", "properties": {
     "lanes": {"type": "ARRAY", "items": {"type": "OBJECT", "properties": {
         "origin": {"type": "STRING", "description": "起点：名称 + 地址，或港口 / 城市, 州"},
         "origin_zip": _S,
+        "origin_state": {"type": "STRING", "description": "起点所在州的两位代码，如 GA；看不出来留空"},
         "destination": _S, "destination_zip": _S,
+        "destination_state": {"type": "STRING", "description": "终点所在州的两位代码，如 TX；看不出来留空"},
         "service": {"type": "STRING", "description": "之一：" + ", ".join(Shipment.Service.values)},
         "equipment": {"type": "STRING", "description": "车型 / 柜型，如 Flatbed、Step Deck、RGN、53' Van、40HC；没写留空"},
         "trucks": {"type": "STRING", "description": "车次 / 柜数，没写就 1"},
         "ready_date": {"type": "STRING", "description": "YYYY-MM-DD"},
         "deliver_by": {"type": "STRING", "description": "YYYY-MM-DD"},
         "notes": {"type": "STRING", "description": "英文：许可证、护送、吊装、预约、保险等要求"}},
-        "required": ["origin", "origin_zip", "destination", "destination_zip", "service", "equipment", "trucks", "ready_date", "deliver_by", "notes"]}},
+        "required": ["origin", "origin_zip", "origin_state", "destination", "destination_zip", "destination_state", "service", "equipment", "trucks", "ready_date", "deliver_by", "notes"]}},
     "cargo": {"type": "ARRAY", "items": _CARGO}},
     "required": ["title", "company", "customer", "customer_ref", "contact_name", "contact_email", "contact_phone", "quote_due",
                  "summary", "questions", "lanes", "cargo"]}
@@ -59,6 +61,11 @@ LEAD_PROMPT = """你是一家美国物流公司（ATS / PTT，做 OOG 大件、�
 1. 只用内容里明确写出的信息，不要编造；没写的留空，并把报价需要但缺少的信息写进 questions。
 2. 每一段运输（起点 → 终点）写一条 lanes；同一段要好几车就写 trucks，不要重复写多条。港口提柜送到工地、再从工地转运，就是两段。
 3. 货物写进 cargo：重量和尺寸照原文抄数字和单位，不要自己换算，系统会统一换成 ft / lbs。“L×W×H” 拆成 length / width / height，各自带单位。
+3b. 装箱单 / packing list / 货物清单表格（附带表格会写成“第 N 行：列名=值；…”）：每个数据行是一种货，写成一条 cargo，
+   qty 用这一行的件数（数量 / 货物数量 / Qty），尺寸和重量一个都不能漏。列名里带单位的，值要带上这个单位
+   （如“长cm=325” → length “325 cm”；“毛重kg=9700” → weight “9700 kg”）。重量优先用每件的毛重（gross），weight_is_each 写 true；
+   表格只有合计重量时才用合计并写 false。合计 / 小计 / 总数行不是货物，不要写。只有尺寸、重量、目的地都完全相同的行才可以合并成一条并把件数相加；
+   不要写成“Transformers (162 units)”这种没有尺寸的汇总。lane 按这一行的目的地对应到 lanes。
 4. ATS 和 PTT 是我们自己，只能填 company，绝不能填成 customer。
 4b. 内容带有邮件头（From / Date / Subject）时，客户是**最早那封询价邮件的发件方公司**：看 From 的名字、邮箱域名（如 ana@gulfpower.com → Gulf Power）和签名档；
    我们自己的人（advtransolution.com 等 ATS / PTT 邮箱）发出或转发的邮件不是客户。contact_name / contact_email / contact_phone 用客户发件人的。
@@ -174,9 +181,11 @@ def create_lead(text, user, docs=None, caller=None, source=Lead.Source.EMAIL):
         if not ai._s(ln.get("origin")) and not ai._s(ln.get("destination")):
             continue
         service = ln.get("service") if ln.get("service") in Shipment.Service.values else Shipment.Service.OTR
+        origin, dest = ai._s(ln.get("origin"), 255) or "TBD", ai._s(ln.get("destination"), 255) or "TBD"
         lanes.append(LeadLane.objects.create(
-            lead=lead, sequence=i, origin=ai._s(ln.get("origin"), 255) or "TBD", origin_zip=ai._s(ln.get("origin_zip"), 12),
-            destination=ai._s(ln.get("destination"), 255) or "TBD", destination_zip=ai._s(ln.get("destination_zip"), 12),
+            lead=lead, sequence=i, origin=origin, origin_zip=ai._s(ln.get("origin_zip"), 12),
+            destination=dest, destination_zip=ai._s(ln.get("destination_zip"), 12),
+            origin_state=_state(ln.get("origin_state"), origin), destination_state=_state(ln.get("destination_state"), dest),
             service=service, equipment=ai._s(ln.get("equipment"), 80), trucks=_int(ln.get("trucks")),
             ready_date=_date(ln.get("ready_date")), deliver_by=_date(ln.get("deliver_by")), notes=ai._s(ln.get("notes"), 2000)))
     for c in r.get("cargo") or []:
@@ -184,6 +193,12 @@ def create_lead(text, user, docs=None, caller=None, source=Lead.Source.EMAIL):
         if made is None:
             continue
     return lead, problems
+
+
+def _state(code, address):
+    from .oog import STATES, state_from_text
+    code = ai._s(code, 2).upper()
+    return code if code in STATES else state_from_text(address)
 
 
 def cargo_from_ai(lead, c, lanes, problems):

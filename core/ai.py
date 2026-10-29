@@ -139,23 +139,12 @@ def sheet_to_text(upload):
         from openpyxl import load_workbook
 
         try:
-            wb = load_workbook(upload, read_only=True, data_only=True)
+            wb = load_workbook(upload, data_only=True)  # not read-only: merged cells are needed
         except Exception as e:  # noqa: BLE001
             raise AiError(f"无法读取这个 Excel 文件：{e}") from e
-        parts = []
-        for ws in wb.worksheets:
-            rows = []
-            for row in ws.iter_rows(values_only=True):
-                cells = ["" if v is None else (v.strftime("%Y-%m-%d %H:%M").removesuffix(" 00:00") if hasattr(v, "strftime") else str(v).strip())
-                         for v in row]
-                while cells and cells[-1] == "":
-                    cells.pop()
-                if cells:
-                    rows.append("\t".join(cells))
-            if rows:
-                parts.append(f"## 工作表：{ws.title}\n" + "\n".join(rows))
+        parts = [_sheet_text(ws) for ws in wb.worksheets]
         wb.close()
-        return "\n\n".join(parts)
+        return "\n\n".join(p for p in parts if p)
     if name.endswith((".csv", ".tsv", ".txt")):
         raw = upload.read()
         for enc in ("utf-8-sig", "gb18030", "latin-1"):
@@ -164,6 +153,61 @@ def sheet_to_text(upload):
             except UnicodeDecodeError:
                 continue
     raise AiError("只支持 .xlsx、.csv、.tsv、.txt 文件（Google Sheets 请用 文件 → 下载 → .xlsx）")
+
+
+SHEET_RECORDS_MAX_CHARS = 40000
+_DATE_HEADER = re.compile(r"日期|交期|时间|日|date|eta|etd|cutoff|lfd", re.I)
+
+
+def _cell(v, header=""):
+    if v is None:
+        return ""
+    if hasattr(v, "strftime"):
+        return v.strftime("%Y-%m-%d %H:%M").removesuffix(" 00:00")
+    if isinstance(v, (int, float)) and 40000 <= v <= 60000 and _DATE_HEADER.search(header or ""):
+        from datetime import date, timedelta  # Excel serial date in a date column (e.g. 46366 -> 2026-12-10)
+        return (date(1899, 12, 30) + timedelta(days=int(v))).isoformat()
+    if isinstance(v, float) and v.is_integer():
+        return str(int(v))
+    return str(v).strip()
+
+
+def _sheet_text(ws):
+    """One worksheet -> text. With a header row, each data row is written as "列名=值" so the model never has to
+    count tab positions (blank cells shift them); merged cells are filled with their value. Big sheets stay as tabs."""
+    grid = [list(r) for r in ws.iter_rows(values_only=True)]
+    for rng in ws.merged_cells.ranges:
+        v = ws.cell(rng.min_row, rng.min_col).value
+        for r in range(rng.min_row, rng.max_row + 1):
+            for c in range(rng.min_col, rng.max_col + 1):
+                if r - 1 < len(grid) and c - 1 < len(grid[r - 1]):
+                    grid[r - 1][c - 1] = v
+    head_i, header = None, []
+    for i, row in enumerate(grid[:10]):
+        vals = [v for v in row if v not in (None, "")]
+        if len(vals) >= 3 and sum(isinstance(v, str) for v in vals) >= len(vals) * 0.7:
+            head_i, header = i, ["" if v is None else str(v).strip() for v in row]
+            break
+    def cells(row):
+        out = [_cell(v, header[j] if j < len(header) else "") for j, v in enumerate(row)]
+        while out and out[-1] == "":
+            out.pop()
+        return out
+    tab = ["\t".join(c) for c in (cells(r) for r in grid) if c]
+    if not tab:
+        return ""
+    title = f"## 工作表：{ws.title}"
+    if head_i is None:
+        return title + "\n" + "\n".join(tab)
+    lines = [title, "（每行一条记录，格式：列名=值；空格子省略）"]
+    lines += [cells(r) and " ｜ ".join(c for c in cells(r) if c) for r in grid[:head_i] if cells(r)]
+    for n, row in enumerate(grid[head_i + 1:], head_i + 2):
+        c = cells(row)
+        pairs = [f"{header[j] if j < len(header) and header[j] else f'第{j + 1}列'}={v}" for j, v in enumerate(c) if v != ""]
+        if pairs:
+            lines.append(f"第 {n} 行：" + "；".join(pairs))
+    text = "\n".join(lines)
+    return text if len(text) <= SHEET_RECORDS_MAX_CHARS else title + "\n" + "\n".join(tab)
 
 
 def enabled():
@@ -497,7 +541,7 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
    - 不要编造：邮件没写的就留空。
    此时 loads（更新已有 Load）通常为空。
 13. 内容也可能是从表格复制或上传的数据（制表符分隔，可能带“工作表”标题）：按表头理解各列，通常每行是一个柜子 / 一车货。表里已有的柜号按规则 1–11 更新，系统里没有的柜号按规则 12 放进对应项目的 loads。
-14. 货物重量和尺寸（cargo）：照原文抄数字和单位（如 13'6"、4.1 m、480 in、35,000 kg、20 t、77,161 lbs），**不要自己换算单位**，系统会统一换成 ft 和 lbs。原文没写的留空。原文一行写“L×W×H”时拆成 length / width / height，各自带上单位（如 "12.19 x 2.44 x 2.59 m" 拆成 12.19 m、2.44 m、2.59 m）。
+14. 货物重量和尺寸（cargo）：照原文抄数字和单位（如 13'6"、4.1 m、480 in、35,000 kg、20 t、77,161 lbs），**不要自己换算单位**，系统会统一换成 ft 和 lbs。原文没写的留空。原文一行写“L×W×H”时拆成 length / width / height，各自带上单位（如 "12.19 x 2.44 x 2.59 m" 拆成 12.19 m、2.44 m、2.59 m）。附带表格写成“第 N 行：列名=值”时，单位在列名里（“长cm=325” → 325 cm，“毛重kg=9700” → 9700 kg）；每个数据行是一种货，件数用这一行的数量，重量优先用每件毛重；合计行不是货物。
 15. 内容后面可能附有 PDF 或图片（POD 签收单、BOL、Rate Confirmation、Delivery Receipt、到港通知、DO、提货单、照片等），和邮件正文同等对待，规则 1–14 同样适用：
    - 先看单据上的柜号、BOL 号、PRO#、承运商单号，对应到 Load；对不上的不要猜。
    - 签字的 POD / Delivery Receipt：签收日期写 pod_received（同时可以作为 actual_delivery 的依据），签收人、件数异常、货损备注写进 note。

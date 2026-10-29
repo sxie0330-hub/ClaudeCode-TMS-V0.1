@@ -27,6 +27,7 @@ from .forms import (
     CustomerForm,
     LegForm,
     LocationForm,
+    TrailerTypeForm,
     MasterBLForm,
     NoteForm,
     ProjectForm,
@@ -42,6 +43,7 @@ from .models import (
     Customer,
     Leg,
     Location,
+    TrailerType,
     MasterBL,
     Note,
     Profile,
@@ -705,6 +707,8 @@ MASTER = {
     "customer": (Customer, CustomerForm, "客户", ["name", "code", "contact_name", "contact_phone"]),
     "carrier": (Carrier, CarrierForm, "承运商", ["name", "code", "kind", "scac", "contact_name", "contact_phone"]),
     "location": (Location, LocationForm, "地址", ["code", "name", "kind", "full_address", "contact_phone"]),
+    "trailer": (TrailerType, TrailerTypeForm, "车型", ["name", "deck_height_in", "deck_length_ft", "trailer_tare_lbs",
+                                                      "tractor_tare_lbs", "rated_capacity_lbs", "sort", "active"]),
 }
 
 
@@ -713,15 +717,21 @@ def master_list(request, kind):
     qs = model.objects.all()
     q = request.GET.get("q", "").strip()
     if q:
-        fields = {"customer": ["name", "code"], "carrier": ["name", "code", "scac", "mc_number"], "location": ["code", "name", "address", "city"]}[kind]
+        fields = {"customer": ["name", "code"], "carrier": ["name", "code", "scac", "mc_number"], "location": ["code", "name", "address", "city"],
+                  "trailer": ["name", "key", "notes"]}[kind]
         cond = Q()
         for f in fields:
             cond |= Q(**{f"{f}__icontains": q})
         qs = qs.filter(cond)
     page = Paginator(qs, 100).get_page(request.GET.get("page"))
     headers = [model._meta.get_field(c).verbose_name if c != "full_address" else "地址" for c in cols]
-    rows = [(o, [o.get_kind_display() if c == "kind" else getattr(o, c) for c in cols]) for o in page.object_list]
-    return render(request, "core/master_list.html", {"kind": kind, "label": label, "page": page, "headers": headers, "rows": rows, "g": request.GET})
+    def cell(o, c):
+        v = o.get_kind_display() if c == "kind" else getattr(o, c)
+        return ("是" if v else "否") if isinstance(v, bool) else v
+    rows = [(o, [cell(o, c) for c in cols]) for o in page.object_list]
+    can_edit = is_management(request.user) if kind == "trailer" else can_edit_ops(request.user)
+    return render(request, "core/master_list.html", {"kind": kind, "label": label, "page": page, "headers": headers, "rows": rows,
+                                                     "g": request.GET, "can_edit": can_edit})
 
 
 def master_detail(request, kind, pk):
@@ -736,11 +746,13 @@ def master_detail(request, kind, pk):
         related = [("最近运输段", Leg.objects.filter(carrier=obj).select_related("shipment", "origin", "destination").order_by("-id")[:100])]
     elif kind == "location":
         related = [("最近 Load（收货地）", Shipment.objects.filter(consignee=obj)[:100])]
-    return render(request, "core/master_detail.html", {"kind": kind, "label": label, "obj": obj, "fields": fields, "related": related})
+    can_edit = is_management(request.user) if kind == "trailer" else can_edit_ops(request.user)
+    return render(request, "core/master_detail.html", {"kind": kind, "label": label, "obj": obj, "fields": fields, "related": related,
+                                                       "can_edit": can_edit})
 
 
 def master_edit(request, kind, pk=None):
-    _need(can_edit_ops(request.user))
+    _need(is_management(request.user) if kind == "trailer" else can_edit_ops(request.user))
     model, form_class, label, _ = MASTER[kind]
     obj = get_object_or_404(model, pk=pk) if pk else model()
     title = f"编辑{label}" if pk else f"新建{label}"

@@ -241,3 +241,6 @@ tr.chosen td { background: var(--ok-bg); }
 .toast { background: #1c2330; color: #fff; padding: 12px 14px; border-radius: 8px; box-shadow: 0 8px 24px rgba(0,0,0,.25); text-decoration: none; font-size: 14px; animation: toastin .25s ease-out; }
 .toast:hover { background: #2b3445; }
 @keyframes toastin { from { transform: translateY(12px); opacity: 0; } to { transform: none; opacity: 1; } }
+.oog{padding:4px 12px 10px;border-top:1px solid var(--line,#e5e7eb)}
+.oog h3{font-size:.92rem;margin:10px 0 4px}
+.oog p{margin:4px 0}
