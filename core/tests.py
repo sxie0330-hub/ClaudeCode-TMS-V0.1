@@ -268,6 +268,19 @@ class BolTests(Base):
             r = self.client.get(reverse("shipment_bol", args=[self.s.pk]) + f"?leg={self.leg.pk}")
             self.assertEqual(len(_re.findall(rb"/Type /Page\b", r.content)), pages)
 
+    def test_bol_pages_carry_bol_number(self):
+        from core.bol import bol_context, render_bols
+        for i in range(40):
+            CargoLine.objects.create(shipment=self.s, description=f"Part {i}", weight_lbs=100)
+        from reportlab import rl_config
+        old, rl_config.pageCompression = rl_config.pageCompression, 0
+        try:
+            pdf = render_bols([bol_context(self.s, self.leg)])
+        finally:
+            rl_config.pageCompression = old
+        self.assertIn(f"BOL {self.leg.effective_bol_number}".encode(), pdf)
+        self.assertIn(b"Page 2", pdf)
+
     def test_bol_number(self):
         self.assertEqual(self.leg.effective_bol_number, f"{self.s.number}-1")
 
