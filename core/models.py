@@ -926,7 +926,8 @@ class AiChange(models.Model):
         BLOCKED = "BLOCKED", "无法写入"
 
     extraction = models.ForeignKey(AiExtraction, on_delete=models.CASCADE, related_name="changes")
-    shipment = models.ForeignKey(Shipment, on_delete=models.CASCADE, related_name="+")
+    shipment = models.ForeignKey(Shipment, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     leg = models.ForeignKey(Leg, null=True, blank=True, on_delete=models.CASCADE, related_name="+")
     field = models.CharField(max_length=40)
     old_value = models.CharField(max_length=500, blank=True)

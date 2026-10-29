@@ -34,10 +34,13 @@ class AiError(Exception):
 
 @dataclass(frozen=True)
 class FieldSpec:
-    target: str  # "leg", "shipment" or "mbl" (the Load's master bill of lading)
-    kind: str  # date / time / datetime / bool / text / url
+    # Load level: "leg", "shipment", "mbl" (the Load's master bill of lading).
+    # Project level: "project", "consignee" / "shipper" (the project's default addresses).
+    target: str
+    kind: str  # date / time / datetime / bool / text / url / container / equipment / mbl / carrier
     label: str
     lock_exempt: bool = False  # editable after delivery (documents, POD)
+    attr: str = ""  # model attribute when it differs from the key
 
 
 # The only things AI may change.
@@ -66,7 +69,30 @@ FIELDS = {
     "pod_link": FieldSpec("shipment", "url", "POD 链接", lock_exempt=True),
     "empty_return_due": FieldSpec("shipment", "date", "还空期限", lock_exempt=True),
     "empty_return_date": FieldSpec("shipment", "date", "还空日期", lock_exempt=True),
+    # Filling in what was unknown when the project was created
+    "container_number": FieldSpec("shipment", "container", "柜号"),
+    "equipment": FieldSpec("shipment", "equipment", "柜型"),
+    "mbl_number": FieldSpec("shipment", "mbl", "MBL"),
+    "carrier": FieldSpec("leg", "carrier", "承运商 / 车队"),
+    # Project level
+    "start_date": FieldSpec("project", "date", "项目开始日期"),
+    "end_date": FieldSpec("project", "date", "项目结束日期"),
+    "cargo_description": FieldSpec("project", "text", "货物描述"),
+    "consignee_name": FieldSpec("consignee", "text", "送货地 名称", attr="name"),
+    "consignee_address": FieldSpec("consignee", "text", "送货地 地址", attr="address"),
+    "consignee_city": FieldSpec("consignee", "text", "送货地 城市", attr="city"),
+    "consignee_state": FieldSpec("consignee", "text", "送货地 州", attr="state"),
+    "consignee_postal_code": FieldSpec("consignee", "text", "送货地 邮编", attr="postal_code"),
+    "consignee_contact": FieldSpec("consignee", "text", "送货地 联系人", attr="contact_name"),
+    "consignee_phone": FieldSpec("consignee", "text", "送货地 电话", attr="contact_phone"),
+    "shipper_name": FieldSpec("shipper", "text", "提货地 名称", attr="name"),
+    "shipper_address": FieldSpec("shipper", "text", "提货地 地址", attr="address"),
+    "shipper_city": FieldSpec("shipper", "text", "提货地 城市", attr="city"),
+    "shipper_state": FieldSpec("shipper", "text", "提货地 州", attr="state"),
+    "shipper_postal_code": FieldSpec("shipper", "text", "提货地 邮编", attr="postal_code"),
 }
+LOAD_KEYS = [k for k, f in FIELDS.items() if f.target in ("leg", "shipment", "mbl")]
+PROJECT_KEYS = [k for k, f in FIELDS.items() if f.target in ("project", "consignee", "shipper")]
 NOTE_FIELD = "note"  # a timeline note, not a field
 
 MAX_EMAIL_CHARS = 60000
@@ -125,10 +151,25 @@ def parse_value(kind, raw):
     if raw is None:
         raise ValueError("空值")
     s = str(raw).strip()
-    if kind == "text":
+    if kind in ("text", "carrier"):
         if not s:
             raise ValueError("空值")
         return s[:200]
+    if kind == "container":
+        v = re.sub(r"[\s\-]", "", s).upper()
+        if not re.fullmatch(r"[A-Z0-9]{5,20}", v):
+            raise ValueError("不像柜号")
+        return v
+    if kind == "mbl":
+        v = re.sub(r"\s", "", s).upper()
+        if not re.fullmatch(r"[A-Z0-9\-]{5,40}", v):
+            raise ValueError("不像提单号")
+        return v
+    if kind == "equipment":
+        v = s.upper().replace("'", "").replace(" ", "").replace("-", "")
+        if v not in Shipment.Equipment.values:
+            raise ValueError("不在柜型列表里")
+        return v
     if kind == "url":
         if not re.match(r"^https?://\S+$", s):
             raise ValueError("不是网址")
@@ -192,6 +233,8 @@ def display(kind, s):
     """Canonical string -> what people read."""
     if s == "":
         return "否" if kind == "bool" else "—"
+    if kind == "equipment":
+        return dict(Shipment.Equipment.choices).get(s, s)
     v = deserialize(kind, s)
     if kind == "datetime":
         local = v.astimezone(_tz())
@@ -235,6 +278,11 @@ def match(item, cands, single=None):
     """Find the Load an extracted item is about."""
     if single is not None:
         return single
+    num = _norm(item.get("load_number"))
+    if num:
+        for s in cands:
+            if _norm(s.number) == num:
+                return s
     cntr, bln = _norm(item.get("container_number")), _norm(item.get("carrier_load_number"))
     if cntr:
         for s in cands:
@@ -247,17 +295,28 @@ def match(item, cands, single=None):
     return None
 
 
-def target_obj(spec, shipment, leg):
+def target_obj(spec, shipment, leg, project=None):
     if spec.target == "leg":
         return leg
     if spec.target == "mbl":
         return shipment.master_bl
-    return shipment
+    if spec.target == "shipment":
+        return shipment
+    project = project or (shipment.project if shipment is not None else None)
+    if project is None:
+        return None
+    if spec.target == "project":
+        return project
+    return project.default_consignee if spec.target == "consignee" else project.default_shipper
 
 
 def _current(obj, key):
     spec = FIELDS[key]
-    return serialize(spec.kind, getattr(obj, key) if obj is not None else None)
+    if spec.kind == "mbl":
+        return obj.master_bl.number if obj is not None and obj.master_bl_id else ""
+    if spec.kind == "carrier":
+        return obj.carrier.name if obj is not None and obj.carrier_id else ""
+    return serialize(spec.kind, getattr(obj, spec.attr or key) if obj is not None else None)
 
 
 # ---------------------------------------------------------------------------
@@ -313,6 +372,7 @@ RESPONSE_SCHEMA = {
             "items": {
                 "type": "OBJECT",
                 "properties": {
+                    "load_number": {"type": "STRING", "description": "系统 Load#（如 SHP-2610-0011），没有柜号的 Load 用它识别"},
                     "container_number": {"type": "STRING"},
                     "carrier_load_number": {"type": "STRING"},
                     "updates": {
@@ -320,7 +380,7 @@ RESPONSE_SCHEMA = {
                         "items": {
                             "type": "OBJECT",
                             "properties": {
-                                "field": {"type": "STRING", "format": "enum", "enum": list(FIELDS)},
+                                "field": {"type": "STRING", "format": "enum", "enum": LOAD_KEYS},
                                 "value": {"type": "STRING"},
                                 "evidence": {"type": "STRING", "description": "邮件原文中支持这个值的那句话"},
                             },
@@ -329,13 +389,27 @@ RESPONSE_SCHEMA = {
                     },
                     "note": {"type": "STRING", "description": "值得记到时间线的其他事实，中文，没有就留空"},
                 },
-                "required": ["container_number", "carrier_load_number", "updates", "note"],
+                "required": ["load_number", "container_number", "carrier_load_number", "updates", "note"],
             },
         },
         "unmatched": {"type": "STRING", "description": "邮件中提到但无法对应到任何 Load 的信息"},
+        "project_updates": {
+            "type": "ARRAY",
+            "description": "已有项目的项目级信息补全（地址、开始日期等）",
+            "items": {
+                "type": "OBJECT",
+                "properties": {
+                    "project": {"type": "STRING", "description": "项目 number（PRJ-xxxx）或项目编号（如 P-04915）"},
+                    "field": {"type": "STRING", "format": "enum", "enum": PROJECT_KEYS},
+                    "value": {"type": "STRING"},
+                    "evidence": {"type": "STRING"},
+                },
+                "required": ["project", "field", "value", "evidence"],
+            },
+        },
         "new_projects": {"type": "ARRAY", "description": "内容里每个系统中还没有的新项目一项；没有就空数组", "items": _PROJECT_SCHEMA},
     },
-    "required": ["summary", "loads", "unmatched", "new_projects"],
+    "required": ["summary", "loads", "unmatched", "project_updates", "new_projects"],
 }
 
 SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助手。用户会粘贴一封与运输相关的邮件（承运商、司机、客户或堆场发来的），以及系统里可能相关的 Load 列表。
@@ -358,6 +432,9 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
 8. evidence 填邮件里支持该值的原句（原文语言，尽量短）。
 9. 其他值得记录的事实（延误原因、故障、改约、现场情况、签收人等）用中文简短写进该 Load 的 note。
 10. 绝不提取任何金额、费率、费用。
+10b. **补全空缺**：系统里还空着的信息（柜号“待定”的 Load、缺 MBL、缺柜型、缺车队，项目的送货地/提货地地址、开始日期等）如果内容里给出了，也要输出：
+   - Load 级：container_number / mbl_number / equipment / carrier 写在该 Load 的 updates 里。没有柜号的 Load 用 load_number（系统 Load#）识别，结合项目、柜型、顺序判断是哪一个；判断不了就不要输出。
+   - 项目级：写进 project_updates（project 填项目 number 或项目编号）。地址拆开填：address 只写门牌和街道，城市、州、邮编分别填。
 11. 如果邮件和列表中的任何 Load 都无关，loads 返回空数组，在 unmatched 里说明。
 12. 如果内容是“项目开始”、新订单、新货物安排等，说的是系统里还没有的项目或货物，写进 new_projects，每个项目一项。内容里有几个不同的项目就输出几项（项目编号、客户或送货地不同就是不同项目；同一项目的多个柜子放在同一项的 loads 里）。没有新项目时 new_projects 为空数组。每一项：
    - **先看是不是已有项目的后续批次**：内容里的项目编号（如 #4560 / P-04560）、项目名或客户 + 送货地和“已有资料”里的某个已有项目对得上时，这是给已有项目补充的货，existing_project 填该项目的 number，loads 只写新增的柜子。只有对不上任何已有项目时才是新项目（existing_project 留空）。
@@ -372,20 +449,35 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
 13. 内容也可能是从表格复制或上传的数据（制表符分隔，可能带“工作表”标题）：按表头理解各列，通常每行是一个柜子 / 一车货。表里已有的柜号按规则 1–11 更新，系统里没有的柜号按规则 12 放进对应项目的 loads。"""
 
 
-def _context_block(cands, single):
+def _context_block(cands, single, scope_project=None):
     rows = []
     for s in cands:
         leg = s.current_leg
+        current = {}
+        for k in LOAD_KEYS:
+            obj = target_obj(FIELDS[k], s, leg)
+            if obj is not None or FIELDS[k].kind in ("carrier", "mbl"):
+                current[k] = display(FIELDS[k].kind, _current(obj, k))
         rows.append({
+            "load_number": s.number,
             "container_number": s.container_number,
             "carrier_load_numbers": [leg.carrier_load_number for leg in s.legs.all() if leg.carrier_load_number],
-            "project": s.project.name if s.project_id else "",
+            "project": f"{s.project.number} {s.project.name}" if s.project_id else "",
             "status": s.get_status_display(),
-            "current": {k: display(FIELDS[k].kind, _current(target_obj(FIELDS[k], s, leg), k))
-                        for k in FIELDS if target_obj(FIELDS[k], s, leg) is not None},
+            "current": current,
         })
     head = "这封邮件就是关于下面这一个 Load 的（只需输出一个 Load）。" if single else "系统里可能相关的 Load："
     text = head + "\n" + json.dumps(rows, ensure_ascii=False)
+    projects = {s.project_id: s.project for s in cands if s.project_id}
+    if scope_project is not None:
+        projects[scope_project.pk] = scope_project
+    if projects:
+        prows = []
+        for p in projects.values():
+            prows.append({"number": p.number, "project_code": p.monday_item_id, "name": p.name,
+                          "current": {k: display(FIELDS[k].kind, _current(target_obj(FIELDS[k], None, None, p), k))
+                                      for k in PROJECT_KEYS if target_obj(FIELDS[k], None, None, p) is not None}})
+        text += "\n\n这些 Load 所属的项目（项目级信息，空着的可以补全）：\n" + json.dumps(prows, ensure_ascii=False)
     if not single:
         ref = {
             "customers": list(Customer.objects.values_list("name", flat=True)[:300]),
@@ -455,9 +547,9 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
         raise AiError(f"今天已识别 {settings.TMS_AI_DAILY_LIMIT} 次，达到每人每日上限")
 
     cands = candidates(project, shipment)
-    if not cands and (project is not None or shipment is not None):
+    if not cands and shipment is not None:
         raise AiError("范围内没有 Load 可以对应")
-    context = _context_block(cands, shipment is not None)
+    context = _context_block(cands, shipment is not None, project)
     result, usage = (caller or call_gemini)(email_text, context, timezone.localdate())
 
     ext = AiExtraction.objects.create(
@@ -479,7 +571,7 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
                 continue
             spec = FIELDS[key]
             obj = target_obj(spec, s, leg)
-            if obj is None:
+            if obj is None and spec.kind != "carrier":
                 what = "MBL" if spec.target == "mbl" else "运输段"
                 unmatched.append(f"{label} 还没有{what}，无法写入「{spec.label}」")
                 continue
@@ -499,8 +591,32 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
         note = str(item.get("note") or "").strip()
         if note:
             AiChange.objects.create(extraction=ext, shipment=s, field=NOTE_FIELD, new_value=note[:1000])
+    for u in result.get("project_updates") or []:
+        key = u.get("field")
+        if key not in PROJECT_KEYS:
+            continue
+        spec = FIELDS[key]
+        p = match_project({"existing_project": u.get("project"), "monday_item_id": u.get("project")}, project)
+        if p is None:
+            unmatched.append(f"找不到项目 {u.get('project')}（{spec.label}：{u.get('value')}）")
+            continue
+        obj = target_obj(spec, None, None, p)
+        if obj is None:
+            unmatched.append(f"{p.number} 还没有{'送货地' if spec.target == 'consignee' else '提货地'}，无法写入「{spec.label}」：{u.get('value')}")
+            continue
+        try:
+            new = serialize(spec.kind, parse_value(spec.kind, u.get("value")))
+        except ValueError as e:
+            unmatched.append(f"{p.number}「{spec.label}」无法识别：{u.get('value')}（{e}）")
+            continue
+        old = _current(obj, key)
+        if new != old:
+            AiChange.objects.create(extraction=ext, project=p, field=key, old_value=old, new_value=new,
+                                    evidence=str(u.get("evidence", ""))[:500])
     ext.unmatched = "\n".join(x for x in unmatched if x)[:2000]
-    ext.save(update_fields=["unmatched"])
+    if not ext.changes.exists() and not proposals(ext):
+        ext.status = AiExtraction.State.DONE  # nothing to confirm
+    ext.save(update_fields=["unmatched", "status"])
     return ext
 
 
@@ -515,9 +631,17 @@ def blocked_reason(change, user):
     s = change.shipment
     if not can_edit_ops(user):
         return "没有编辑权限"
+    if spec.target in ("project", "consignee", "shipper"):
+        if change.project is None or target_obj(spec, None, None, change.project) is None:
+            return "项目或地址已不存在"
+        return ""
+    if spec.kind == "container":
+        dup = Shipment.objects.filter(container_number=change.new_value).exclude(pk=s.pk).first()
+        if dup:
+            return f"柜号已用在 {dup.number}"
     if not spec.lock_exempt and not can_edit_shipment_ops(user, s):
         return "Load 已送达锁定，需管理层解锁"
-    if spec.target == "leg" and (change.leg is None or change.leg.is_deleted):
+    if spec.target == "leg" and spec.kind != "carrier" and (change.leg is None or change.leg.is_deleted):
         return "运输段已不存在"
     if spec.target == "mbl" and s.master_bl_id is None:
         return "这个 Load 没有 MBL"
@@ -529,7 +653,7 @@ def apply_changes(ext, user, approve_ids):
     """Apply the ticked changes, reject the rest. Returns (applied, skipped) lists."""
     approve_ids = {int(i) for i in approve_ids}
     applied, skipped = [], []
-    pending = list(ext.changes.select_related("shipment", "leg").filter(status=AiChange.State.PENDING))
+    pending = list(ext.changes.select_related("shipment", "leg", "project").filter(status=AiChange.State.PENDING))
     by_obj = {}
     now = timezone.now()
     for c in pending:
@@ -544,17 +668,35 @@ def apply_changes(ext, user, approve_ids):
             applied.append(c)
         else:
             spec = FIELDS[c.field]
-            obj = target_obj(spec, c.shipment, c.leg)
-            key = (spec.target, obj.pk)
+            obj = target_obj(spec, c.shipment, c.leg, c.project)
+            if obj is None and spec.kind == "carrier":  # no leg yet: create one with the carrier
+                s = c.shipment
+                Leg.objects.create(
+                    shipment=s, sequence=1, origin=s.shipper, destination=s.consignee,
+                    kind=Leg.Kind.DRAYAGE if (s.service or "").startswith("DRAY") else Leg.Kind.OTR,
+                    carrier=Carrier.objects.filter(name=c.new_value).first() or Carrier.objects.create(name=c.new_value))
+                c.status = AiChange.State.APPLIED
+                applied.append(c)
+                c.decided_by, c.decided_at = user, now
+                c.save()
+                continue
+            group = "location" if spec.target in ("consignee", "shipper") else spec.target
+            key = (group, obj.pk)
             if key not in by_obj:
-                model = {"leg": Leg, "mbl": MasterBL, "shipment": Shipment}[spec.target]
+                model = {"leg": Leg, "mbl": MasterBL, "shipment": Shipment, "project": Project, "location": Location}[group]
                 by_obj[key] = model.all_objects.select_for_update().get(pk=obj.pk)
             obj = by_obj[key]
             if _current(obj, c.field) != c.old_value:
                 c.status, c.result = AiChange.State.STALE, f"识别后已被改为 {display(spec.kind, _current(obj, c.field))}，未覆盖"
                 skipped.append(c)
             else:
-                setattr(obj, c.field, deserialize(spec.kind, c.new_value))
+                value = deserialize(spec.kind, c.new_value)
+                if spec.kind == "mbl":
+                    obj.master_bl = MasterBL.objects.get_or_create(number=value)[0]
+                elif spec.kind == "carrier":
+                    obj.carrier = Carrier.objects.filter(name=value).first() or Carrier.objects.create(name=value)
+                else:
+                    setattr(obj, spec.attr or c.field, value)
                 c.status = AiChange.State.APPLIED
                 applied.append(c)
         c.decided_by, c.decided_at = user, now
@@ -568,11 +710,15 @@ def apply_changes(ext, user, approve_ids):
             for s in obj.shipments.all():
                 s.refresh_status()
     # Shipment.save() / the Leg signal recompute status and locking.
-    for s in {c.shipment for c in applied}:
+    for s in {c.shipment for c in applied if c.shipment_id}:
         items = [c for c in applied if c.shipment_id == s.pk and c.field != NOTE_FIELD]
         if items:
             text = "；".join(f"{FIELDS[c.field].label} {c.new_display}" for c in items)
             Note.objects.create(shipment=s, created_by=user, kind=Note.Kind.SYSTEM, text=f"通过 AI 邮件识别 #{ext.pk} 更新：{text}")
+    for p in {c.project for c in applied if c.project_id}:
+        items = [c for c in applied if c.project_id == p.pk]
+        text = "；".join(f"{FIELDS[c.field].label} {c.new_display}" for c in items)
+        Note.objects.create(project=p, created_by=user, kind=Note.Kind.SYSTEM, text=f"通过 AI 邮件识别 #{ext.pk} 补全：{text}")
     if not open_proposals(ext):
         ext.status = AiExtraction.State.DONE  # else a new-project proposal is still waiting
     ext.reviewed_by, ext.reviewed_at = user, now
@@ -705,6 +851,7 @@ def _clean_proposal(np, scope_project=None):
     for role in ("shipper", "consignee"):
         loc = {k: _s((np.get(role) or {}).get(k), 160) for k in LOC_FIELDS}
         loc["code"] = loc["code"][:60]
+        loc["address"] = clean_street(loc["address"], loc["city"], loc["state"], loc["postal_code"])
         loc["exists"] = bool(loc["code"]) and Location.objects.filter(code=loc["code"]).exists()
         locs[role] = loc
     start = np.get("start_date")
@@ -733,6 +880,15 @@ def _clean_proposal(np, scope_project=None):
         "start_date": start, "cargo_description": _s(np.get("cargo_description")), "notes": _s(np.get("notes"), 2000),
         "shipper": locs["shipper"], "consignee": locs["consignee"], "milestones": milestones, "loads": loads,
     }
+
+
+def clean_street(address, city, state, zip_code):
+    """'43851 Division ST Lancaster CA 93535' -> '43851 Division ST' when city/state/zip are filled separately."""
+    a = address.strip().rstrip(",")
+    for part in (zip_code, state, city):
+        if part and a.upper().endswith(part.upper()):
+            a = a[: -len(part)].rstrip(" ,")
+    return a or address
 
 
 def own_company(name):

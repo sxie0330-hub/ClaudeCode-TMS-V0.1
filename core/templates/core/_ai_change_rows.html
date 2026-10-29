@@ -1,0 +1,15 @@
+  <div class="body" style="overflow-x:auto"><table class="t">
+    <thead><tr><th style="width:32px"></th><th>项目</th><th>现在</th><th>改为</th><th>邮件依据</th><th>状态</th></tr></thead>
+    <tbody>
+    {% for c in rows %}
+    <tr>
+      <td>{% if c.status == 'PENDING' %}<input type="checkbox" name="change" value="{{ c.pk }}" {% if not c.blocked %}checked{% else %}disabled{% endif %} aria-label="采用 {{ c.label }}">{% endif %}</td>
+      <td>{{ c.label }}{% if c.leg %}<br><small class="muted">运输段 #{{ c.leg.sequence }}{% if c.leg.carrier_load_number %} · {{ c.leg.carrier_load_number }}{% endif %}</small>{% endif %}</td>
+      <td class="muted">{% if c.is_note %}—{% else %}{{ c.old_display }}{% endif %}</td>
+      <td><b>{{ c.new_display }}</b>{% if c.tz_assumed %}<br><small class="lfd-warn">邮件没写时区，按太平洋时间</small>{% endif %}</td>
+      <td class="wrap" style="max-width:360px"><small>{{ c.evidence|default:"—" }}</small></td>
+      <td>{% if c.status == 'PENDING' %}{% if c.blocked %}<span class="lfd-warn">{{ c.blocked }}</span>{% else %}待确认{% endif %}{% else %}{{ c.get_status_display }}{% if c.result %}<br><small class="muted">{{ c.result }}</small>{% endif %}{% endif %}</td>
+    </tr>
+    {% endfor %}
+    </tbody>
+  </table></div>

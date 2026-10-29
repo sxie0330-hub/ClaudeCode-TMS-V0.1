@@ -165,12 +165,29 @@ def identifiers(loads):
     return out
 
 
-def _queries(idents, since):
+def open_projects():
+    return Project.objects.filter(status__in=[Project.Status.PENDING, Project.Status.ACTIVE, Project.Status.DELIVERED]).select_related("customer")
+
+
+def project_terms(projects):
+    """{project id: (code digits, customer word)} so projects can be found before they have container numbers.
+
+    Both must appear in an e-mail: "4915" alone would match far too much."""
+    out = {}
+    for p in projects:
+        code = re.sub(r"\D", "", p.monday_item_id or "").lstrip("0")
+        word = next(iter(re.findall(r"[A-Za-z][A-Za-z\-]{2,}", p.customer.name or "")), "")
+        if len(code) >= 4 and word:
+            out[p.pk] = (code, word.upper())
+    return out
+
+
+def _queries(idents, since, pterms=None):
     after = f"after:{int(since.timestamp())}"
-    keys = sorted(idents)
-    for i in range(0, len(keys), IDS_PER_QUERY):
-        chunk = keys[i:i + IDS_PER_QUERY]
-        yield f"{after} -in:chats -in:drafts (" + " OR ".join(f'"{k}"' for k in chunk) + ")"
+    terms = [f'"{k}"' for k in sorted(idents)]
+    terms += [f'("{code}" "{word}")' for code, word in sorted(set((pterms or {}).values()))]
+    for i in range(0, len(terms), IDS_PER_QUERY):
+        yield f"{after} -in:chats -in:drafts (" + " OR ".join(terms[i:i + IDS_PER_QUERY]) + ")"
 
 
 # ---------------------------------------------------------------------------
@@ -225,14 +242,15 @@ def scan_connection(conn, caller=None, now=None):
     started = time.monotonic()
     loads = list(open_loads())
     idents = identifiers(loads)
-    if not idents:
+    pterms = project_terms(open_projects())
+    if not idents and not pterms:
         return "没有在执行的项目可对应", True
     since = conn.last_scan_at - timedelta(hours=1) if conn.last_scan_at else now - timedelta(days=FIRST_SCAN_DAYS)
     token = _access_token(conn)
 
     seen = set(conn.scanned.values_list("message_id", flat=True))
     ids = []
-    for q in _queries(idents, since):
+    for q in _queries(idents, since, pterms):
         page = None
         while len(ids) < MAX_MESSAGES:
             params = {"q": q, "maxResults": 100}
@@ -254,6 +272,9 @@ def scan_connection(conn, caller=None, now=None):
         for ident, pids in idents.items():
             if ident in hay:
                 projects |= pids
+        for pid, (code, word) in pterms.items():
+            if re.search(rf"(?<!\d){code}(?!\d)", hay) and word in hay:
+                projects.add(pid)
         if not projects:  # Gmail matched on something we don't count (e.g. a longer token); skip it
             ScannedMessage.objects.get_or_create(connection=conn, message_id=mid, defaults={"subject": msg["subject"]})
             continue

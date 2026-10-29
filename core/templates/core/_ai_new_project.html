@@ -12,7 +12,7 @@
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
       <label>项目名称 *<input name="np_name" value="{{ prop.name }}"></label>
       <label>客户 *{% if prop.customer_was_own %} <small class="lfd-warn">AI 把我方公司当成了客户，请填写真正的委托方</small>{% elif not prop.customer_exists and prop.customer %} <small class="lfd-warn">新客户</small>{% endif %}
-        <input name="np_customer" value="{{ prop.customer }}"></label>
+        <input name="np_customer" value="{{ prop.customer }}" list="customer-names" autocomplete="off"></label>
       <label>公司<select name="np_company">{% for v, l in companies %}<option value="{{ v }}" {% if v == prop.company %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
       <label>项目编号（Monday）<input name="np_monday_item_id" value="{{ prop.monday_item_id }}"></label>
       <label>客户参考号 / PO<input name="np_customer_ref" value="{{ prop.customer_ref }}"></label>
@@ -25,7 +25,7 @@
       {% with loc=prop.consignee %}
       <fieldset style="border:1px solid var(--line);border-radius:6px;padding:8px 10px">
         <legend>送货地（收货方）{% if loc.code and not loc.exists %} <small class="lfd-warn">新地址，会加入地址库</small>{% elif loc.exists %} <small class="muted">地址库已有</small>{% endif %}</legend>
-        <label>代号<input name="np_consignee_code" value="{{ loc.code }}"></label>
+        <label>代号<input name="np_consignee_code" value="{{ loc.code }}" list="loc-codes" data-loc-role="consignee" autocomplete="off" placeholder="输入几个字母，从地址库选择"></label>
         <label>名称<input name="np_consignee_name" value="{{ loc.name }}"></label>
         <label>地址<input name="np_consignee_address" value="{{ loc.address }}"></label>
         <div style="display:flex;gap:6px"><label>城市<input name="np_consignee_city" value="{{ loc.city }}"></label>
@@ -36,7 +36,7 @@
       {% with loc=prop.shipper %}
       <fieldset style="border:1px solid var(--line);border-radius:6px;padding:8px 10px">
         <legend>提货地（港口 / 发货方）{% if loc.code and not loc.exists %} <small class="lfd-warn">新地址，会加入地址库</small>{% elif loc.exists %} <small class="muted">地址库已有</small>{% endif %}</legend>
-        <label>代号<input name="np_shipper_code" value="{{ loc.code }}"></label>
+        <label>代号<input name="np_shipper_code" value="{{ loc.code }}" list="loc-codes" data-loc-role="shipper" autocomplete="off" placeholder="输入几个字母，从地址库选择"></label>
         <label>名称<input name="np_shipper_name" value="{{ loc.name }}"></label>
         <label>地址<input name="np_shipper_address" value="{{ loc.address }}"></label>
         <div style="display:flex;gap:6px"><label>城市<input name="np_shipper_city" value="{{ loc.city }}"></label>
@@ -64,7 +64,7 @@
         <td><select name="np_load_{{ forloop.counter0 }}_equipment"><option value="">—</option>{% for v, l in equipments %}<option value="{{ v }}" {% if v == ld.equipment %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
         <td><select name="np_load_{{ forloop.counter0 }}_service">{% for v, l in services %}<option value="{{ v }}" {% if v == ld.service %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></td>
         <td><input name="np_load_{{ forloop.counter0 }}_mbl" value="{{ ld.mbl }}" size="12"></td>
-        <td><input name="np_load_{{ forloop.counter0 }}_carrier" value="{{ ld.carrier }}" size="18" placeholder="待定"></td>
+        <td><input name="np_load_{{ forloop.counter0 }}_carrier" value="{{ ld.carrier }}" size="18" placeholder="待定" list="carrier-names" autocomplete="off"></td>
         <td class="wrap"><input name="np_load_{{ forloop.counter0 }}_notes" value="{{ ld.notes }}" size="28"></td>
       </tr>
       {% empty %}<tr><td colspan="7" class="muted">邮件里没有具体的柜子或车次，可以先建项目，之后再添加 Load</td></tr>{% endfor %}
