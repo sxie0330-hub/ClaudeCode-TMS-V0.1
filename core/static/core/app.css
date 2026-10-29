@@ -217,3 +217,14 @@ table.t tr.cat td { background: #f1f3f6; font-weight: 700; font-size: 12.5px; co
 .np-form table.t td:nth-child(2) input { min-width: 12em; }
 .np-form table.t td:last-child input { min-width: 16em; }
 .select-search { display: block; width: 100%; margin: 2px 0 4px; padding: 4px 8px; font: inherit; font-size: .9em; border: 1px dashed var(--line2); border-radius: 5px; background: #fbfcfe; }
+/* inquiries */
+.b-L-NEW { background: #f0eafc; color: #5925dc; }
+.b-L-SCOPING, .b-L-SOURCING { background: var(--warn-bg); color: var(--warn); }
+.b-L-QUOTED { background: var(--accent-bg); color: var(--accent); }
+.b-L-WON { background: var(--ok-bg); color: var(--ok); }
+.b-L-LOST, .b-L-CANCELLED { background: #f2f4f7; color: #98a2b3; }
+.flag { color: var(--bad); font-size: 12.5px; }
+pre.draft { white-space: pre-wrap; background: #f6f7f9; border: 1px solid var(--line); border-radius: 6px; padding: 10px; font-size: 13px; max-height: 420px; overflow: auto; }
+tr.chosen td { background: var(--ok-bg); }
+.lines-form .t input:not([type=checkbox]), .lines-form .t select { font: inherit; padding: 4px 6px; border: 1px solid var(--line2); border-radius: 4px; background: #fff; }
+.lines-form .t td { vertical-align: top; }

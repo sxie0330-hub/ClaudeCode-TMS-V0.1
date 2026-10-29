@@ -5,8 +5,15 @@ from . import units
 from .models import (
     CargoLine,
     Carrier,
+    CarrierQuote,
+    CarrierQuoteLine,
     Charge,
     Customer,
+    CustomerQuote,
+    CustomerQuoteLine,
+    Lead,
+    LeadCargo,
+    LeadLane,
     Leg,
     Location,
     MasterBL,
@@ -289,3 +296,94 @@ class ProfileRoleForm(forms.ModelForm):
 
 
 User = get_user_model()
+
+
+# --------------------------------------------------------------------------
+# Inquiries and quotes
+# --------------------------------------------------------------------------
+class LeadForm(BaseForm):
+    class Meta:
+        model = Lead
+        fields = ["title", "company", "customer", "prospect_name", "contact_name", "contact_email", "contact_phone", "source",
+                  "status", "owner", "quote_due", "customer_ref", "summary", "questions", "notes", "lost_reason"]
+
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
+        self.fields["owner"].queryset = get_user_model().objects.filter(
+            profile__role__in=["MGMT", "OP", "RFQ"], is_active=True).order_by("first_name", "email")
+
+    def clean(self):
+        data = super().clean()
+        if not data.get("customer") and not (data.get("prospect_name") or "").strip():
+            self.add_error("prospect_name", "选一个已有客户，或者填写新客户名称")
+        return data
+
+
+class LeadLaneForm(BaseForm):
+    class Meta:
+        model = LeadLane
+        fields = ["sequence", "origin", "origin_zip", "destination", "destination_zip", "service", "equipment", "trucks",
+                  "ready_date", "deliver_by", "notes"]
+
+
+class LeadCargoForm(BaseForm):
+    weight_lbs = MeasureField(units.parse_weight_lbs, units.WEIGHT_HELP, "如 44000 或 20 t", label="每件重量 (lbs)")
+    length_ft = MeasureField(units.parse_length_ft, units.LENGTH_HELP, "如 40 或 13'6\"", label="长 (ft)")
+    width_ft = MeasureField(units.parse_length_ft, units.LENGTH_HELP, "如 8.5 或 102 in", label="宽 (ft)")
+    height_ft = MeasureField(units.parse_length_ft, units.LENGTH_HELP, "如 9.5 或 2.9 m", label="高 (ft)")
+
+    class Meta:
+        model = LeadCargo
+        fields = ["lane", "description", "qty", "handling_type", "weight_lbs", "length_ft", "width_ft", "height_ft", "hazmat", "notes"]
+
+    def __init__(self, *args, lead=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        lead = lead or getattr(self.instance, "lead", None)
+        if lead is not None:
+            self.fields["lane"].queryset = lead.lanes.all()
+
+
+class CarrierQuoteForm(BaseForm):
+    class Meta:
+        model = CarrierQuote
+        fields = ["carrier", "carrier_name", "contact_email", "lane", "status", "equipment", "per_truck", "valid_until",
+                  "transit", "conditions", "reply_text"]
+
+    def __init__(self, *args, lead=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        lead = lead or getattr(self.instance, "lead", None)
+        if lead is not None:
+            self.fields["lane"].queryset = lead.lanes.all()
+
+    def clean(self):
+        data = super().clean()
+        if not data.get("carrier") and not (data.get("carrier_name") or "").strip():
+            self.add_error("carrier_name", "选一个已有承运商，或者填写名称")
+        return data
+
+
+class CustomerQuoteForm(BaseForm):
+    class Meta:
+        model = CustomerQuote
+        fields = ["status", "style", "valid_until", "show_pdf_totals", "intro", "scope_text", "assumptions", "terms"]
+        widgets = {k: forms.Textarea(attrs={"rows": 4}) for k in ("intro", "scope_text", "assumptions", "terms")}
+
+
+def carrier_quote_lines_formset():
+    return forms.inlineformset_factory(
+        CarrierQuote, CarrierQuoteLine, fields=["charge_type", "description", "quantity", "unit_price", "is_estimate"],
+        extra=3, can_delete=True,
+        widgets={"description": forms.TextInput(attrs={"size": 40}), "quantity": forms.NumberInput(attrs={"style": "width:70px"}),
+                 "unit_price": forms.NumberInput(attrs={"style": "width:110px"})})
+
+
+def customer_quote_lines_formset():
+    return forms.inlineformset_factory(
+        CustomerQuote, CustomerQuoteLine,
+        fields=["section", "lane", "charge_type", "description", "quantity", "unit", "unit_cost", "unit_price", "is_optional", "position"],
+        extra=2, can_delete=True, labels={"position": "排序"},
+        widgets={"lane": forms.Select(attrs={"style": "max-width:150px"}), "charge_type": forms.Select(attrs={"style": "max-width:150px"}),
+                 "unit": forms.Select(attrs={"style": "max-width:110px"}),
+                 "section": forms.TextInput(attrs={"size": 14, "placeholder": "可空"}), "description": forms.TextInput(attrs={"size": 26}),
+                 "quantity": forms.NumberInput(attrs={"style": "width:64px"}), "unit_cost": forms.NumberInput(attrs={"style": "width:100px"}),
+                 "unit_price": forms.NumberInput(attrs={"style": "width:100px"}), "position": forms.NumberInput(attrs={"style": "width:52px"})})

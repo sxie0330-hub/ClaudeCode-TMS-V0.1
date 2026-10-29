@@ -4,6 +4,7 @@
   操作 OP     : edit operations + master data, see/edit AP
   应付 AP     : read operations, see/edit AP
   应收 AR     : read operations, see/edit AR — never sees AP
+  询报价 RFQ  : inquiries and quotes (incl. RFQ-stage costs); read operations
 
 Money visibility is enforced everywhere money can surface: charge tables,
 timeline/audit entries, CSV export and search.
@@ -34,6 +35,11 @@ def is_management(user):
 
 def can_edit_ops(user):
     return role_of(user) in (Role.MANAGEMENT, Role.OP)
+
+
+def can_quote(user):
+    """Inquiries and quotes: RFQ / sales, operations and management. RFQ-stage costs are visible to all three."""
+    return role_of(user) in (Role.MANAGEMENT, Role.OP, Role.RFQ)
 
 
 def visible_sides(user):

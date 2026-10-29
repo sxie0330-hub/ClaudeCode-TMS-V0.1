@@ -1,0 +1,25 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}成单 {{ lead.number }}{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'lead_list' %}">询报价</a> / <a href="{{ lead.get_absolute_url }}">{{ lead.number }}</a> / 成单</div>
+<div class="head"><h1>成单 → 转成项目</h1></div>
+<form method="post" class="panel form">{% csrf_token %}<div class="body">
+  <p class="muted" style="margin-top:0">会建立：项目、{{ trucks }} 个 Load（每车一个）、货物明细、运输段（承运商 + 计划日期）、应付（来自选中的承运商报价）、应收（来自选中的客户报价）。
+    “视情况发生”的费用不会自动录入，发生时再加。新地址会加入地址库，新客户会自动建立。</p>
+  <div class="fields">
+    <div class="f"><label for="cv-name">项目名称</label><input id="cv-name" name="name" value="{{ lead.title }}"></div>
+    <div class="f"><label for="cv-owner">交给哪位操作负责</label><select id="cv-owner" name="owner"><option value="">— 稍后在项目里指定 —</option>
+      {% for u in ops %}<option value="{{ u.pk }}" {% if default_owner and u.pk == default_owner.pk %}selected{% endif %}>{{ u.get_full_name|default:u.email }}</option>{% endfor %}</select></div>
+    <div class="f"><label for="cv-cq">客户报价（生成应收）</label><select id="cv-cq" name="customer_quote"><option value="">— 不录应收 —</option>
+      {% for q in customer_quotes %}<option value="{{ q.pk }}" {% if default_cq and q.pk == default_cq.pk %}selected{% endif %}>{{ q.number }} · {{ q.get_status_display }} · {{ q.total|money }}</option>{% endfor %}</select></div>
+  </div>
+  <h3 style="font-size:.95rem;margin:14px 0 6px">每一段用哪家承运商（生成运输段和应付）</h3>
+  {% for lane, options, chosen in lane_rows %}
+  <div class="f" style="margin-bottom:8px"><label for="cv-l{{ lane.pk }}">第 {{ lane.sequence }} 段：{{ lane.origin }} → {{ lane.destination }}（{{ lane.trucks }} 车）</label>
+    <select id="cv-l{{ lane.pk }}" name="lane_{{ lane.pk }}"><option value="">— 承运商待定 —</option>
+    {% for q in options %}<option value="{{ q.pk }}" {% if chosen and q.pk == chosen.pk %}selected{% endif %}>{{ q.carrier_label }} · {{ q.get_status_display }}{% if q.total %} · {{ q.total|money }}{% if q.per_truck %}/车{% endif %}{% endif %}</option>{% endfor %}</select></div>
+  {% empty %}<p class="lfd-warn">还没有运输段，请先在询价里加。</p>{% endfor %}
+  <p style="margin-top:12px"><button class="primary" type="submit">确认成单，建立项目</button> <a class="btn" href="{{ lead.get_absolute_url }}">取消</a></p>
+</div></form>
+{% endblock %}

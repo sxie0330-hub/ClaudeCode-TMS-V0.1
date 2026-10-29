@@ -1,0 +1,30 @@
+{% extends "core/base.html" %}
+{% block title %}询价邮件 {{ lead.number }}{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'lead_list' %}">询报价</a> / <a href="{{ lead.get_absolute_url }}">{{ lead.number }}</a> / 找车询价</div>
+<div class="head"><h1>给承运商的询价邮件</h1></div>
+<div class="card" style="background:#fffbf3">TMS 不会替你发邮件。复制下面的内容，或者点“在 Gmail 打开”，核对后由你自己点发送。邮件里不包含客户名称。</div>
+{% if lanes|length > 1 %}<form method="get" class="filters">{% for ln in lanes %}<label><input type="checkbox" name="lanes" value="{{ ln.pk }}" {% if ln in use %}checked{% endif %}> 第 {{ ln.sequence }} 段</label>{% endfor %}<button type="submit">只询这几段</button></form>{% endif %}
+<div class="panel"><header><h2>邮件草稿</h2><div class="actions"><button class="sm" type="button" data-copy="rfq-all">复制主题 + 正文</button>
+  <a class="btn sm" href="{{ gmail_bcc }}" target="_blank" rel="noopener">在 Gmail 打开（自己填收件人 / 密送）</a></div></header>
+  <div class="body"><p><b>主题：</b><span id="rfq-subject">{{ subject }}</span></p><pre class="draft" id="rfq-body">{{ body }}</pre>
+  <textarea id="rfq-all" hidden>{{ subject }}
+
+{{ body }}</textarea></div></div>
+
+<form method="post" class="panel">{% csrf_token %}{% for ln in use %}<input type="hidden" name="lanes" value="{{ ln.pk }}">{% endfor %}
+  <header><h2>发给哪些承运商</h2>
+    <div class="actions"><select onchange="location.search='?kind='+this.value" aria-label="承运商类型"><option value="">全部类型</option>{% for v, l in kinds %}<option value="{{ v }}" {% if kind == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></div></header>
+  <div class="tablewrap"><table class="t"><thead><tr><th></th><th>承运商</th><th>类型</th><th>联系人 / 邮箱</th><th>常跑线路 / 设备</th><th></th></tr></thead><tbody>
+  {% for c, url in rows %}<tr><td><input type="checkbox" name="carriers" value="{{ c.pk }}" aria-label="{{ c.name }}"></td><td><b>{{ c.name }}</b></td><td>{{ c.get_kind_display }}</td>
+    <td>{{ c.contact_name }} {{ c.contact_email|default:"（没有邮箱）" }}</td><td class="wrap" style="max-width:320px;font-size:12.5px">{{ c.dispatch_notes|truncatechars:120 }}</td>
+    <td>{% if url %}<a href="{{ url }}" target="_blank" rel="noopener">在 Gmail 打开</a>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="muted">承运商库里没有这类承运商</td></tr>{% endfor %}</tbody></table></div>
+  <div class="body"><label for="extra">其他邮箱（不在承运商库里的，用逗号或换行分开）</label><textarea id="extra" name="extra" rows="2"></textarea>
+    <p><button class="primary" type="submit">记录为“已询价”</button> <span class="muted" style="font-size:13px">发完邮件后点这里，方便跟进谁还没回价</span></p></div>
+</form>
+{% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll("[data-copy]").forEach(function (b) { b.addEventListener("click", function () {
+  navigator.clipboard.writeText(document.getElementById(b.dataset.copy).value).then(function () { b.textContent = "已复制"; }); }); });
+</script>{% endblock %}
