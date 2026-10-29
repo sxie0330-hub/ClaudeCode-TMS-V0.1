@@ -1091,3 +1091,13 @@ class MailScanTests(Base):
         from .models import GmailConnection
 
         self.assertFalse(GmailConnection.objects.exists())
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiTemplateButtonTests(Base):
+    def test_template_button(self):
+        self.login(self.op)
+        r = self.client.get(reverse("ai_new"))
+        self.assertContains(r, "插入新建项目模板")
+        self.assertContains(r, "客户（委托方，不要写 PTT/ATS）")
+        self.assertContains(r, "<title>AI 识别邮件 · TMS</title>", html=False)

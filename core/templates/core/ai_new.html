@@ -1,5 +1,6 @@
 {% extends "core/base.html" %}
 {% block title %}AI 识别邮件{% endblock %}
+
 {% block content %}
 <div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'ai_list' %}">AI 识别</a> / 新识别</div>
 <div class="head"><h1>粘贴邮件，AI 识别</h1>
@@ -13,7 +14,37 @@
   {% elif project %}<input type="hidden" name="project" value="{{ project.pk }}">
   <p>范围：项目 <b><a href="{{ project.get_absolute_url }}">{{ project.name }}</a></b> 下的 Load（按柜号或承运商单号自动对应）</p>
   {% else %}<p>范围：所有未结案的 Load（按柜号或承运商单号自动对应）。从项目或 Load 页面进入会更准确。</p>{% endif %}
-  <label for="ai-text">邮件内容（可以整封复制，含往来回复）</label>
+  <div style="display:flex;justify-content:space-between;align-items:end;gap:8px;flex-wrap:wrap">
+    <label for="ai-text" style="margin:0">邮件内容（可以整封复制，含往来回复）</label>
+    <button type="button" class="sm" id="np-tpl-btn">插入新建项目模板</button>
+  </div>
+  <template id="np-tpl">【新项目】
+项目编号：#
+我方公司：PTT / ATS
+客户（委托方，不要写 PTT/ATS）：
+客户参考号 / PO：
+开始日期：
+
+货物描述：
+
+提货地（码头 / 堆场 / 发货方）：
+  名称：
+  地址：
+
+送货地（收货方）：
+  名称：
+  地址：
+  现场联系人 / 电话：
+
+时间节点：
+  船到港 ETA：
+
+Load 明细（每个柜子 / 每车货一行；不知道写"待定"）：
+  1. 柜号  | 柜型  | 服务（拖柜直送 / 拖柜+堆场+OTR / OTR …） | MBL  | 车队  | 备注
+  2. 
+
+备注 / 待确认事项：
+</template>
   <textarea id="ai-text" name="text" rows="16" maxlength="{{ max_chars }}"
     placeholder="例如：SHPU2204302 picked up 10/9, arrived at site 10/13 09:20 ET, unloaded…">{{ text }}</textarea>
   <label for="ai-sheet" style="margin-top:8px">或 / 同时上传表格（.xlsx、.csv；Google Sheets 用 文件 → 下载 → .xlsx）</label>
@@ -23,4 +54,18 @@
   <button class="primary" type="submit" onclick="this.disabled=true;this.textContent='识别中…';this.form.submit()">开始识别</button>
 </form>
 {% endif %}
+{% endblock %}
+{% block scripts %}
+<script>
+(function () {
+  var btn = document.getElementById("np-tpl-btn"), ta = document.getElementById("ai-text"), tpl = document.getElementById("np-tpl");
+  if (!btn || !ta || !tpl) return;
+  btn.addEventListener("click", function () {
+    var t = tpl.innerHTML.replace(/&amp;/g, "&").replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+    ta.value = ta.value.trim() ? t + "\n\n" + ta.value : t;
+    ta.focus();
+    ta.setSelectionRange(t.indexOf("#") + 1, t.indexOf("#") + 1);
+  });
+})();
+</script>
 {% endblock %}
