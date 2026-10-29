@@ -58,6 +58,11 @@ CARRIER_ACK = (
     "documentation in the vehicle. Property described above is received in good order, except as noted."
 )
 CONSIGNEE_ACK = "Received the above described property in apparent good order, except as noted."
+DECLARED_VALUE = (
+    "Where the rate is dependent on value, shippers are required to state specifically in writing the agreed or "
+    "declared value of the property as follows: \"The agreed or declared value of the property is specifically "
+    "stated by the shipper to be not exceeding $__________ per __________.\""
+)
 
 
 # BOLs are English-only. The built-in PDF fonts cover Windows-1252 (Latin)
@@ -149,6 +154,38 @@ def fmt_num(d):
     return f"{d:,.0f}" if d == d.to_integral() else f"{d:,.1f}"
 
 
+def _appt(day, at, confirmed):
+    text = " ".join(x for x in [day.strftime("%m/%d/%Y") if day else "", at.strftime("%H:%M") if at else ""] if x)
+    if text and confirmed:
+        text += " (confirmed)"
+    return text
+
+
+def delivery_notes(leg, shipment):
+    """Lines for the pickup & delivery box, from what the TMS already knows."""
+    out = []
+    if leg:
+        p = _appt(leg.scheduled_pickup, leg.pickup_appt, leg.pickup_appt_confirmed)
+        if p:
+            out.append(f"Pickup appt: {p}")
+        d = _appt(leg.scheduled_delivery, leg.delivery_appt, leg.delivery_appt_confirmed)
+        if d:
+            out.append(f"Delivery appt: {d}")
+    dest = (leg.destination if leg and leg.destination else None) or shipment.consignee
+    if dest:
+        contact = " ".join(x for x in [english(dest.contact_name), english(dest.contact_phone)] if x)
+        if contact:
+            out.append(f"Call consignee before arrival: {contact}")
+        hours = english(dest.hours, drop_lines=True)
+        if hours:
+            out.append(f"Receiving hours: {hours}")
+    if shipment.container_number and shipment.empty_return_location:
+        ret = english(shipment.empty_return_location.name) or shipment.empty_return_location.code
+        due = f" by {shipment.empty_return_due.strftime('%m/%d/%Y')}" if shipment.empty_return_due else ""
+        out.append(f"Return empty to: {ret}{due}")
+    return out
+
+
 def bol_context(shipment, leg=None):
     """Resolve who/what/where for one BOL. A BOL belongs to one leg (one truck move)."""
     project = shipment.project
@@ -170,10 +207,11 @@ def bol_context(shipment, leg=None):
         ),
         "emergency": (project.emergency_contact if project else ""),
         "company": company_info(project),
+        "delivery_notes": delivery_notes(leg, shipment),
     }
 
 
-def build_page(ctx):
+def build_page(ctx, blank_rows=3):
     sh = ctx["shipment"]
     leg = ctx["leg"]
     carrier = ctx["carrier"]
@@ -210,7 +248,9 @@ def build_page(ctx):
         refs.append([P("", s_label), P(" · ".join(sub), s_cell)])
     equipment = " / ".join(x for x in [sh.get_equipment_display() if sh.equipment else "", leg.equipment if leg else ""] if x)
     refs += [
-        kv("Container / Trailer #", sh.container_number or (leg.truck_trailer if leg else "")),
+        kv("Driver / Phone", " · ".join(x for x in [english(leg.driver_name), english(leg.driver_phone)] if x) if leg else ""),
+        kv("Truck / Trailer #", leg.truck_trailer if leg else ""),
+        kv("Container #", sh.container_number),
         kv("Seal #", sh.seal_number),
         kv("Equipment", equipment),
         kv("Ocean B/L (MBL)", sh.master_bl.number if sh.master_bl else ""),
@@ -230,17 +270,7 @@ def build_page(ctx):
     ref2_tbl = Table(ref2, colWidths=[1.25 * inch, right_w - 1.25 * inch])
     ref2_tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]))
 
-    appt = []
-    if leg and leg.pickup_appt:
-        appt.append(f"Pickup appt: {leg.pickup_appt.strftime('%H:%M')}")
-    if leg and (leg.scheduled_delivery or leg.delivery_appt):
-        d = leg.scheduled_delivery.strftime("%m/%d/%Y") if leg.scheduled_delivery else ""
-        t = leg.delivery_appt.strftime("%H:%M") if leg.delivery_appt else ""
-        appt.append(f"Delivery appt: {d} {t}".strip())
-
     ship_to = party_block("SHIP TO (CONSIGNEE)", ctx["ship_to"])
-    if appt:
-        ship_to.append(P(" · ".join(appt), s_cell))
 
     bill_to = [P("THIRD PARTY FREIGHT CHARGES BILL TO", s_label), P(co["name"], s_value_b)]
     if co["address"]:
@@ -258,12 +288,17 @@ def build_page(ctx):
     parties.setStyle(box_style())
     story += [parties, Spacer(1, 5)]
 
-    # --- Special instructions ---------------------------------------------
-    instr = ctx["instructions"]
-    if instr:
-        t = Table([[P("SPECIAL INSTRUCTIONS", s_label)], [P(instr, s_cell)]], colWidths=[W])
-        t.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
-        story += [t, Spacer(1, 5)]
+    # --- Driver / delivery instructions (always printed; blank lines to write on)
+    blank = "_" * 52
+    driver = [P(x, s_cell) for x in (ctx["instructions"] or "").split("\n") if x.strip()]
+    delivery = [P(x, s_cell) for x in ctx["delivery_notes"]]
+    rows_n = max(3, len(driver), len(delivery))
+    driver += [P(blank, s_cell)] * (rows_n - len(driver))
+    delivery += [P(blank, s_cell)] * (rows_n - len(delivery))
+    t = Table([[P("DRIVER / SPECIAL INSTRUCTIONS", s_label), P("PICKUP & DELIVERY INSTRUCTIONS", s_label)], [driver, delivery]],
+              colWidths=[W / 2, W / 2])
+    t.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
+    story += [t, Spacer(1, 5)]
 
     # --- Commodity table ----------------------------------------------------
     cols = [0.55, 0.7, 0.42, 0.33, 2.62, 1.2, 0.85, 0.55, 0.45]
@@ -294,7 +329,7 @@ def build_page(ctx):
             P(line.nmfc, s_cell_c),
             P(line.freight_class, s_cell_c),
         ])
-    while len(rows) < 4:
+    for _ in range(blank_rows):
         rows.append([""] * 9)
     rows.append([
         P(str(total_qty), s_cell_c), P("", s_cell), P(str(total_pcs or ""), s_cell_c), P("", s_cell),
@@ -308,10 +343,38 @@ def build_page(ctx):
         ("VALIGN", (0, 0), (-1, 0), "MIDDLE"),
         ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white]),
     ]))
-    story += [t, Spacer(1, 4)]
+    story += [t, Spacer(1, 5)]
+
+    # --- Loading & securement checkboxes -------------------------------------
+    permits = "[X] Required" if leg and leg.permits_required else "[ ] Required"
+    checks = Table([
+        [P("TRAILER LOADED", s_label), P("FREIGHT COUNTED", s_label), P("SECUREMENT", s_label), P("PERMITS / ESCORTS", s_label)],
+        [P("[ ] By shipper\n[ ] By driver", s_cell),
+         P("[ ] By shipper\n[ ] By driver / pallets said to contain\n[ ] By driver / pieces", s_cell),
+         P("[ ] Chains  [ ] Straps  [ ] Tarped\nTie-down points: ______", s_cell),
+         P(f"{permits}\nPermit #: ____________", s_cell)],
+    ], colWidths=[W * 0.2, W * 0.32, W * 0.26, W * 0.22])
+    checks.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
+    story += [checks, Spacer(1, 5)]
+
+    # --- Driver time log (detention record) ----------------------------------
+    def tm(dt):
+        return timezone.localtime(dt).strftime("%m/%d/%Y %H:%M") if dt else "____/____  ____:____"
+
+    log = Table([
+        [P("DRIVER TIME LOG", s_label), P("Arrival (date / time)", s_head), P("Departure (date / time)", s_head),
+         P("Waiting time", s_head), P("Site signature", s_head)],
+        [P("At shipper / pickup", s_cell), P(tm(leg.pickup_arrived_at if leg else None), s_cell_c),
+         P(tm(leg.pickup_departed_at if leg else None), s_cell_c), P("______ hrs", s_cell_c), P("", s_cell)],
+        [P("At consignee / delivery", s_cell), P(tm(leg.delivery_arrived_at if leg else None), s_cell_c),
+         P(tm(leg.delivery_departed_at if leg else None), s_cell_c), P("______ hrs", s_cell_c), P("", s_cell)],
+    ], colWidths=[W * 0.22, W * 0.21, W * 0.21, W * 0.13, W * 0.23])
+    log.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY), ("TOPPADDING", (0, 1), (-1, -1), 5), ("BOTTOMPADDING", (0, 1), (-1, -1), 5)]))
+    story += [log, Spacer(1, 5)]
 
     # --- Legal / hazmat ---------------------------------------------------
-    legal = [[P(LIABILITY_NOTE, ParagraphStyle("ln", parent=s_label, alignment=TA_CENTER))], [P(RECEIVED_CLAUSE, s_small)]]
+    legal = [[P(LIABILITY_NOTE, ParagraphStyle("ln", parent=s_label, alignment=TA_CENTER))], [P(RECEIVED_CLAUSE, s_small)],
+             [P(DECLARED_VALUE, s_small)]]
     if any_hazmat:
         legal.append([P(
             "HAZARDOUS MATERIALS: Shipment contains hazardous materials marked \"X\" above. "
@@ -343,6 +406,25 @@ def build_page(ctx):
     return story
 
 
+def _height(flowables, width, height):
+    return sum(f.wrap(width, height)[1] + f.getSpaceBefore() + f.getSpaceAfter() for f in flowables)
+
+
+def fit_page(ctx, width, height):
+    """One BOL that fills a full page: pad the commodity table with blank rows
+    until the next row would no longer fit. Long cargo lists still flow on."""
+    avail = height - 14  # frame padding
+    page = build_page(ctx, 1)
+    if _height(page, width, avail) > avail:
+        return page
+    for rows in range(2, 40):
+        trial = build_page(ctx, rows)
+        if _height(trial, width, avail) > avail:
+            break
+        page = trial
+    return page
+
+
 def render_bols(contexts):
     """contexts: list of bol_context() dicts → PDF bytes, one page (or more) per BOL."""
     buf = BytesIO()
@@ -354,6 +436,6 @@ def render_bols(contexts):
     for i, ctx in enumerate(contexts):
         if i:
             story.append(PageBreak())
-        story += build_page(ctx)
+        story += fit_page(ctx, doc.width, doc.height)
     doc.build(story)
     return buf.getvalue()
