@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from . import ai
-from .models import AiChange, AiExtraction, Company, Project, Shipment
+from .models import AiChange, AiExtraction, Carrier, Company, Customer, Location, Project, Shipment
 from .permissions import can_edit_ops
 from .views import _need
 
@@ -39,19 +39,25 @@ def ai_new(request):
 def ai_review(request, pk):
     _need(can_edit_ops(request.user))
     ext = get_object_or_404(AiExtraction, pk=pk)
-    changes = list(ext.changes.select_related("shipment", "leg"))
-    groups = OrderedDict()
+    changes = list(ext.changes.select_related("shipment", "leg", "project"))
+    groups, pgroups = OrderedDict(), OrderedDict()
     for c in changes:
         c.blocked = ai.blocked_reason(c, request.user) if c.status == AiChange.State.PENDING else ""
-        groups.setdefault(c.shipment, []).append(c)
+        if c.shipment_id:
+            groups.setdefault(c.shipment, []).append(c)
+        else:
+            pgroups.setdefault(c.project, []).append(c)
     props = ai.proposals(ext)
     created_ids = [p["project_id"] for p in props if p["state"] == "created"]
     created = list(Project.objects.filter(pk__in=created_ids))
     open_props = [p for p in props if p["state"] == "open"] if ext.status == AiExtraction.State.PENDING else []
     return render(request, "core/ai_review.html", {
-        "ext": ext, "groups": groups, "pending": any(c.status == AiChange.State.PENDING for c in changes),
+        "ext": ext, "groups": groups, "pgroups": pgroups, "pending": any(c.status == AiChange.State.PENDING for c in changes),
         "props": open_props, "prop_total": len(props), "created": created,
         "open_projects": Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")[:200] if open_props else [],
+        "loc_data": list(Location.objects.values("code", "name", "address", "city", "state", "postal_code")) if open_props else [],
+        "customer_names": list(Customer.objects.values_list("name", flat=True)) if open_props else [],
+        "carrier_names": list(Carrier.objects.values_list("name", flat=True)) if open_props else [],
         "companies": Company.choices, "equipments": Shipment.Equipment.choices, "services": Shipment.Service.choices,
     })
 

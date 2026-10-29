@@ -1197,3 +1197,107 @@ class AiTemplateButtonTests(Base):
         self.assertContains(r, "插入新建项目模板")
         self.assertContains(r, "客户（委托方，不要写 PTT/ATS）")
         self.assertContains(r, "<title>AI 识别邮件 · TMS</title>", html=False)
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiFillInTests(Base):
+    def res(self, loads=(), project_updates=()):
+        return {"summary": "补全", "unmatched": "", "new_projects": [], "loads": list(loads), "project_updates": list(project_updates)}
+
+    def test_placeholder_load_gets_container_mbl_carrier_and_type(self):
+        from . import ai
+
+        ph = Shipment.objects.create(customer=self.customer, project=self.project, consignee=self.site)  # no container, no leg
+        item = {"load_number": ph.number, "container_number": "", "carrier_load_number": "", "note": "",
+                "updates": [{"field": "container_number", "value": "TGHU 1234567", "evidence": "cntr TGHU1234567"},
+                            {"field": "mbl_number", "value": "shz777", "evidence": "MBL SHZ777"},
+                            {"field": "equipment", "value": "40' HC", "evidence": "40HC"},
+                            {"field": "carrier", "value": "B E Jordan Trucking", "evidence": "BE Jordan will pull"}]}
+        ext = ai.extract("x", self.op, project=self.project, caller=fake_gemini(self.res([item])))
+        self.assertEqual(ext.changes.count(), 4)
+        applied, skipped = ai.apply_changes(ext, self.op, list(ext.changes.values_list("pk", flat=True)))
+        self.assertEqual((len(applied), len(skipped)), (4, 0))
+        ph.refresh_from_db()
+        self.assertEqual((ph.container_number, ph.equipment, ph.master_bl.number), ("TGHU1234567", "40HC", "SHZ777"))
+        self.assertEqual(ph.legs.get().carrier.name, "B E Jordan Trucking")
+
+    def test_duplicate_container_is_blocked(self):
+        from . import ai
+        from .models import AiChange
+
+        ph = Shipment.objects.create(customer=self.customer, project=self.project)
+        item = {"load_number": ph.number, "container_number": "", "carrier_load_number": "", "note": "",
+                "updates": [{"field": "container_number", "value": "CYMU2523606", "evidence": "x"}]}
+        ext = ai.extract("x", self.op, project=self.project, caller=fake_gemini(self.res([item])))
+        ai.apply_changes(ext, self.op, list(ext.changes.values_list("pk", flat=True)))
+        self.assertEqual(ext.changes.get().status, AiChange.State.BLOCKED)
+
+    def test_project_level_fill_in(self):
+        from . import ai
+
+        site = Location.objects.create(code="Shakopee", city="Shakopee", state="MN")
+        self.project.default_consignee = site
+        self.project.monday_item_id = "P-04915"
+        self.project.save()
+        ups = [{"project": "P-04915", "field": "consignee_address", "value": "1000 Blue Lake Rd", "evidence": "deliver to 1000 Blue Lake Rd"},
+               {"project": "#4915", "field": "consignee_postal_code", "value": "55379", "evidence": "55379"},
+               {"project": "P-04915", "field": "start_date", "value": "2026-11-20", "evidence": "start 11/20"},
+               {"project": "P-09999", "field": "start_date", "value": "2026-11-20", "evidence": "?"}]
+        ext = ai.extract("x", self.op, caller=fake_gemini(self.res(project_updates=ups)))
+        self.assertEqual(ext.changes.filter(project=self.project).count(), 3)
+        self.assertIn("找不到项目 P-09999", ext.unmatched)
+        self.login(self.op)
+        self.assertContains(self.client.get(ext.get_absolute_url()), "项目信息补全")
+        ai.apply_changes(ext, self.op, list(ext.changes.values_list("pk", flat=True)))
+        site.refresh_from_db()
+        self.project.refresh_from_db()
+        self.assertEqual((site.address, site.postal_code), ("1000 Blue Lake Rd", "55379"))
+        self.assertEqual(self.project.start_date, date(2026, 11, 20))
+        self.assertTrue(self.project.timeline_notes.filter(text__contains="补全").exists())
+
+    def test_project_scope_without_loads_is_allowed(self):
+        from . import ai
+
+        empty = Project.objects.create(customer=self.customer, name="Empty")
+        ext = ai.extract("x", self.op, project=empty, caller=fake_gemini(self.res()))
+        self.assertIsNotNone(ext.pk)
+
+    def test_nothing_found_is_closed_and_stuck_ones_can_be_closed(self):
+        from . import ai
+        from .models import AiExtraction
+
+        ext = ai.extract("x", self.op, caller=fake_gemini(self.res()))
+        self.assertEqual(ext.status, AiExtraction.State.DONE)
+        stuck = AiExtraction.objects.create(created_by=self.op, source_text="old", raw_result={"new_project": {"is_new": False}})
+        self.login(self.op)
+        r = self.client.get(stuck.get_absolute_url())
+        self.assertContains(r, "关闭这次识别")
+        self.client.post(reverse("ai_apply", args=[stuck.pk]), {"action": "discard"})
+        stuck.refresh_from_db()
+        self.assertEqual(stuck.status, AiExtraction.State.DISCARDED)
+
+    def test_clean_street_and_suggestion_lists(self):
+        from . import ai
+
+        self.assertEqual(ai.clean_street("43851 Division ST Lancaster CA 93535", "LANCASTER", "CA", "93535"), "43851 Division ST")
+        self.assertEqual(ai.clean_street("504 Wally Kay Way", "MOAPA", "NV", "89166"), "504 Wally Kay Way")
+        ext = ai.extract("x", self.op, caller=fake_gemini(NEW_PROJECT_RESULT))
+        self.login(self.op)
+        r = self.client.get(ext.get_absolute_url())
+        self.assertContains(r, 'list="loc-codes"')
+        self.assertContains(r, '<datalist id="customer-names">')
+        self.assertContains(r, 'id="loc-data"')
+
+
+class MailScanProjectTermTests(Base):
+    def test_project_code_and_customer_word(self):
+        from datetime import datetime, timezone as dt_tz
+
+        from . import mailscan
+
+        self.project.monday_item_id = "P-04915"
+        self.project.save()
+        terms = mailscan.project_terms(mailscan.open_projects())
+        self.assertEqual(terms[self.project.pk], ("4915", "TRINA"))
+        q = list(mailscan._queries({}, datetime(2026, 10, 28, tzinfo=dt_tz.utc), terms))[0]
+        self.assertIn('("4915" "TRINA")', q)
