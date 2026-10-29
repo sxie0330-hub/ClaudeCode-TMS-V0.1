@@ -1,0 +1,37 @@
+# Manual: show recent Cloud Run errors (4xx/5xx requests and error logs).
+# GitHub -> Actions -> Recent errors -> Run workflow.
+name: Recent errors
+
+on:
+  workflow_dispatch:
+    inputs:
+      minutes:
+        description: How many minutes back
+        default: "180"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  logs:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/668605433770/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deployer@atsstms.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Requests that returned 4xx / 5xx
+        run: |
+          SINCE=$(date -u -d "-${{ inputs.minutes || 180 }} min" +%Y-%m-%dT%H:%M:%SZ)
+          gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"tms\" AND httpRequest.status>=400 AND timestamp>=\"$SINCE\"" \
+            --project atsstms --limit 100 --order desc \
+            --format 'value(timestamp,httpRequest.status,httpRequest.requestMethod,httpRequest.requestUrl,httpRequest.referer)' | tac
+      - name: Error logs from the app
+        run: |
+          SINCE=$(date -u -d "-${{ inputs.minutes || 180 }} min" +%Y-%m-%dT%H:%M:%SZ)
+          gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"tms\" AND severity>=WARNING AND timestamp>=\"$SINCE\"" \
+            --project atsstms --limit 60 --order desc \
+            --format 'value(timestamp,severity,textPayload)' | tac

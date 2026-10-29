@@ -5,6 +5,7 @@ name: Test and deploy
 on:
   push:
     branches: [main]
+    paths-ignore: [".github/workflows/logs.yml", "docs/**"]
   workflow_dispatch:
 
 concurrency:
