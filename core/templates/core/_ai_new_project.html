@@ -1,11 +1,18 @@
-<form method="post" action="{% url 'ai_create_project' ext.pk %}" class="panel form np-form">{% csrf_token %}
-  <header><h2 style="margin:0;font-size:1rem">这封邮件是新项目 · 核对后新建</h2>
+<form method="post" action="{% url 'ai_create_project' ext.pk %}" class="panel form np-form" id="np-{{ prop.index }}">{% csrf_token %}
+  <input type="hidden" name="np_index" value="{{ prop.index }}">
+  <header><h2 style="margin:0;font-size:1rem">{% if prop.target %}已有项目的新批次{% else %}新项目{% endif %}{% if prop_total > 1 %} {{ prop.index|add:1 }}/{{ prop_total }}{% endif %}：{{ prop.target_name|default:prop.name|default:"（未命名）" }} · 核对后{% if prop.target %}添加{% else %}新建{% endif %}</h2>
     <span class="muted" style="font-size:13px">AI 预填，所有内容都可以改；没写的留空即可，建好后还能在项目里补</span></header>
   <div class="body">
+    <label style="max-width:520px">加到哪里
+      <select name="np_target">
+        <option value="new" {% if not prop.target %}selected{% endif %}>新建一个项目（用下面的项目信息）</option>
+        {% for op in open_projects %}<option value="{{ op.pk }}" {% if op.pk == prop.target %}selected{% endif %}>加到已有项目：{{ op.number }} {{ op.name }}</option>{% endfor %}
+      </select></label>
+    {% if prop.target %}<p class="muted" style="font-size:13px;margin:4px 0 10px">AI 判断这是 <b>{{ prop.target_name }}</b> 的后续批次：只会新增下面勾选的 Load 和里程碑，不改动项目本身的信息。不对的话在上面改成“新建一个项目”。</p>{% endif %}
     <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:10px">
-      <label>项目名称 *<input name="np_name" value="{{ prop.name }}" required></label>
+      <label>项目名称 *<input name="np_name" value="{{ prop.name }}"></label>
       <label>客户 *{% if prop.customer_was_own %} <small class="lfd-warn">AI 把我方公司当成了客户，请填写真正的委托方</small>{% elif not prop.customer_exists and prop.customer %} <small class="lfd-warn">新客户</small>{% endif %}
-        <input name="np_customer" value="{{ prop.customer }}" required></label>
+        <input name="np_customer" value="{{ prop.customer }}"></label>
       <label>公司<select name="np_company">{% for v, l in companies %}<option value="{{ v }}" {% if v == prop.company %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
       <label>项目编号（Monday）<input name="np_monday_item_id" value="{{ prop.monday_item_id }}"></label>
       <label>客户参考号 / PO<input name="np_customer_ref" value="{{ prop.customer_ref }}"></label>
@@ -63,7 +70,8 @@
       {% empty %}<tr><td colspan="7" class="muted">邮件里没有具体的柜子或车次，可以先建项目，之后再添加 Load</td></tr>{% endfor %}
       </tbody>
     </table></div>
-    <p style="margin-top:12px"><button class="primary" type="submit">新建项目和勾选的 Load</button>
+    <p style="margin-top:12px"><button class="primary" type="submit">{% if prop.target %}添加勾选的 Load{% else %}新建项目和勾选的 Load{% endif %}</button>
+      <button type="submit" name="action" value="skip" formnovalidate>不建这个项目</button>
       <span class="muted" style="font-size:13px">负责人默认是你；建好后在项目页可以改。不会录入任何费用。</span></p>
   </div>
 </form>

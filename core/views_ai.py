@@ -44,13 +44,14 @@ def ai_review(request, pk):
     for c in changes:
         c.blocked = ai.blocked_reason(c, request.user) if c.status == AiChange.State.PENDING else ""
         groups.setdefault(c.shipment, []).append(c)
-    prop = ai.proposal(ext)
-    created = None
-    if (ext.raw_result or {}).get("created_project_id"):
-        created = Project.objects.filter(pk=ext.raw_result["created_project_id"]).first()
+    props = ai.proposals(ext)
+    created_ids = [p["project_id"] for p in props if p["state"] == "created"]
+    created = list(Project.objects.filter(pk__in=created_ids))
+    open_props = [p for p in props if p["state"] == "open"] if ext.status == AiExtraction.State.PENDING else []
     return render(request, "core/ai_review.html", {
         "ext": ext, "groups": groups, "pending": any(c.status == AiChange.State.PENDING for c in changes),
-        "prop": prop if ext.status == AiExtraction.State.PENDING and not created else None, "created": created,
+        "props": open_props, "prop_total": len(props), "created": created,
+        "open_projects": Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")[:200] if open_props else [],
         "companies": Company.choices, "equipments": Shipment.Equipment.choices, "services": Shipment.Service.choices,
     })
 
@@ -59,15 +60,26 @@ def ai_review(request, pk):
 def ai_create_project(request, pk):
     _need(can_edit_ops(request.user))
     ext = get_object_or_404(AiExtraction, pk=pk)
-    if ext.status != AiExtraction.State.PENDING or (ext.raw_result or {}).get("created_project_id"):
+    if ext.status != AiExtraction.State.PENDING:
         messages.warning(request, "这次识别已经处理过了")
+        return redirect(ext)
+    if request.POST.get("action") == "skip":
+        idx = request.POST.get("np_index", "0")
+        ai.skip_project(ext, request.user, int(idx) if idx.isdigit() else 0)
+        messages.info(request, "已跳过这个新项目")
         return redirect(ext)
     try:
         p = ai.create_project(ext, request.user, request.POST)
     except ai.AiError as e:
         messages.error(request, str(e))
         return redirect(ext)
-    messages.success(request, f"已创建项目 {p.number}：{p.shipments.count()} 个 Load")
+    if request.POST.get("np_target", "new") != "new":
+        messages.success(request, f"已加到项目 {p.number}，详见项目时间线")
+    else:
+        messages.success(request, f"已创建项目 {p.number}：{p.shipments.count()} 个 Load")
+    ext.refresh_from_db()
+    if ai.open_proposals(ext):  # more new projects from the same text are waiting
+        return redirect(ext)
     return redirect(p)
 
 

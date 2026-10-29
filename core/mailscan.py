@@ -276,7 +276,7 @@ def scan_connection(conn, caller=None, now=None):
         except ai.AiError as e:
             errors.append(f"{projects[pid].name}：{e}")
             continue  # leave these messages unmarked so the next run retries them
-        if not ext.changes.exists() and not ai.proposal(ext):
+        if not ext.changes.exists() and not ai.proposals(ext):
             ext.status = AiExtraction.State.DONE  # nothing new: keep it out of the to-do list
             ext.save(update_fields=["status"])
         else:
