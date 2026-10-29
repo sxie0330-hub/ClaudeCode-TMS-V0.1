@@ -67,6 +67,25 @@
         <td><input name="np_load_{{ forloop.counter0 }}_carrier" value="{{ ld.carrier }}" size="18" placeholder="待定" list="carrier-names" autocomplete="off"></td>
         <td class="wrap"><input name="np_load_{{ forloop.counter0 }}_notes" value="{{ ld.notes }}" size="28"></td>
       </tr>
+      {% with i=forloop.counter0 %}{% if ld.cargo %}
+      <tr class="np-cargo"><td></td><td colspan="6">
+        <input type="hidden" name="np_load_{{ i }}_cargo_count" value="{{ ld.cargo|length }}">
+        <div class="muted" style="font-size:12px;margin-bottom:2px">货物明细（已换算成 ft / lbs；可改，也可以直接填其他单位，如 13'6"、4.1 m、20,000 kg；描述清空则不建这一行）</div>
+        {% for c in ld.cargo %}
+        <div style="display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:2px 0">
+          <input name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_qty" value="{{ c.qty }}" size="3" aria-label="件数">
+          <select name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_type" aria-label="单位">{% for v, l in handling_types %}<option value="{{ v }}" {% if v == c.handling_type %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+          <input name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_description" value="{{ c.description }}" size="26" placeholder="英文品名" aria-label="描述">
+          <label style="display:inline">重量 <input name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_weight" value="{{ c.weight_lbs }}" size="9" placeholder="lbs"> lbs</label>
+          <label style="display:inline">L×W×H <input name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_length" value="{{ c.length_ft }}" size="6" placeholder="ft">
+            × <input name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_width" value="{{ c.width_ft }}" size="6" placeholder="ft">
+            × <input name="np_load_{{ i }}_cargo_{{ forloop.counter0 }}_height" value="{{ c.height_ft }}" size="6" placeholder="ft"> ft</label>
+          {% if c.original %}<small class="muted">原文：{{ c.original }}</small>{% endif %}
+          {% if c.problems %}<small class="lfd-warn">无法识别：{{ c.problems|join:"；" }}</small>{% endif %}
+        </div>
+        {% endfor %}
+      </td></tr>
+      {% endif %}{% endwith %}
       {% empty %}<tr><td colspan="7" class="muted">邮件里没有具体的柜子或车次，可以先建项目，之后再添加 Load</td></tr>{% endfor %}
       </tbody>
     </table></div>

@@ -22,7 +22,9 @@ from django.db import transaction
 from django.utils import timezone
 from django.utils.dateparse import parse_date, parse_datetime, parse_time
 
-from .models import AiChange, AiExtraction, Carrier, Company, Customer, Leg, Location, MasterBL, Milestone, Note, Project, Shipment, Status
+from . import units
+from .models import (AiChange, AiExtraction, CargoLine, Carrier, Company, Customer, Leg, Location, MasterBL, Milestone, Note,
+                     Project, Shipment, Status)
 from .permissions import can_edit_ops, can_edit_shipment_ops
 
 log = logging.getLogger(__name__)
@@ -37,7 +39,7 @@ class FieldSpec:
     # Load level: "leg", "shipment", "mbl" (the Load's master bill of lading).
     # Project level: "project", "consignee" / "shipper" (the project's default addresses).
     target: str
-    kind: str  # date / time / datetime / bool / text / url / container / equipment / mbl / carrier
+    kind: str  # date / time / datetime / bool / text / url / container / equipment / mbl / carrier / cargo
     label: str
     lock_exempt: bool = False  # editable after delivery (documents, POD)
     attr: str = ""  # model attribute when it differs from the key
@@ -74,6 +76,7 @@ FIELDS = {
     "equipment": FieldSpec("shipment", "equipment", "柜型"),
     "mbl_number": FieldSpec("shipment", "mbl", "MBL"),
     "carrier": FieldSpec("leg", "carrier", "承运商 / 车队"),
+    "cargo_line": FieldSpec("shipment", "cargo", "货物明细"),  # adds a CargoLine; value is JSON
     # Project level
     "start_date": FieldSpec("project", "date", "项目开始日期"),
     "end_date": FieldSpec("project", "date", "项目结束日期"),
@@ -91,7 +94,7 @@ FIELDS = {
     "shipper_state": FieldSpec("shipper", "text", "提货地 州", attr="state"),
     "shipper_postal_code": FieldSpec("shipper", "text", "提货地 邮编", attr="postal_code"),
 }
-LOAD_KEYS = [k for k, f in FIELDS.items() if f.target in ("leg", "shipment", "mbl")]
+LOAD_KEYS = [k for k, f in FIELDS.items() if f.target in ("leg", "shipment", "mbl") and f.kind != "cargo"]
 PROJECT_KEYS = [k for k, f in FIELDS.items() if f.target in ("project", "consignee", "shipper")]
 NOTE_FIELD = "note"  # a timeline note, not a field
 
@@ -235,6 +238,8 @@ def display(kind, s):
         return "否" if kind == "bool" else "—"
     if kind == "equipment":
         return dict(Shipment.Equipment.choices).get(s, s)
+    if kind == "cargo":
+        return cargo_text(json.loads(s))
     v = deserialize(kind, s)
     if kind == "datetime":
         local = v.astimezone(_tz())
@@ -332,6 +337,21 @@ _LOCATION_SCHEMA = {
     "required": ["code", "name", "address", "city", "state", "postal_code"],
 }
 
+_CARGO_SCHEMA = {
+    "type": "ARRAY",
+    "description": "货物明细：每种货物一项（同样的多件写一项，qty 写件数）。重量、尺寸照邮件原文写数字和单位，不要自己换算",
+    "items": {"type": "OBJECT", "properties": {
+        "description": {"type": "STRING", "description": "英文品名，如 Transformer、BESS unit、Steel coils"},
+        "qty": {"type": "STRING", "description": "件数，未写就 1"},
+        "handling_type": {"type": "STRING", "description": "包装单位代码之一：" + ", ".join(f"{v}={l}" for v, l in CargoLine.HandlingType.choices) + "；不确定写 UNIT"},
+        "weight": {"type": "STRING", "description": "重量，照原文带单位，如 35,000 kg、77,161 lbs、20 t；没写留空"},
+        "weight_is_each": {"type": "STRING", "description": "原文重量是每件的写 true，是这一项总重的写 false"},
+        "length": {"type": "STRING", "description": "长，照原文带单位，如 40'、13'6\"、12.19 m、480 in；没写留空"},
+        "width": {"type": "STRING"},
+        "height": {"type": "STRING"}},
+        "required": ["description", "qty", "handling_type", "weight", "weight_is_each", "length", "width", "height"]},
+}
+
 _PROJECT_SCHEMA = {
         "type": "OBJECT",
         "description": "一个系统里还没有的新项目",
@@ -356,7 +376,8 @@ _PROJECT_SCHEMA = {
                 "service": {"type": "STRING", "description": "服务代码之一：" + ", ".join(Shipment.Service.values)},
                 "mbl": {"type": "STRING"},
                 "carrier": {"type": "STRING", "description": "承运商/车队名称；已有承运商请用完全相同的名字"},
-                "notes": {"type": "STRING", "description": "中文，如 HBL 号、DO 状态、品名"}},
+                "notes": {"type": "STRING", "description": "中文，如 HBL 号、DO 状态、品名"},
+                "cargo": _CARGO_SCHEMA},
                 "required": ["container_number", "equipment", "service", "mbl", "carrier", "notes"]}},
         },
         "required": ["existing_project", "name", "company", "customer", "customer_ref", "monday_item_id", "start_date",
@@ -388,6 +409,7 @@ RESPONSE_SCHEMA = {
                         },
                     },
                     "note": {"type": "STRING", "description": "值得记到时间线的其他事实，中文，没有就留空"},
+                    "cargo": {**_CARGO_SCHEMA, "description": "只在“已有资料”里这个 Load 的 cargo_lines 为空、而内容写明了件数/重量/尺寸时输出；否则空数组。" + _CARGO_SCHEMA["description"]},
                 },
                 "required": ["load_number", "container_number", "carrier_load_number", "updates", "note"],
             },
@@ -446,7 +468,8 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
    - 待确认事项（如 DO 未放、柜号待定、车队待定）用中文写进 notes。
    - 不要编造：邮件没写的就留空。
    此时 loads（更新已有 Load）通常为空。
-13. 内容也可能是从表格复制或上传的数据（制表符分隔，可能带“工作表”标题）：按表头理解各列，通常每行是一个柜子 / 一车货。表里已有的柜号按规则 1–11 更新，系统里没有的柜号按规则 12 放进对应项目的 loads。"""
+13. 内容也可能是从表格复制或上传的数据（制表符分隔，可能带“工作表”标题）：按表头理解各列，通常每行是一个柜子 / 一车货。表里已有的柜号按规则 1–11 更新，系统里没有的柜号按规则 12 放进对应项目的 loads。
+14. 货物重量和尺寸（cargo）：照原文抄数字和单位（如 13'6"、4.1 m、480 in、35,000 kg、20 t、77,161 lbs），**不要自己换算单位**，系统会统一换成 ft 和 lbs。原文没写的留空。原文一行写“L×W×H”时拆成 length / width / height，各自带上单位（如 "12.19 x 2.44 x 2.59 m" 拆成 12.19 m、2.44 m、2.59 m）。"""
 
 
 def _context_block(cands, single, scope_project=None):
@@ -465,6 +488,7 @@ def _context_block(cands, single, scope_project=None):
             "project": f"{s.project.number} {s.project.name}" if s.project_id else "",
             "status": s.get_status_display(),
             "current": current,
+            "cargo_lines": [cargo_text(cargo_dict(c)) for c in s.cargo_lines.all()],
         })
     head = "这封邮件就是关于下面这一个 Load 的（只需输出一个 Load）。" if single else "系统里可能相关的 Load："
     text = head + "\n" + json.dumps(rows, ensure_ascii=False)
@@ -588,6 +612,16 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
                 extraction=ext, shipment=s, leg=leg if spec.target == "leg" else None, field=key,
                 old_value=old, new_value=new, evidence=str(u.get("evidence", ""))[:500], tz_assumed=naive,
             )
+        new_cargo = clean_cargo(item.get("cargo"))
+        if new_cargo and s.cargo_lines.exists():
+            unmatched.append(f"{label} 已有货物明细，未改动：" + "；".join(cargo_text(c) for c in new_cargo))
+        else:
+            for c in new_cargo:
+                problems = c.pop("problems")
+                original = c.pop("original")
+                AiChange.objects.create(
+                    extraction=ext, shipment=s, field="cargo_line", new_value=json.dumps(c, ensure_ascii=False),
+                    evidence=("原文：" + original if original else "") + ("；无法识别：" + "；".join(problems) if problems else ""))
         note = str(item.get("note") or "").strip()
         if note:
             AiChange.objects.create(extraction=ext, shipment=s, field=NOTE_FIELD, new_value=note[:1000])
@@ -668,6 +702,13 @@ def apply_changes(ext, user, approve_ids):
             applied.append(c)
         else:
             spec = FIELDS[c.field]
+            if spec.kind == "cargo":
+                CargoLine.objects.create(shipment=c.shipment, **cargo_fields(json.loads(c.new_value)))
+                c.status = AiChange.State.APPLIED
+                applied.append(c)
+                c.decided_by, c.decided_at = user, now
+                c.save()
+                continue
             obj = target_obj(spec, c.shipment, c.leg, c.project)
             if obj is None and spec.kind == "carrier":  # no leg yet: create one with the carrier
                 s = c.shipment
@@ -828,6 +869,74 @@ def match_project(np, scope_project=None):
     return scope_project
 
 
+def clean_cargo(items):
+    """Model cargo items (original units) -> dicts in ft / lbs. Unreadable values are left blank and noted."""
+    out = []
+    for c in items or []:
+        desc = _s(c.get("description"), 255)
+        if not desc:
+            continue
+        try:
+            qty = max(int(float(str(c.get("qty") or "1").replace(",", ""))), 1)
+        except ValueError:
+            qty = 1
+        ht = str(c.get("handling_type") or "").upper()
+        line = {"description": desc, "qty": qty,
+                "handling_type": ht if ht in CargoLine.HandlingType.values else CargoLine.HandlingType.UNIT, "problems": []}
+        raw = []
+        try:
+            w = units.parse_weight_lbs(c.get("weight"))
+            if w is not None and str(c.get("weight_is_each")).lower() == "true":
+                w = (w * qty).quantize(units.LBS)
+            line["weight_lbs"] = units.plain(w)
+        except ValueError as e:
+            line["weight_lbs"] = ""
+            line["problems"].append(str(e))
+        if _s(c.get("weight")):
+            raw.append(f"{c.get('weight')}{' 每件' if str(c.get('weight_is_each')).lower() == 'true' else ''}")
+        dims = []
+        for d in ("length", "width", "height"):
+            try:
+                line[f"{d}_ft"] = units.plain(units.parse_length_ft(c.get(d)))
+            except ValueError as e:
+                line[f"{d}_ft"] = ""
+                line["problems"].append(str(e))
+            if _s(c.get(d)):
+                dims.append(_s(c.get(d)))
+        if dims:
+            raw.append(" x ".join(dims))
+        line["original"] = "；".join(raw)
+        out.append(line)
+    return out
+
+
+def cargo_dict(c):
+    """CargoLine -> the same dict shape clean_cargo() makes."""
+    return {"description": c.description, "qty": c.handling_qty, "handling_type": c.handling_type,
+            "weight_lbs": units.plain(c.weight_lbs), "length_ft": units.plain(c.length_ft),
+            "width_ft": units.plain(c.width_ft), "height_ft": units.plain(c.height_ft)}
+
+
+def cargo_text(c):
+    parts = [f"{c.get('qty') or 1} × {c.get('description')}"]
+    if c.get("weight_lbs"):
+        parts.append(f"{float(c['weight_lbs']):,.10g} lbs")
+    dims = [c.get(f"{d}_ft") for d in ("length", "width", "height")]
+    if any(dims):
+        parts.append(" x ".join(x or "?" for x in dims) + " ft")
+    return " · ".join(parts)
+
+
+def cargo_fields(c):
+    """Clean dict -> CargoLine keyword arguments."""
+    from decimal import Decimal
+
+    dec = lambda v: Decimal(v) if v not in (None, "") else None  # noqa: E731
+    return {"handling_qty": c.get("qty") or 1, "handling_type": c.get("handling_type") or CargoLine.HandlingType.UNIT,
+            "description": c["description"][:255], "weight_lbs": dec(c.get("weight_lbs")),
+            "length_ft": dec(c.get("length_ft")), "width_ft": dec(c.get("width_ft")), "height_ft": dec(c.get("height_ft"))}
+
+
 def _clean_proposal(np, scope_project=None):
     target = match_project(np, scope_project)
     loads = []
@@ -846,6 +955,7 @@ def _clean_proposal(np, scope_project=None):
             "carrier": _s(ld.get("carrier"), 120),
             "notes": notes,
             "exists": bool(cntr) and Shipment.objects.filter(container_number=cntr).exists(),
+            "cargo": clean_cargo(ld.get("cargo")),
         })
     locs = {}
     for role in ("shipper", "consignee"):
@@ -957,6 +1067,7 @@ def create_project(ext, user, form):
             "equipment": g(f"np_load_{i}_equipment") if g(f"np_load_{i}_equipment") in Shipment.Equipment.values else "",
             "service": service if service in Shipment.Service.values else Shipment.Service.OTR,
             "mbl": g(f"np_load_{i}_mbl", 40), "notes": g(f"np_load_{i}_notes", 1000), "customer_ref": g("np_customer_ref", 80),
+            "cargo": [{"handling_qty": c["qty"], **{k: v for k, v in cargo_fields(c).items() if v is not None}} for c in _form_cargo(form, i)],
         }
         if carrier:
             data["carriers"].append({"name": carrier})
@@ -983,6 +1094,28 @@ def create_project(ext, user, form):
     return p
 
 
+def _form_cargo(form, i):
+    """Cargo lines typed on the proposal form (any unit) -> clean dicts. Raises AiError on bad values."""
+    g = lambda k, n=255: _s(form.get(k), n)  # noqa: E731
+    out = []
+    for j in range(min(int(form.get(f"np_load_{i}_cargo_count") or 0), 50)):
+        k = f"np_load_{i}_cargo_{j}_"
+        desc = g(k + "description")
+        if not desc:
+            continue
+        try:
+            qty = max(int(g(k + "qty") or 1), 1)
+            line = {"description": desc, "qty": qty,
+                    "handling_type": g(k + "type") if g(k + "type") in CargoLine.HandlingType.values else CargoLine.HandlingType.UNIT,
+                    "weight_lbs": units.plain(units.parse_weight_lbs(g(k + "weight")))}
+            for d in ("length", "width", "height"):
+                line[f"{d}_ft"] = units.plain(units.parse_length_ft(g(k + d)))
+        except ValueError as e:
+            raise AiError(f"货物明细「{desc}」：{e}") from e
+        out.append(line)
+    return out
+
+
 def _form_loads(form):
     g = lambda k, n=255: _s(form.get(k), n)  # noqa: E731
     out = []
@@ -995,6 +1128,7 @@ def _form_loads(form):
             "equipment": g(f"np_load_{i}_equipment") if g(f"np_load_{i}_equipment") in Shipment.Equipment.values else "",
             "service": service if service in Shipment.Service.values else Shipment.Service.OTR,
             "mbl": g(f"np_load_{i}_mbl", 40).upper(), "carrier": g(f"np_load_{i}_carrier", 120), "notes": g(f"np_load_{i}_notes", 1000),
+            "cargo": _form_cargo(form, i),
         })
     return out
 
@@ -1018,6 +1152,8 @@ def _add_to_project(ext, user, form, index, prop, project):
                 s.master_bl.eta = date.fromisoformat(eta)
                 s.master_bl.save()
         s.save()
+        for c in ld["cargo"]:
+            CargoLine.objects.create(shipment=s, **cargo_fields(c))
         if ld["carrier"]:
             Leg.objects.create(shipment=s, sequence=1, kind=Leg.Kind.DRAYAGE if ld["service"].startswith("DRAY") else Leg.Kind.OTR,
                                origin=s.shipper, destination=s.consignee,

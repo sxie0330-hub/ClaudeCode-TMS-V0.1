@@ -1,6 +1,7 @@
 from django import forms
 from django.contrib.auth import get_user_model
 
+from . import units
 from .models import (
     CargoLine,
     Carrier,
@@ -184,7 +185,30 @@ class MilestoneForm(forms.ModelForm):
         widgets = {"planned_date": DateInput(), "done_date": DateInput()}
 
 
+class MeasureField(forms.Field):
+    """Text box that accepts any common unit and stores feet or lbs."""
+
+    def __init__(self, parser, help_text, placeholder, **kwargs):
+        self.parser = parser
+        kwargs.setdefault("required", False)
+        super().__init__(help_text=help_text, widget=forms.TextInput(attrs={"placeholder": placeholder, "inputmode": "decimal"}), **kwargs)
+
+    def prepare_value(self, value):
+        return units.plain(value) if value not in (None, "") and not isinstance(value, str) else value
+
+    def to_python(self, value):
+        try:
+            return self.parser(value)
+        except ValueError as e:
+            raise forms.ValidationError(str(e)) from e
+
+
 class CargoLineForm(BaseForm):
+    weight_lbs = MeasureField(units.parse_weight_lbs, units.WEIGHT_HELP, "如 44000 或 20,000 kg", label="该行总重 (lbs)")
+    length_ft = MeasureField(units.parse_length_ft, units.LENGTH_HELP, "如 40 或 13'6\"", label="长 (ft)")
+    width_ft = MeasureField(units.parse_length_ft, units.LENGTH_HELP, "如 8.5 或 102 in", label="宽 (ft)")
+    height_ft = MeasureField(units.parse_length_ft, units.LENGTH_HELP, "如 9.5 或 2.9 m", label="高 (ft)")
+
     class Meta:
         model = CargoLine
         fields = [
