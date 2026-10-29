@@ -1868,3 +1868,12 @@ class LeadAlertTests(Base):
         self.assertContains(r, "报价截止今天")
         self.assertContains(r, "1 家承运商超过 2 天没回价")
         self.assertNotContains(r, "Not mine")
+
+
+class InvisibleCharsTests(Base):
+    def test_zero_width_spaces_in_link_redirect_home(self):
+        self.login(self.op)
+        r = self.client.get("/​​")
+        self.assertRedirects(r, "/", fetch_redirect_response=False)
+        r = self.client.get("/loads/​?q=x")
+        self.assertRedirects(r, "/loads/?q=x", fetch_redirect_response=False)
