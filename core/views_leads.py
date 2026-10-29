@@ -12,7 +12,8 @@ from django.views.decorators.http import require_POST
 from . import ai, ai_leads, quote_pdf, quotes
 from .forms import (CarrierQuoteForm, CustomerQuoteForm, LeadCargoForm, LeadForm, LeadLaneForm, carrier_quote_lines_formset,
                     customer_quote_lines_formset)
-from .models import Carrier, CarrierQuote, Charge, CustomerQuote, Lead, LeadCargo, LeadLane, Role
+from .models import Carrier, CarrierQuote, Charge, CustomerQuote, Lead, LeadCargo, LeadLane, Profile, Role
+from .notify import notify
 from .permissions import can_quote
 from .views import _confirm_delete, _edit, _need
 
@@ -56,11 +57,26 @@ def _docs(request):
 def lead_new(request):
     _need(can_quote(request.user))
     text = request.POST.get("text", "")
+    subject = request.POST.get("subject", "").strip()
+    conn = getattr(request.user, "gmail", None)
     if request.method == "POST":
         try:
             docs, sheets = _docs(request)
+            mail = ""
+            if subject:  # read the original thread from the person's own mailbox: sender, replies, attachments
+                from . import mailscan
+
+                if conn is None:
+                    raise ai.AiError("要按邮件主题读取原始邮件，请先在「邮箱」页连接你自己的 Gmail；也可以清空主题，直接粘贴邮件内容")
+                try:
+                    token, msgs = mailscan.find_messages(conn, subject)
+                except mailscan.ScanError as e:
+                    raise ai.AiError(str(e)) from e
+                mail = mailscan._messages_text(msgs)
+                docs = mailscan.fetch_docs(token, msgs) + docs
             src = request.POST.get("source") if request.POST.get("source") in Lead.Source.values else Lead.Source.EMAIL
-            lead, problems = ai_leads.create_lead("\n\n".join([text] + sheets).strip(), request.user, docs=docs, source=src)
+            lead, problems = ai_leads.create_lead("\n\n".join(x for x in [mail, text] + sheets if x.strip()).strip(),
+                                                  request.user, docs=docs, source=src)
         except ai.AiError as e:
             messages.error(request, str(e))
         else:
@@ -68,19 +84,29 @@ def lead_new(request):
             for p in problems:
                 messages.warning(request, p)
             return redirect(lead)
-    return render(request, "core/lead_new.html", {"text": text, "enabled": ai.enabled(), "sources": Lead.Source.choices,
-                                                  "max_chars": ai.MAX_EMAIL_CHARS})
+    return render(request, "core/lead_new.html", {"text": text, "subject": subject, "enabled": ai.enabled(), "sources": Lead.Source.choices,
+                                                  "max_chars": ai.MAX_EMAIL_CHARS, "gmail": conn})
 
 
 def lead_create(request):
     _need(can_quote(request.user))
     lead = Lead(owner=request.user, created_by=request.user)
-    return _edit(request, LeadForm, lead, "手动新建询价", lambda o: o.get_absolute_url(), cancel_url="/leads/")
+    resp = _edit(request, LeadForm, lead, "手动新建询价", lambda o: o.get_absolute_url(), cancel_url="/leads/")
+    if request.method == "POST" and lead.pk and lead.owner_id:
+        notify(lead.owner, f"{request.user.get_full_name() or request.user.email} 新建询价 {lead.number} {lead.title}，交给你负责",
+               lead.get_absolute_url(), exclude=request.user)
+    return resp
 
 
 def lead_edit(request, pk):
     lead = _lead(request, pk)
-    return _edit(request, LeadForm, lead, f"编辑询价 {lead.number}", lead.get_absolute_url())
+    before = lead.owner_id
+    resp = _edit(request, LeadForm, lead, f"编辑询价 {lead.number}", lead.get_absolute_url())
+    lead.refresh_from_db()
+    if request.method == "POST" and lead.owner_id and lead.owner_id != before:
+        notify(lead.owner, f"{request.user.get_full_name() or request.user.email} 把询价 {lead.number} {lead.title} 交给你负责",
+               lead.get_absolute_url(), exclude=request.user)
+    return resp
 
 
 def lead_detail(request, pk):
@@ -102,6 +128,27 @@ def lead_detail(request, pk):
         "lead": lead, "lanes": lanes, "screen": screen, "by_lane": by_lane, "chosen": chosen,
         "customer_quotes": customer_quotes, "questions": [x for x in lead.questions.splitlines() if x.strip()],
     })
+
+
+@require_POST
+def lead_add_customer(request, pk):
+    """New customer from the inquiry, in one click (or link to an existing one with the same name)."""
+    from .models import Customer
+
+    lead = _lead(request, pk)
+    name = (lead.prospect_name or "").strip()
+    if lead.customer_id or not name:
+        return redirect(lead)
+    c = Customer.objects.filter(name__iexact=name).first()
+    if c is None:
+        c = Customer.objects.create(name=name[:120], contact_name=lead.contact_name[:120], contact_phone=lead.contact_phone[:60],
+                                    contact_email=lead.contact_email if "@" in lead.contact_email and len(lead.contact_email) <= 254 else "")
+        messages.success(request, f"已加入客户库：{c.name}")
+    else:
+        messages.success(request, f"客户库里已有「{c.name}」，已关联")
+    lead.customer, lead.prospect_name = c, ""
+    lead.save(update_fields=["customer", "prospect_name", "updated_at"])
+    return redirect(lead)
 
 
 # --- scope rows ---------------------------------------------------------------
@@ -304,7 +351,7 @@ def lead_convert(request, pk):
     cqs = list(lead.carrier_quotes.select_related("carrier").prefetch_related("lines").exclude(status=CarrierQuote.Status.DECLINED))
     chosen = quotes.chosen_quotes(lead)
     customer_quotes = list(lead.customer_quotes.exclude(status=CustomerQuote.Status.REJECTED))
-    ops = get_user_model().objects.filter(profile__role__in=[Role.OP, Role.MANAGEMENT], is_active=True).order_by("first_name", "email")
+    ops = get_user_model().objects.filter(Profile.with_roles(Role.OP, Role.MANAGEMENT), is_active=True).distinct().order_by("first_name", "email")
     if request.method == "POST":
         owner = ops.filter(pk=request.POST.get("owner") or 0).first()
         picks = {}
@@ -320,6 +367,8 @@ def lead_convert(request, pk):
         except ValueError as e:
             messages.error(request, str(e))
         else:
+            notify(owner, f"询价 {lead.number} 成单：项目 {project.number} {project.name} 交给你负责（{project.shipments.count()} 个 Load）",
+                   project.get_absolute_url(), exclude=request.user)
             messages.success(request, f"已成单：建立项目 {project.number} 和 {project.shipments.count()} 个 Load")
             return redirect(project)
     default_cq = next((q for q in customer_quotes if q.status == CustomerQuote.Status.ACCEPTED), None) or (customer_quotes[0] if customer_quotes else None)

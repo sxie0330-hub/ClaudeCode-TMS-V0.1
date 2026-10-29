@@ -328,15 +328,21 @@ def gmail_query(text):
 MAX_FIND = 15
 
 
-def find_and_extract(conn, text, project=None, caller=None):
-    """Read the e-mails matching a subject (any date, with attachments) and run one AI extraction."""
+def find_messages(conn, text):
+    """(token, messages oldest first) for the e-mails whose subject matches, any date."""
     token = _access_token(conn)
     res = _get(token, "/messages", {"q": gmail_query(text) + " -in:chats -in:drafts", "maxResults": MAX_FIND})
     ids = [m["id"] for m in res.get("messages", [])]
     if not ids:
         raise ScanError(f"邮箱里没找到主题包含「{text}」的邮件")
     msgs = [read_message(token, mid) for mid in ids]
-    msgs.sort(key=lambda m: m["date"])
+    msgs.sort(key=lambda m: m.get("internal") or 0)
+    return token, msgs
+
+
+def find_and_extract(conn, text, project=None, caller=None):
+    """Read the e-mails matching a subject (any date, with attachments) and run one AI extraction."""
+    token, msgs = find_messages(conn, text)
     try:
         ext = ai.extract(_messages_text(msgs), conn.user, project=project, caller=caller, source=AiExtraction.Source.GMAIL,
                          attachments=fetch_docs(token, msgs))
@@ -430,7 +436,11 @@ def scan_connection(conn, caller=None, now=None):
 
 def scan_all(caller=None):
     out = []
+    from .permissions import can_edit_ops
+
     for conn in GmailConnection.objects.filter(enabled=True).select_related("user"):
+        if not can_edit_ops(conn.user):  # e.g. 询报价-only: their mailbox is read on demand, not scanned daily
+            continue
         now = timezone.now()
         out.append(scan_one(conn, caller=caller, now=now))
     return out

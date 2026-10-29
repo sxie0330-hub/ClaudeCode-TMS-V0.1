@@ -12,7 +12,8 @@ from .models import CargoLine, Carrier, Charge, Customer, Leg, Location, Profile
 
 def make_user(username, role):
     user = get_user_model().objects.create_user(username=username, email=f"{username}@advtransolution.com", password="pw-123456")
-    Profile.objects.update_or_create(user=user, defaults={"role": role})
+    roles = role if isinstance(role, (list, tuple)) else ([role] if role else [])
+    Profile.objects.update_or_create(user=user, defaults={"roles": f",{','.join(roles)}," if roles else ""})
     return user
 
 
@@ -307,11 +308,52 @@ class SearchTests(Base):
 
 @override_settings(TMS_ALLOWED_EMAIL_DOMAINS=["advtransolution.com"])
 class TeamTests(Base):
-    def test_manager_assigns_role(self):
+    def test_manager_assigns_several_roles_and_the_person_is_notified(self):
+        from .models import Notification
+
         self.login(self.mgmt)
-        self.client.post(reverse("team"), {"user": self.nobody.pk, "role": "AR"})
+        self.client.post(reverse("team"), {"user": self.nobody.pk, "roles": ["OP", "RFQ"]})
         self.nobody.profile.refresh_from_db()
-        self.assertEqual(self.nobody.profile.role, "AR")
+        self.assertEqual(self.nobody.profile.role_set, {"OP", "RFQ"})
+        n = Notification.objects.get(user=self.nobody)
+        self.assertIn("操作 OP、询报价 / 销售", n.text)
+        # OP + RFQ: can edit operations and quote, sees AP (from OP) but never AR, not management.
+        from .permissions import can_edit_ops, can_quote, is_management, visible_sides
+
+        u = get_user_model().objects.get(pk=self.nobody.pk)
+        self.assertTrue(can_edit_ops(u) and can_quote(u))
+        self.assertFalse(is_management(u))
+        self.assertEqual(visible_sides(u), {"AP"})
+        # The notice pops up once on the next page, then shows as unread in the bell.
+        self.login(u)
+        r = self.client.get(reverse("shipment_list"))
+        self.assertContains(r, 'class="toast"')
+        r = self.client.get(reverse("shipment_list"))
+        self.assertNotContains(r, 'class="toast"')
+        self.assertEqual(self.client.get(reverse("notification_poll")).json()["unread"], 1)
+        self.client.get(reverse("notification_go", args=[n.pk]))
+        self.assertEqual(self.client.get(reverse("notification_poll")).json()["unread"], 0)
+
+    def test_cannot_drop_own_management(self):
+        self.login(self.mgmt)
+        self.client.post(reverse("team"), {"user": self.mgmt.pk, "roles": ["OP"]})
+        self.mgmt.profile.refresh_from_db()
+        self.assertIn("MGMT", self.mgmt.profile.role_set)
+
+    def test_new_user_without_role_notifies_managers(self):
+        from django.test import RequestFactory
+
+        from .auth_adapters import SocialAccountAdapter
+        from .models import Notification
+
+        newbie = get_user_model().objects.create_user(username="jk", email="jackie@advtransolution.com", first_name="Jackie")
+        adapter = SocialAccountAdapter()
+        with mock.patch("allauth.socialaccount.adapter.DefaultSocialAccountAdapter.save_user", return_value=newbie):
+            adapter.save_user(RequestFactory().get("/"), mock.Mock())
+        n = Notification.objects.get(user=self.mgmt)
+        self.assertIn("Jackie", n.text)
+        self.assertEqual(n.url, "/team/")
+        self.assertFalse(Notification.objects.filter(user=self.op).exists())
 
     def test_non_manager_cannot(self):
         self.login(self.op)
@@ -1877,3 +1919,44 @@ class InvisibleCharsTests(Base):
         self.assertRedirects(r, "/", fetch_redirect_response=False)
         r = self.client.get("/loads/​?q=x")
         self.assertRedirects(r, "/loads/?q=x", fetch_redirect_response=False)
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class LeadSubjectAndCustomerTests(Base):
+    def test_subject_reads_original_thread_and_attachments(self):
+        from unittest import mock as _mock
+
+        from . import ai, mailscan
+        from .models import GmailConnection, Lead
+
+        GmailConnection.objects.create(user=self.op, email=self.op.email, refresh_token=mailscan.encrypt("r"))
+        msgs = [{"id": "m1", "internal": 1, "subject": "RFQ transformer", "from": "ana@gulfpower.com", "date": "Mon",
+                 "text": "Need a quote", "docs": []}]
+        caller = lead_caller(LEAD_RESULT)
+        self.login(self.op)
+        with _mock.patch.object(mailscan, "find_messages", return_value=("t", msgs)) as fm, \
+             _mock.patch.object(mailscan, "fetch_docs", return_value=[{"name": "drawing.pdf", "mime": "application/pdf", "data": b"%PDF"}]), \
+             _mock.patch.object(ai, "call_gemini", side_effect=caller):
+            r = self.client.post(reverse("lead_new"), {"subject": "RFQ transformer", "text": "", "source": "EMAIL"})
+        fm.assert_called_once()
+        lead = Lead.objects.latest("pk")
+        self.assertRedirects(r, lead.get_absolute_url(), fetch_redirect_response=False)
+        self.assertIn("From: ana@gulfpower.com", caller.seen["text"])
+        self.assertEqual(caller.seen["attachments"][0]["name"], "drawing.pdf")
+        self.assertIn("最早那封询价邮件的发件方公司", caller.seen["prompt"])
+
+    def test_subject_without_mailbox_explains(self):
+        self.login(self.op)
+        r = self.client.post(reverse("lead_new"), {"subject": "RFQ x", "text": "hi"}, follow=True)
+        self.assertContains(r, "先在「邮箱」页连接")
+
+    def test_one_click_add_customer(self):
+        from .models import Customer, Lead
+
+        lead = Lead.objects.create(title="x", prospect_name="Gulf Power Systems", contact_name="Ana", contact_email="ana@gps.com", owner=self.op)
+        self.login(self.op)
+        self.assertContains(self.client.get(lead.get_absolute_url()), "一键加入客户库")
+        self.client.post(reverse("lead_add_customer", args=[lead.pk]))
+        lead.refresh_from_db()
+        c = Customer.objects.get(name="Gulf Power Systems")
+        self.assertEqual((lead.customer, lead.prospect_name, c.contact_email), (c, "", "ana@gps.com"))

@@ -29,6 +29,14 @@
            placeholder="搜索项目、柜号、MBL、客户、承运商、发票号…  按 / 唤出" data-suggest="{% url 'search_suggest' %}">
     <div class="sugg" id="sugg" hidden></div>
   </form>
+  <div class="bell">
+    <button type="button" class="bell-btn" id="bell-btn" aria-label="通知" aria-expanded="false">🔔<span class="bell-n" id="bell-n" {% if not notif_unread %}hidden{% endif %}>{{ notif_unread }}</span></button>
+    <div class="bell-menu" id="bell-menu" hidden>
+      {% for n in notif_recent %}<a href="{% url 'notification_go' n.pk %}" class="{% if not n.read_at %}unread{% endif %}"><small>{{ n.created_at|date:"m-d H:i" }}</small>{{ n.text }}</a>
+      {% empty %}<div class="muted" style="padding:10px">还没有通知</div>{% endfor %}
+      <a href="{% url 'notifications' %}" class="all">全部通知 →</a>
+    </div>
+  </div>
   <span class="who">{{ user.get_full_name|default:user.email|default:user.username }} · {{ role_label }}</span>
   <form method="post" action="{% url 'account_logout' %}" class="inline">{% csrf_token %}<button class="sm" type="submit">退出</button></form>
 </div>
@@ -37,6 +45,9 @@
   {% if messages %}<ul class="msgs">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
   {% block content %}{% endblock %}
 </main>
+<div class="toasts" id="toasts">{% for n in notif_popups %}<a class="toast" href="{% url 'notification_go' n.pk %}">{{ n.text }}</a>{% endfor %}</div>
+{% if user.is_authenticated and user_role %}<script>window.TMS_POLL = "{% url 'notification_poll' %}";</script>
+<script src="{% static 'core/notify.js' %}" defer></script>{% endif %}
 <script src="{% static 'core/search.js' %}" defer></script>
 <script src="{% static 'core/selectsearch.js' %}" defer></script>
 {% block scripts %}{% endblock %}

@@ -12,7 +12,12 @@
     货物件数和尺寸重量（统一换算成 ft / lbs）、还缺哪些信息要问客户。整理完直接建一条询价，所有内容都可以改。</p>
   <label for="lead-source">来源</label>
   <select id="lead-source" name="source" style="max-width:200px">{% for v, l in sources %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
-  <label for="lead-text" style="margin-top:8px">询价内容</label>
+  <label for="lead-subject" style="margin-top:8px">邮件主题（推荐，完整复制主题行）</label>
+  <input id="lead-subject" name="subject" value="{{ subject }}" placeholder="例如：RFQ - Transformer move Houston to Tomball / Ref GPS-77" style="max-width:none">
+  <p class="muted" style="font-size:12.5px;margin:2px 0 0">填了主题，TMS 会去{% if gmail %}你连接的邮箱 <b>{{ gmail.email }}</b>{% else %}你的邮箱{% endif %}里找到原始邮件，连同发件人、往来回复和附件（PDF、图片、Excel）一起交给 AI，更准确判断谁是客户、联系人是谁。
+    {% if not gmail %}<span class="lfd-warn">你还没连接邮箱，<a href="{% url 'mail_settings' %}">先去「邮箱」页连接</a>；不连接也可以直接粘贴正文。</span>{% endif %}
+    主题和正文填一个就行，都填也可以（正文可补充说明）。</p>
+  <label for="lead-text" style="margin-top:8px">询价内容（邮件正文 / 微信聊天，可空）</label>
   <textarea id="lead-text" name="text" rows="16" maxlength="{{ max_chars }}" placeholder="例如：Need a quote to move 1 transformer from Port of Houston to Tomball TX, 28' x 12' x 13'9&quot;, 185,000 lbs, ready 11/15…">{{ text }}</textarea>
   <label for="lead-files" style="margin-top:8px">附件（可多选）：PDF、截图 / 照片、Excel</label>
   <input id="lead-files" type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.xlsx,.csv,.tsv,.txt">

@@ -29,7 +29,12 @@ class SocialAccountAdapter(DefaultSocialAccountAdapter):
     def save_user(self, request, sociallogin, form=None):
         user = super().save_user(request, sociallogin, form)
         profile, _ = Profile.objects.get_or_create(user=user)
-        if user.email.lower() in settings.TMS_BOOTSTRAP_ADMINS and not profile.role:
-            profile.role = Role.MANAGEMENT
+        if user.email.lower() in settings.TMS_BOOTSTRAP_ADMINS and not profile.role_set:
+            profile.set_roles([Role.MANAGEMENT])
             profile.save()
+        elif not profile.role_set:
+            from .notify import managers, notify
+
+            name = user.get_full_name() or user.email
+            notify(managers(), f"新同事 {name}（{user.email}）第一次登录，等你在「团队」页分配角色", "/team/", exclude=user)
         return user

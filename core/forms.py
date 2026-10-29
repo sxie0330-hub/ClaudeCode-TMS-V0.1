@@ -289,12 +289,6 @@ class BulkShipmentForm(forms.Form):
         return rows
 
 
-class ProfileRoleForm(forms.ModelForm):
-    class Meta:
-        model = Profile
-        fields = ["role"]
-
-
 User = get_user_model()
 
 
@@ -310,7 +304,7 @@ class LeadForm(BaseForm):
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.fields["owner"].queryset = get_user_model().objects.filter(
-            profile__role__in=["MGMT", "OP", "RFQ"], is_active=True).order_by("first_name", "email")
+            Profile.with_roles("MGMT", "OP", "RFQ"), is_active=True).order_by("first_name", "email")
 
     def clean(self):
         data = super().clean()

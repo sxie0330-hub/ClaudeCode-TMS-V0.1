@@ -2,14 +2,15 @@
 {% block title %}团队{% endblock %}
 {% block content %}
 <div class="head"><h1>团队与权限</h1><div class="actions"><a class="btn" href="{% url 'import_upload' %}">导入数据</a></div></div>
-<div class="intro">同事第一次用公司 Google 账号登录后会出现在这里，分配角色后才能使用。
-  <b>管理层</b>：全部；<b>OP</b>：编辑运输信息 + 看/改应付；<b>AP</b>：只读运输信息 + 看/改应付；<b>AR</b>：只读运输信息 + 看/改应收（看不到应付）。</div>
+<div class="intro">同事第一次用公司 Google 账号登录后会出现在这里（管理层会收到通知），勾选角色后保存即可使用，对方会收到通知。<b>一个人可以有多个角色</b>，权限取并集。<br>
+  <b>管理层</b>：全部；<b>操作 OP</b>：编辑运输信息 + 看/改应付；<b>应付 AP</b>：只读运输信息 + 看/改应付；<b>应收 AR</b>：只读运输信息 + 看/改应收（看不到应付）；
+  <b>询报价 / 销售</b>：询价、承运商报价、客户报价（含询价阶段成本），只读运输信息。</div>
 <div class="panel"><div class="tablewrap"><table class="t">
-  <thead><tr><th>账号</th><th>姓名</th><th>最近登录</th><th>角色</th></tr></thead>
-  <tbody>{% for u in users %}<tr><td>{{ u.email|default:u.username }}</td><td>{{ u.get_full_name|default:"—" }}</td><td>{{ u.last_login|date:"Y-m-d H:i"|default:"—" }}</td>
-    <td><form method="post" class="inline">{% csrf_token %}<input type="hidden" name="user" value="{{ u.pk }}">
-      <select name="role" onchange="this.form.submit()"><option value="">未分配（无权限）</option>
-        {% for v, l in roles %}<option value="{{ v }}" {% if u.profile.role == v or u.is_superuser and v == 'MGMT' and not u.profile.role %}selected{% endif %}>{{ l }}</option>{% endfor %}
-      </select></form></td></tr>{% endfor %}</tbody>
+  <thead><tr><th>账号</th><th>姓名</th><th>最近登录</th><th>角色（可多选）</th><th></th></tr></thead>
+  <tbody>{% for u in users %}<tr>
+    <td>{{ u.email|default:u.username }}{% if not u.role_set %} <span class="b b-HOLD">待分配</span>{% endif %}</td><td>{{ u.get_full_name|default:"—" }}</td>
+    <td>{{ u.last_login|date:"Y-m-d H:i"|default:"—" }}</td>
+    <td style="white-space:nowrap">{% for v, l in roles %}<label style="margin-right:12px;font-weight:normal"><input type="checkbox" name="roles" value="{{ v }}" form="rf{{ u.pk }}" {% if v in u.role_set %}checked{% endif %}> {{ l }}</label>{% endfor %}</td>
+    <td><form method="post" id="rf{{ u.pk }}">{% csrf_token %}<input type="hidden" name="user" value="{{ u.pk }}"><button class="sm primary" type="submit">保存</button></form></td></tr>{% endfor %}</tbody>
 </table></div></div>
 {% endblock %}
