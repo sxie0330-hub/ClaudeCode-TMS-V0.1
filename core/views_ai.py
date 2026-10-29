@@ -22,10 +22,17 @@ def ai_new(request):
     text = request.POST.get("text", "")
     if request.method == "POST" and ai.enabled():
         try:
-            if request.FILES.get("sheet"):
-                sheet = ai.sheet_to_text(request.FILES["sheet"])
-                text = (text + "\n\n=== 附带表格：" + request.FILES["sheet"].name + " ===\n" + sheet).strip()
-            ext = ai.extract(text, request.user, project=project, shipment=shipment)
+            docs = []
+            for f in request.FILES.getlist("files") + request.FILES.getlist("sheet"):
+                mime = ai.doc_mime(f.name)
+                if mime:
+                    if f.size > ai.MAX_DOC_BYTES:
+                        raise ai.AiError(f"「{f.name}」太大（超过 {ai.MAX_DOC_BYTES // 1024 // 1024}MB），请压缩或只保留相关页")
+                    docs.append({"name": f.name, "mime": mime, "data": f.read()})
+                else:
+                    sheet = ai.sheet_to_text(f)
+                    text = (text + "\n\n=== 附带表格：" + f.name + " ===\n" + sheet).strip()
+            ext = ai.extract(text, request.user, project=project, shipment=shipment, attachments=docs)
         except ai.AiError as e:
             messages.error(request, str(e))
         else:

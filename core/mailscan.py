@@ -40,7 +40,7 @@ API = "https://gmail.googleapis.com/gmail/v1/users/me"
 FIRST_SCAN_DAYS = 3  # how far back the very first scan looks
 MAX_MESSAGES = 200  # per mailbox per run
 MAX_CHARS_PER_MESSAGE = 6000
-TIME_BUDGET_SECONDS = 480  # stay well inside the request timeout
+TIME_BUDGET_SECONDS = 360  # plus one AI call (≤200 s) stays inside the 600 s request timeout
 IDS_PER_QUERY = 25
 MIN_ID_LEN = 6
 
@@ -246,25 +246,35 @@ def _attachment_text(token, mid, name, aid, data, size):
 
     if not name.lower().endswith(SHEET_EXTS) or size > MAX_ATTACHMENT_BYTES:
         return None
-    if data is None and aid:
-        data = _get(token, f"/messages/{mid}/attachments/{aid}").get("data")
-    if not data:
+    raw = _download(token, mid, aid, data)
+    if not raw:
         return None
-    raw = base64.urlsafe_b64decode(data + "=" * (-len(data) % 4))
     try:
         return ai.sheet_to_text(SimpleUploadedFile(name, raw))[:MAX_CHARS_PER_ATTACHMENT]
     except ai.AiError:
         return None
 
 
+def _download(token, mid, aid, data):
+    if data is None and aid:
+        data = _get(token, f"/messages/{mid}/attachments/{aid}").get("data")
+    return base64.urlsafe_b64decode(data + "=" * (-len(data) % 4)) if data else b""
+
+
 def read_message(token, mid):
+    """Text of a message with its spreadsheets inlined. PDFs and images are only
+    listed in "docs" here; fetch_docs() downloads them for the messages that matter."""
     m = _get(token, f"/messages/{mid}", {"format": "full"})
     payload = m.get("payload", {})
     headers = {h["name"].lower(): h["value"] for h in payload.get("headers", [])}
     body = re.sub(r"[ \t]+", " ", _body(payload))
     body = re.sub(r"\n\s*\n+", "\n\n", body).strip()[:MAX_CHARS_PER_MESSAGE]
-    extra, unread = [], []
+    extra, unread, docs = [], [], []
     for name, aid, data, size in _attachments(payload):
+        mime = ai.doc_mime(name)
+        if mime and size <= ai.MAX_DOC_BYTES:
+            docs.append({"message_id": mid, "name": name, "mime": mime, "aid": aid, "inline": data, "size": size})
+            continue
         text = _attachment_text(token, mid, name, aid, data, size)
         if text:
             extra.append(f"--- 附件：{name} ---\n{text}")
@@ -272,12 +282,30 @@ def read_message(token, mid):
             unread.append(name)
     if extra:
         body += "\n\n" + "\n\n".join(extra)
+    if docs:
+        body += "\n\n（附件，AI 直接阅读：" + "、".join(d["name"] for d in docs) + "）"
     if unread:
         body += "\n\n（未读取的附件：" + "、".join(unread[:20]) + "）"
     return {
-        "id": mid, "subject": headers.get("subject", "")[:300], "from": parseaddr(headers.get("from", ""))[1] or headers.get("from", ""),
-        "date": headers.get("date", ""), "text": body, "unread_attachments": unread,
+        "id": mid, "internal": int(m.get("internalDate") or 0), "subject": headers.get("subject", "")[:300], "from": parseaddr(headers.get("from", ""))[1] or headers.get("from", ""),
+        "date": headers.get("date", ""), "text": body, "unread_attachments": unread, "docs": docs,
     }
+
+
+def fetch_docs(token, msgs):
+    """Download the PDFs / images of these messages, newest first (the latest POD
+    or rate confirmation matters most), within what one AI request can take."""
+    out, total, n = [], 0, 0
+    for m in sorted(msgs, key=lambda m: m.get("internal", 0), reverse=True):
+        for d in m.get("docs", []):
+            if n >= ai.MAX_DOCS or total + d["size"] > ai.MAX_DOCS_BYTES:
+                out.append({"name": d["name"], "mime": d["mime"], "data": None})  # listed as not read
+                continue
+            data = _download(token, d["message_id"], d["aid"], d["inline"])
+            if data and len(data) <= ai.MAX_DOC_BYTES:
+                out.append({"name": d["name"], "mime": d["mime"], "data": data})
+                total, n = total + len(data), n + 1
+    return out
 
 
 def _messages_text(msgs):
@@ -310,7 +338,8 @@ def find_and_extract(conn, text, project=None, caller=None):
     msgs = [read_message(token, mid) for mid in ids]
     msgs.sort(key=lambda m: m["date"])
     try:
-        ext = ai.extract(_messages_text(msgs), conn.user, project=project, caller=caller, source=AiExtraction.Source.GMAIL)
+        ext = ai.extract(_messages_text(msgs), conn.user, project=project, caller=caller, source=AiExtraction.Source.GMAIL,
+                         attachments=fetch_docs(token, msgs))
     except ai.AiError as e:
         raise ScanError(str(e)) from e
     for m in msgs:
@@ -379,7 +408,8 @@ def scan_connection(conn, caller=None, now=None):
         msgs.sort(key=lambda m: m["date"])
         text = _messages_text(msgs)
         try:
-            ext = ai.extract(text, conn.user, project=projects[pid], caller=caller, source=AiExtraction.Source.GMAIL)
+            ext = ai.extract(text, conn.user, project=projects[pid], caller=caller, source=AiExtraction.Source.GMAIL,
+                             attachments=fetch_docs(token, msgs))
         except ai.AiError as e:
             errors.append(f"{projects[pid].name}：{e}")
             continue  # leave these messages unmarked so the next run retries them

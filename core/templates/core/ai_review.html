@@ -52,6 +52,10 @@
 </form>
 {% endif %}
 
+{% if ext.raw_result.read_attachments or ext.raw_result.skipped_attachments %}<div class="card" style="font-size:13px">
+  {% if ext.raw_result.read_attachments %}<b>AI 读取的附件：</b>{{ ext.raw_result.read_attachments|join:"、" }}{% endif %}
+  {% if ext.raw_result.skipped_attachments %}<br><span class="lfd-warn">没有读取（太大或太多）：{{ ext.raw_result.skipped_attachments|join:"、" }}</span>{% endif %}
+</div>{% endif %}
 <details class="card"><summary>邮件原文</summary><pre style="white-space:pre-wrap">{{ ext.source_text }}</pre></details>
 {% endblock %}
 {% block scripts %}
