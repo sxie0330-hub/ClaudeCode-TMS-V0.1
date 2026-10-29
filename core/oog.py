@@ -164,6 +164,8 @@ def check_state(code, L, trailer, divisible=False):
         out["permits"].append(f"超重：总重 {L['gross_lbs']:,.0f} lbs > 法定 {legal['gross_lbs']:,} lbs（还要按轴组核定）")
         if ow.get("gross_max_lbs") and L["gross_lbs"] > ow["gross_max_lbs"]:
             out["permits"].append(f"超出该州超重许可上限 {ow['gross_max_lbs']:,} lbs")
+    elif legal.get("gross_lbs") and L["gross_lbs"] is None and L["cargo_lbs"] and L["cargo_lbs"] > legal["gross_lbs"]:
+        out["permits"].append(f"超重：光货重 {L['cargo_lbs']:,.0f} lbs 已超过法定总重 {legal['gross_lbs']:,} lbs（车型缺自重，总重没算）")
     a = avg_axle(L, trailer)
     if a and L["gross_lbs"] and legal.get("gross_lbs") and L["gross_lbs"] > legal["gross_lbs"] and ow.get("tandem_axle_lbs"):
         limit = Decimal(ow["tandem_axle_lbs"]) / 2
@@ -275,6 +277,52 @@ def suggest_trailer(load, states, trailers):
     return best, "车型库里没有能装下的车：要液压轴线车 / 桥式 / 专门设计的组合，这里按载重最大的车型估算"
 
 
+# ---------------------------------------------------------------------------
+# Company rule (2026-10): a 20' BESS of 90,000 lbs or more per truck
+#   * route through California -> the team's 9-axle RGN (3+2+2+2)
+#   * otherwise -> 8-axle 4+4, if its average axle weight passes every state on the route; else the 9-axle
+# Both combinations need a permit even empty. Trailers are looked up by key in the library (active or not).
+# ---------------------------------------------------------------------------
+BESS_WORDS = re.compile(r"\bBESS\b|\bESS\b|battery|energy storage|megapack|储能|电池", re.I)
+BESS_HEAVY_LBS = Decimal(90000)
+BESS_MAX_LENGTH_FT = Decimal(21)  # 20' units (19'10" outside) with a little slack
+NINE_AXLE, EIGHT_AXLE = "rgn_9axle_team", "axle8_4x4"
+
+
+def is_heavy_bess(load):
+    return bool(load and load["weight_lbs"] and load["weight_lbs"] >= BESS_HEAVY_LBS and load["length_ft"]
+                and Decimal(load["length_ft"]) <= BESS_MAX_LENGTH_FT and any(BESS_WORDS.search(p or "") for p in load["pieces"]))
+
+
+def heavy_bess_rule(load, states):
+    """(trailer, reason, warnings) when the heavy-BESS rule applies, else (None, "", [])."""
+    if not is_heavy_bess(load):
+        return None, "", []
+    from .models import TrailerType
+
+    lib = {t.key: t for t in TrailerType.objects.filter(key__in=[NINE_AXLE, EIGHT_AXLE])}
+    nine, eight = lib.get(NINE_AXLE), lib.get(EIGHT_AXLE)
+    always = "这套组合空车也要 permit"
+    if "CA" in states:
+        if nine:
+            return nine, "公司规则：20' BESS ≥ 90,000 lbs 且路线经过 CA，用 9 轴（3+2+2+2）", [always]
+        return None, "", ["公司规则要用 9 轴（3+2+2+2），但车型库里没有这个车型"]
+    if eight:
+        L = loaded(eight, load)
+        a = avg_axle(L, eight)
+        if a is None:
+            return eight, "公司规则：20' BESS ≥ 90,000 lbs、路线不经过 CA，用 4+4 共 8 轴", [
+                always, f"{eight.name} 缺自重，每轴重量没法核对 DOT 规定：请在车型库补上车头和挂车自重"]
+        limit = permitted_per_axle(states)
+        if a <= limit:
+            return eight, f"公司规则：20' BESS ≥ 90,000 lbs、路线不经过 CA，用 4+4 共 8 轴（平均每轴约 {a:,.0f} ≤ {limit:,.0f} lbs）", [always]
+        if nine:
+            return nine, f"公司规则：4+4 共 8 轴平均每轴约 {a:,.0f} lbs，超过路线上的许可每轴 {limit:,.0f}，改用 9 轴（3+2+2+2）", [always]
+    if nine:
+        return nine, "公司规则：车型库里没有 4+4 共 8 轴，用 9 轴（3+2+2+2）", [always]
+    return None, "", []
+
+
 def lane_cargo(lane, lanes, cargo):
     """Cargo on this lane; cargo with no lane belongs to the only lane of a one-lane lead."""
     return [c for c in cargo if c.lane_id == lane.pk] or ([c for c in cargo if not c.lane_id] if len(lanes) == 1 else [])
@@ -311,6 +359,9 @@ def screen_lane(lane, cargo, trailers):
         res["warnings"].append("有货物缺重量，总重偏低")
     trailer = lane.trailer if lane.trailer_id else None
     reason = "指定车型"
+    if trailer is None:
+        trailer, reason, notes = heavy_bess_rule(load, states)
+        res["warnings"] += notes
     if trailer is None:
         trailer, reason = suggest_trailer(load, states, trailers)
     if trailer is None:

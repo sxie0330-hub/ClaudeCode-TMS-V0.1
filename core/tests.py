@@ -1815,11 +1815,47 @@ class LeadFlowTests(Base):
                                via_states="", trucks=1, trailer_id=None, trailer=None)
         trailers = list(TrailerType.objects.all())
         picks = {}
-        for w in (40000, 66000, 95000):
+        for w in (40000, 66000, 88000):
             bess = SimpleNamespace(qty=1, weight_lbs=Decimal(w), length_ft=Decimal(20), width_ft=Decimal(8), height_ft=Decimal("9.5"),
                                    divisible=False, hazmat=False, description="BESS")
             picks[w] = oog.screen_lane(lane, [bess], trailers)["trailer"].key
-        self.assertEqual(picks, {40000: "stepdeck48", 66000: "stepdeck_tri", 95000: "stepdeck_tri_tritractor"})
+        self.assertEqual(picks, {40000: "stepdeck48", 66000: "stepdeck_tri", 88000: "stepdeck_tri_tritractor"})
+
+    def test_heavy_bess_rule(self):
+        from types import SimpleNamespace
+
+        from . import oog
+        from .models import TrailerType
+
+        trailers = list(TrailerType.objects.filter(active=True))
+
+        def run(origin, dest, w=95000, desc="BESS container 20ft", length=20):
+            lane = SimpleNamespace(origin=origin, destination=dest, origin_state="", destination_state="", via_states="",
+                                   trucks=1, trailer_id=None, trailer=None)
+            c = SimpleNamespace(qty=1, weight_lbs=Decimal(w), length_ft=Decimal(length), width_ft=Decimal(8),
+                                height_ft=Decimal("9.5"), divisible=False, hazmat=False, description=desc)
+            return oog.screen_lane(lane, [c], trailers)
+
+        r = run("Long Beach, CA", "Phoenix, AZ")
+        self.assertEqual(r["trailer"].key, "rgn_9axle_team")
+        self.assertTrue(r["permit"])  # cargo alone is over 80,000 even though the tare is not filled in
+        self.assertIn("这套组合空车也要 permit", r["warnings"])
+
+        r = run("Savannah, GA", "Seneca, SC")
+        self.assertEqual(r["trailer"].key, "axle8_4x4")
+        self.assertTrue(any("缺自重" in w for w in r["warnings"]))
+
+        eight = TrailerType.objects.get(key="axle8_4x4")
+        eight.deck_height_in, eight.deck_length_ft, eight.trailer_tare_lbs, eight.tractor_tare_lbs = 24, 30, 20000, 22000
+        eight.save()
+        r = run("Savannah, GA", "Seneca, SC")  # (95,000 + 42,000 - 12,000) / 7 = 17,857 per axle
+        self.assertEqual(r["trailer"].key, "axle8_4x4")
+        r = run("Savannah, GA", "Seneca, SC", w=140000)  # too much per axle -> 9 axles
+        self.assertEqual(r["trailer"].key, "rgn_9axle_team")
+
+        self.assertNotIn(run("Savannah, GA", "Seneca, SC", w=85000)["trailer"].key, ("axle8_4x4", "rgn_9axle_team"))
+        self.assertNotIn(run("Long Beach, CA", "Phoenix, AZ", desc="Transformer")["trailer"].key, ("rgn_9axle_team",))
+        self.assertNotIn(run("Long Beach, CA", "Phoenix, AZ", length=40)["trailer"].key, ("rgn_9axle_team",))
 
     def test_trailer_library_pages(self):
         from .models import TrailerType
