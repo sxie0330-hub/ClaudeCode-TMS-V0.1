@@ -253,6 +253,12 @@ class BolTests(Base):
             r = self.client.get(reverse("shipment_bol", args=[self.s.pk]))
             self.assertTrue(r.content.startswith(b"%PDF"))
 
+    def test_bol_fills_exactly_one_page(self):
+        import re as _re
+        self.login(self.ap)
+        r = self.client.get(reverse("shipment_bol", args=[self.s.pk]))
+        self.assertEqual(len(_re.findall(rb"/Type /Page\b", r.content)), 1)
+
     def test_bol_number(self):
         self.assertEqual(self.leg.effective_bol_number, f"{self.s.number}-1")
 
