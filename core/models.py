@@ -886,8 +886,13 @@ class AiExtraction(models.Model):
         DONE = "DONE", "已处理"
         DISCARDED = "DISCARDED", "已放弃"
 
+    class Source(models.TextChoices):
+        PASTE = "PASTE", "手动粘贴"
+        GMAIL = "GMAIL", "邮箱自动扫描"
+
     created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
     created_at = models.DateTimeField(auto_now_add=True)
+    source = models.CharField(max_length=6, choices=Source.choices, default=Source.PASTE)
     project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     shipment = models.ForeignKey(Shipment, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
     source_text = models.TextField("邮件内容")
@@ -965,3 +970,35 @@ class AiChange(models.Model):
 
         spec = self._spec()
         return display(spec.kind, self.new_value) if spec else self.new_value
+
+
+# --------------------------------------------------------------------------
+# Mailbox scanning (see core/mailscan.py)
+# --------------------------------------------------------------------------
+class GmailConnection(models.Model):
+    """A person's read-only Gmail access, granted by themselves."""
+
+    user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="gmail")
+    email = models.EmailField()
+    refresh_token = models.TextField(help_text="加密保存")
+    enabled = models.BooleanField(default=True)
+    connected_at = models.DateTimeField(auto_now_add=True)
+    last_scan_at = models.DateTimeField(null=True, blank=True)
+    last_result = models.CharField(max_length=300, blank=True)
+    last_error = models.CharField(max_length=500, blank=True)
+
+    def __str__(self):
+        return self.email
+
+
+class ScannedMessage(models.Model):
+    """A Gmail message already sent to AI, so it is never read twice."""
+
+    connection = models.ForeignKey(GmailConnection, on_delete=models.CASCADE, related_name="scanned")
+    message_id = models.CharField(max_length=64)
+    subject = models.CharField(max_length=300, blank=True)
+    scanned_at = models.DateTimeField(auto_now_add=True)
+    extraction = models.ForeignKey(AiExtraction, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    class Meta:
+        unique_together = [("connection", "message_id")]

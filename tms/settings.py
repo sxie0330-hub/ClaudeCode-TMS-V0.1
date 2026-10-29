@@ -152,6 +152,9 @@ TMS_AI_MODEL = os.environ.get("TMS_AI_MODEL", "gemini-3.8-flash")
 TMS_AI_LOCATION = os.environ.get("TMS_AI_LOCATION", "global")
 TMS_AI_PROJECT = os.environ.get("TMS_AI_PROJECT", "")  # default: the project Cloud Run runs in
 TMS_AI_DAILY_LIMIT = int(os.environ.get("TMS_AI_DAILY_LIMIT", "200"))  # per user per 24 h
+# Shared secret for Cloud Scheduler calls to /tasks/… (daily mailbox scan).
+TMS_TASK_KEY = os.environ.get("TMS_TASK_KEY", "")
+
 # Our own companies: never accepted as a customer. Lower-case letters/digits, matched as prefixes.
 TMS_OWN_COMPANY_ALIASES = {
     "ATS": ["ats", "atsinc", "atsllc", "advantagetransport"],

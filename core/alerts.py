@@ -16,6 +16,7 @@ from django.urls import reverse
 from django.utils import timezone
 
 from .models import (
+    AiExtraction,
     AlertSetting,
     AlertSnooze,
     Charge,
@@ -287,6 +288,20 @@ def r_bol(ctx):
 # --------------------------------------------------------------------------
 # 在途
 # --------------------------------------------------------------------------
+@rule(key="ai_pending", category="在途 · 等待与异常", label="AI 从邮件里发现的更新，等你确认", why="确认后才会写入 TMS",
+      level="today")
+def r_ai_pending(ctx):
+    qs = AiExtraction.objects.filter(status=AiExtraction.State.PENDING)
+    qs = qs.filter(Q(project__in=ctx.projects()) | Q(created_by=ctx.user, project__isnull=True))
+    for e in qs.select_related("project").prefetch_related("changes"):
+        n = sum(1 for c in e.changes.all() if c.status == "PENDING")
+        what = f"{n} 项更新" if n else "新项目信息"
+        src = "邮箱扫描" if e.source == AiExtraction.Source.GMAIL else "粘贴识别"
+        title = f"{e.project.name if e.project else 'AI 识别'}：AI 发现 {what}待确认"
+        yield ctx.alert("ai_pending", e.pk, "AI", title, f"{src} #{e.pk} · {e.summary[:80]}", e.get_absolute_url(),
+                        e.project, e.created_at.date())
+
+
 @rule(key="appts_today", category="在途 · 等待与异常", label="今天 / 明天的提货和送货", why="每日确认", level="today")
 def r_today(ctx):
     days = [ctx.today, ctx.today + timedelta(days=1)]
