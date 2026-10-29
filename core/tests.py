@@ -697,7 +697,7 @@ class AiNewProjectTests(Base):
         return ai.extract("项目开始 #4560 …", self.op, caller=fake_gemini(NEW_PROJECT_RESULT))
 
     def form_from_proposal(self, prop):
-        form = {"np_name": prop["name"], "np_customer": prop["customer"], "np_company": prop["company"],
+        form = {"np_index": str(prop.get("index", 0)), "np_name": prop["name"], "np_customer": prop["customer"], "np_company": prop["company"],
                 "np_monday_item_id": prop["monday_item_id"], "np_start_date": prop["start_date"],
                 "np_cargo_description": prop["cargo_description"], "np_notes": prop["notes"], "np_milestones": "1",
                 "np_load_count": str(len(prop["loads"]))}
@@ -731,7 +731,7 @@ class AiNewProjectTests(Base):
         ext = self.extract()
         self.login(self.op)
         r = self.client.get(ext.get_absolute_url())
-        self.assertContains(r, "这封邮件是新项目")
+        self.assertContains(r, "核对后新建")
         self.assertContains(r, "系统里已有这个柜号")
         r = self.client.post(reverse("ai_create_project", args=[ext.pk]), self.form_from_proposal(ai.proposal(ext)))
         p = Project.objects.get(name="PTT#4560 环世 → Moreno Valley")
@@ -751,8 +751,8 @@ class AiNewProjectTests(Base):
         self.assertTrue(Milestone.objects.filter(project=p, name="船到港 ETA", planned_date=date(2026, 11, 8)).exists())
         ext.refresh_from_db()
         self.assertEqual(ext.status, AiExtraction.State.DONE)
-        self.assertEqual(ext.raw_result["created_project_id"], p.pk)
-        self.assertContains(self.client.get(ext.get_absolute_url()), "已根据这封邮件新建项目")
+        self.assertEqual(ext.raw_result["np_state"]["0"], {"status": "created", "project_id": p.pk})
+        self.assertContains(self.client.get(ext.get_absolute_url()), "已根据这次识别新建项目")
         # A second submit does nothing.
         r = self.client.post(reverse("ai_create_project", args=[ext.pk]), self.form_from_proposal(ai.proposal(ext)), follow=True)
         self.assertContains(r, "已经处理过了")
@@ -790,6 +790,102 @@ class AiNewProjectTests(Base):
         form = self.form_from_proposal(prop)
         with self.assertRaises(ai.AiError):
             ai.create_project(ext, self.op, {**form, "np_customer": "PTT"})
+
+    def test_several_projects_in_one_text(self):
+        import copy
+
+        from . import ai
+        from .models import AiExtraction
+
+        p1 = copy.deepcopy(NEW_PROJECT_RESULT["new_project"])
+        p2 = copy.deepcopy(p1)
+        p2.update(name="ATS#4600 Trina → Holyoke", company="ATS", customer="Trina", monday_item_id="P-04600")
+        p2["loads"] = [{"container_number": "MSKU1234567", "equipment": "40HC", "service": "DRAY", "mbl": "", "carrier": "", "notes": ""}]
+        p3 = copy.deepcopy(p2)
+        p3.update(name="ATS#4601 Trina → Holyoke", monday_item_id="P-04601")
+        p3["loads"][0]["container_number"] = "MSKU7654321"
+        res = {"summary": "三个新项目", "loads": [], "unmatched": "", "new_projects": [p1, p2, p3]}
+        ext = ai.extract("三个项目……", self.op, caller=fake_gemini(res))
+        props = ai.proposals(ext)
+        self.assertEqual([p["index"] for p in props], [0, 1, 2])
+        self.login(self.op)
+        r = self.client.get(ext.get_absolute_url())
+        self.assertContains(r, "新项目 1/3")
+        self.assertContains(r, "新项目 3/3")
+        # Create the second, skip the third, the first is still open.
+        r = self.client.post(reverse("ai_create_project", args=[ext.pk]), self.form_from_proposal(props[1]))
+        self.assertRedirects(r, ext.get_absolute_url(), fetch_redirect_response=False)  # more waiting
+        self.assertTrue(Project.objects.filter(name="ATS#4600 Trina → Holyoke", customer__name="Trina").exists())
+        self.client.post(reverse("ai_create_project", args=[ext.pk]), {"np_index": "2", "action": "skip"})
+        ext.refresh_from_db()
+        self.assertEqual(ext.status, AiExtraction.State.PENDING)
+        self.assertEqual([p["index"] for p in ai.open_proposals(ext)], [0])
+        r = self.client.get(ext.get_absolute_url())
+        self.assertNotContains(r, "新项目 2/3")
+        self.assertContains(r, "ATS#4600 Trina → Holyoke")
+        # Creating the same one twice is refused.
+        with self.assertRaises(ai.AiError):
+            ai.create_project(ext, self.op, self.form_from_proposal(props[1]))
+        # Last one: the extraction is finished and we land on the new project.
+        r = self.client.post(reverse("ai_create_project", args=[ext.pk]), self.form_from_proposal(props[0]))
+        p = Project.objects.get(name=p1["name"])
+        self.assertRedirects(r, p.get_absolute_url(), fetch_redirect_response=False)
+        ext.refresh_from_db()
+        self.assertEqual(ext.status, AiExtraction.State.DONE)
+        self.assertFalse(Project.objects.filter(name="ATS#4601 Trina → Holyoke").exists())
+
+    def test_later_batch_goes_to_existing_project(self):
+        import copy
+
+        from . import ai
+        from .models import AiExtraction, MasterBL
+
+        self.project.monday_item_id = "P-04560"
+        self.project.save()
+        batch = copy.deepcopy(NEW_PROJECT_RESULT["new_project"])
+        batch.update(existing_project="", monday_item_id="#4560", name="PTT#4560 第二批")
+        batch["loads"] = [
+            {"container_number": "TGHU1111111", "equipment": "40HC", "service": "DRAY", "mbl": "shz999", "carrier": "B E Jordan Trucking", "notes": "第二批"},
+            {"container_number": "CYMU2523606", "equipment": "40HC", "service": "DRAY", "mbl": "", "carrier": "", "notes": "已存在"},
+        ]
+        res = {"summary": "#4560 第二批", "loads": [], "unmatched": "", "new_projects": [batch]}
+        ext = ai.extract("第二批……", self.op, caller=fake_gemini(res))
+        prop = ai.proposal(ext)
+        self.assertEqual(prop["target"], self.project.pk)  # matched by project code 4560
+        self.login(self.op)
+        r = self.client.get(ext.get_absolute_url())
+        self.assertContains(r, "已有项目的新批次")
+        form = {**self.form_from_proposal(prop), "np_target": str(self.project.pk), "np_load_1_include": "1"}
+        before = Project.objects.count()
+        r = self.client.post(reverse("ai_create_project", args=[ext.pk]), form)
+        self.assertRedirects(r, self.project.get_absolute_url(), fetch_redirect_response=False)
+        self.assertEqual(Project.objects.count(), before)  # no duplicate project
+        new = Shipment.objects.get(container_number="TGHU1111111")
+        self.assertEqual((new.project, new.customer, new.consignee), (self.project, self.customer, self.site))
+        self.assertEqual(new.master_bl.number, "SHZ999")
+        self.assertEqual(new.master_bl.eta, date(2026, 11, 8))
+        self.assertEqual(new.legs.get().carrier.name, "B E Jordan Trucking")
+        self.assertEqual(Shipment.objects.filter(container_number="CYMU2523606").count(), 1)  # not duplicated
+        self.assertTrue(self.project.timeline_notes.filter(text__contains="新增 1 个 Load").exists())
+        ext.refresh_from_db()
+        self.assertEqual(ext.status, AiExtraction.State.DONE)
+
+    def test_scope_project_and_explicit_number(self):
+        import copy
+
+        from . import ai
+
+        batch = copy.deepcopy(NEW_PROJECT_RESULT["new_project"])
+        batch.update(monday_item_id="", name="whatever", existing_project="")
+        res = {"summary": "", "loads": [], "unmatched": "", "new_projects": [batch]}
+        ext = ai.extract("x", self.op, project=self.project, caller=fake_gemini(res))
+        self.assertEqual(ai.proposal(ext)["target"], self.project.pk)  # entered from the project page
+        batch["existing_project"] = self.project.number
+        ext2 = ai.extract("x", self.op, caller=fake_gemini({**res, "new_projects": [batch]}))
+        self.assertEqual(ai.proposal(ext2)["target"], self.project.pk)
+        batch["existing_project"] = ""
+        ext3 = ai.extract("x", self.op, caller=fake_gemini({**res, "new_projects": [batch]}))
+        self.assertIsNone(ai.proposal(ext3)["target"])
 
     def test_works_with_empty_system(self):
         Shipment.all_objects.all().delete()

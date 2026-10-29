@@ -8,8 +8,8 @@
   <div class="actions"><a class="btn" href="{% url 'ai_new' %}{% if ext.shipment %}?load={{ ext.shipment.pk }}{% elif ext.project %}?project={{ ext.project.pk }}{% endif %}">再识别一封</a></div></div>
 
 {% if ext.summary %}<div class="card"><b>邮件概要：</b>{{ ext.summary }}</div>{% endif %}
-{% if created %}<div class="card" style="background:#f0f9f4"><b>已根据这封邮件新建项目：</b><a href="{{ created.get_absolute_url }}">{{ created.number }} {{ created.name }}</a></div>{% endif %}
-{% if prop %}{% include "core/_ai_new_project.html" %}{% endif %}
+{% if created %}<div class="card" style="background:#f0f9f4"><b>已根据这次识别新建项目：</b>{% for c in created %}<a href="{{ c.get_absolute_url }}">{{ c.number }} {{ c.name }}</a>{% if not forloop.last %}；{% endif %}{% endfor %}</div>{% endif %}
+{% for prop in props %}{% include "core/_ai_new_project.html" %}{% endfor %}
 
 <form method="post" action="{% url 'ai_apply' ext.pk %}">{% csrf_token %}
 {% for s, rows in groups.items %}
@@ -34,7 +34,7 @@
   </table></div>
 </section>
 {% empty %}
-{% if not prop and not created %}<div class="card"><p>AI 没有找到需要更新的内容（可能邮件里的信息系统里已经是对的，或者无法对应到 Load）。</p></div>{% endif %}
+{% if not props and not created %}<div class="card"><p>AI 没有找到需要更新的内容（可能邮件里的信息系统里已经是对的，或者无法对应到 Load）。</p></div>{% endif %}
 {% endfor %}
 
 {% if ext.unmatched %}<div class="card" style="background:#fffbf3"><b>没有写入的信息：</b><pre style="white-space:pre-wrap;margin:6px 0 0">{{ ext.unmatched }}</pre></div>{% endif %}
