@@ -281,6 +281,13 @@ class BolTests(Base):
         self.assertIn(f"BOL {self.leg.effective_bol_number}".encode(), pdf)
         self.assertIn(b"Page 2", pdf)
 
+    def test_cargo_dims_in_feet(self):
+        line = CargoLine.objects.create(shipment=self.s, description="Transformer", weight_lbs=Decimal("185000"),
+                                        length_ft=Decimal("28.5"), width_ft=Decimal("12"), height_ft=Decimal("13.75"))
+        self.assertEqual(line.dims, "28.5 x 12 x 13.75")
+        from core.bol import bol_context
+        self.assertEqual(bol_context(self.s, self.leg)["lines"][0].dims, "28.5 x 12 x 13.75")
+
     def test_bol_number(self):
         self.assertEqual(self.leg.effective_bol_number, f"{self.s.number}-1")
 
@@ -346,6 +353,20 @@ class ImportTests(Base):
         log = import_data(self.SAMPLE)
         self.assertIn("跳过", log[0])
         self.assertEqual(Project.objects.filter(name="PTT#4475 test").count(), 1)
+
+    def test_import_converts_legacy_inch_dims(self):
+        import copy
+        from .importer import import_data
+
+        data = copy.deepcopy(self.SAMPLE)
+        data["projects"][0]["loads"][1]["cargo"] = [
+            {"description": "BESS unit", "weight_lbs": 77000, "length_in": 240, "width_in": 96, "height_in": 114},
+            {"description": "Skid", "length_ft": 8, "width_ft": 4, "height_ft": 3.5},
+        ]
+        import_data(data)
+        lines = {c.description: c for c in CargoLine.objects.filter(shipment__container_number="SHPU2204133")}
+        self.assertEqual(lines["BESS unit"].dims, "20 x 8 x 9.5")
+        self.assertEqual(lines["Skid"].dims, "8 x 4 x 3.5")
 
     def test_dry_run_writes_nothing(self):
         from .importer import import_data

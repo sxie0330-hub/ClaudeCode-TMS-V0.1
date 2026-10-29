@@ -325,7 +325,7 @@ def build_page(ctx, blank_rows=3, blank_lines=2, attached=False):
     rows = [[
         P("Handling Unit\nQty", s_head), P("Type", s_head), P("Pieces", s_head),
         P("HM\n(X)", s_head), P("Description of Articles\n(UN#, proper shipping name, hazard class, PG)", s_head),
-        P("Dims L×W×H (in)", s_head), P("Weight (lbs)", s_head), P("NMFC", s_head), P("Class", s_head),
+        P("Dims L×W×H (ft)", s_head), P("Weight (lbs)", s_head), P("NMFC", s_head), P("Class", s_head),
     ]]
     total_qty = 0
     total_pcs = 0
