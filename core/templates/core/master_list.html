@@ -3,7 +3,7 @@
 {% block title %}{{ label }}{% endblock %}
 {% block content %}
 <div class="head"><h1>{{ label }}</h1><span class="muted">{{ page.paginator.count }} 条</span>
-  <div class="actions">{% if perm.edit_ops %}<a class="btn primary" href="{% url 'master_create' kind %}">+ 新建{{ label }}</a>{% endif %}</div></div>
+  <div class="actions">{% if can_edit %}<a class="btn primary" href="{% url 'master_create' kind %}">+ 新建{{ label }}</a>{% endif %}</div></div>
 <form class="filters" method="get"><input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="搜索{{ label }}"><button type="submit">搜索</button></form>
 <div class="panel"><div class="tablewrap"><table class="t">
   <thead><tr>{% for h in headers %}<th>{{ h }}</th>{% endfor %}</tr></thead>

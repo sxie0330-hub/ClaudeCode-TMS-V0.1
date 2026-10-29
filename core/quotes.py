@@ -10,21 +10,9 @@ from django.conf import settings
 from django.db import transaction
 from django.utils import timezone
 
-from . import units
+from . import oog, units
 from .models import (CargoLine, Carrier, CarrierQuote, Charge, Customer, CustomerQuote, CustomerQuoteLine, Lead, Leg, Location,
-                     Note, Project, Shipment)
-
-# ---------------------------------------------------------------------------
-# OOG first screen. Rules of thumb only: legal limits differ by state and
-# route, so these are flags for a person to check, never a permit decision.
-# ---------------------------------------------------------------------------
-LEGAL_WIDTH = Decimal("8.5")      # 8'6" (102 in), federal
-LEGAL_HEIGHT = Decimal("13.5")    # 13'6" overall in most states (some allow 14')
-LEGAL_LENGTH = Decimal("53")      # 53' trailer
-GROSS_LIMIT = 80000               # lbs, federal interstate gross
-# Approximate deck heights and legal payloads, for the equipment suggestion.
-DECKS = [("Flatbed", Decimal("5"), 48000), ("Step Deck", Decimal("3.5"), 46000), ("RGN / Lowboy", Decimal("2"), 42000)]
-
+                     Note, Project, Shipment, TrailerType)
 
 def ft_in(v):
     """Decimal feet -> 13'6" (what carriers read)."""
@@ -32,38 +20,6 @@ def ft_in(v):
         return ""
     inches = int((Decimal(v) * 12).to_integral_value())
     return f"{inches // 12}'{inches % 12}\"" if inches % 12 else f"{inches // 12}'"
-
-
-def screen_cargo(c):
-    """(flags, suggested equipment) for one LeadCargo. Flags are Chinese, for the team."""
-    flags = []
-    w, h, length, wt = c.width_ft, c.height_ft, c.length_ft, c.weight_lbs
-    if w and w > LEGAL_WIDTH:
-        flags.append(f"超宽 {ft_in(w)}（> 8'6\"）：需要 oversize permit")
-        if w > 12:
-            flags.append("宽度 > 12'：多数州需要护送车 escort，部分州还要路线勘察")
-    if length and length > LEGAL_LENGTH:
-        flags.append(f"超长 {ft_in(length)}（> 53'）：需要加长板 / permit")
-    suggestion = ""
-    if h or wt:
-        for name, deck, payload in DECKS:
-            if (not h or h + deck <= LEGAL_HEIGHT) and (not wt or wt <= payload):
-                suggestion = name
-                break
-        if not suggestion:
-            suggestion = "多轴 RGN / 特种车"
-            if h and h + DECKS[-1][1] > LEGAL_HEIGHT:
-                flags.append(f"超高：货高 {ft_in(h)}，放在低平板上总高也超过 13'6\"，需要 overheight permit 和路线勘察")
-            if wt and wt > DECKS[-1][2]:
-                flags.append(f"超重：单件 {units.plain(wt)} lbs，超出普通低平板合法载重，需要多轴车和 overweight permit（总重 > 80,000 lbs）")
-    if c.hazmat:
-        flags.append("危险品：需要有 Hazmat 资质的承运商")
-    return flags, suggestion
-
-
-def screen_lead(lead):
-    """[(cargo, flags, suggestion)] for the scope."""
-    return [(c, *screen_cargo(c)) for c in lead.cargo.all()]
 
 
 # ---------------------------------------------------------------------------
@@ -310,6 +266,7 @@ def convert(lead, user, owner=None, project_name="", carrier_quotes=None, custom
             contact_phone=lead.contact_phone[:60])
         lead.customer = customer
     lanes = list(lead.lanes.all())
+    trailers = list(TrailerType.objects.filter(active=True))
     if not lanes:
         raise ValueError("请先在需求里加至少一段运输")
     carrier_quotes = carrier_quotes if carrier_quotes is not None else chosen_quotes(lead)
@@ -332,7 +289,7 @@ def convert(lead, user, owner=None, project_name="", carrier_quotes=None, custom
         lane_cargo = [c for c in cargo if c.lane_id == lane.pk] or ([c for c in cargo if not c.lane_id] if len(lanes) == 1 else [])
         cq = carrier_quotes.get(lane.pk) or (carrier_quotes.get(None) if len(lanes) == 1 else None)
         carrier = _carrier(cq)
-        flags = any(screen_cargo(c)[0] for c in lane_cargo)
+        flags = oog.needs_permit(oog.screen_lane(lane, lane_cargo, trailers))
         splits = {c.pk: _split(c.qty, lane.trucks) for c in lane_cargo}
         loads = []
         for i in range(max(lane.trucks, 1)):

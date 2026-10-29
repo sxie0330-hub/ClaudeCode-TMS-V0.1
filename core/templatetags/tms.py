@@ -33,3 +33,10 @@ def get_item(d, key):
         return d.get(key)
     except AttributeError:
         return None
+
+
+@register.filter
+def in_ft(value):
+    """Inches -> 13'6" (for OOG heights and widths)."""
+    from core.oog import in_ft as conv
+    return conv(value) if value not in (None, "") else "?"

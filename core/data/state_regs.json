@@ -1,0 +1,6597 @@
+[
+ {
+  "state": "AL",
+  "name": "Alabama",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "ALDOT",
+  "phone": "334-834-1092",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 57,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 5,
+   "rear_overhang_ft": 5,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "直车 40'0\"；Semi trailer 57'0\"；组合总长 90'0\"；后悬 5'0\"（最大 20'0\"）；Kingpin 41'0\"；单轴/三轴注明州际及非州际，双轴 34,000 仅注明州际；四轴 N/A；Doubles 34,000、Triples 42,000。豁免：电杆/原木/木材/层压木/结构钢/管道（仅长度豁免）；≤9'0\" 宽农用拖拉机；运牲畜卡车/挂车 ≤65'0\" 长"
+  },
+  "overweight": {
+   "single_axle_lbs": 22000,
+   "tandem_axle_lbs": 44000,
+   "tridem_axle_lbs": 66000,
+   "quad_axle_lbs": 88000,
+   "gross_max_lbs": null,
+   "notes": "总重：无设定上限；注册总重 80,000 磅；DOT 可要求提供超重地磅单核实轴重"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道路 1 前护送；4 车道路 1 后护送"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 辆护送（未注明前后）"
+   },
+   {
+    "dimension": "height",
+    "over": 186,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >15'6\"：1 前护送带测高杆"
+   },
+   {
+    "dimension": "height",
+    "over": 197,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >16'5\"：需 1 辆铲斗车（Bucket Truck），非普通护送车"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >90'0\"：1 后护送"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >125'0\"：2 辆护送"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >150'0\"：2 辆护送 + 2 州警"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "前悬 >10'0\"：1 前护送"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 5,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "后悬 >5'0\"：1 后护送"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >16'0\"：2 名州警/警官；州可酌情加派"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：2 名州警/警官"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >150'0\"：2 名州警/警官"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文\"悬 20'0\"\"，未注明前/后，亦未注明 > 或 ≥"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文\"悬 20'0\"\"，未注明前/后，亦未注明 > 或 ≥"
+   },
+   {
+    "dimension": "weight",
+    "over": 300000,
+    "unit": "lbs",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 重 ≥300,000 磅"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 150,
+   "front_overhang_ft": 20,
+   "rear_overhang_ft": 20,
+   "gross_lbs": 300000,
+   "notes": "宽 >16'0\"；高 >16'0\"；长 >150'0\"；悬 20'0\"（未注明前/后）；总重 ≥300,000 磅。轴重 22,000/44,000/66,000/88,000。行驶时间：周日至周四 9:00pm–6:00am（除非许可办另批）。高 >16'5\" 需铲斗车；>16'6\" 可能需公用事业通知批准证明；≥17'0\" 勘测须列 GPS 坐标。铁路道口承运人自行联系；市/县道路需市/县工程师批准；四角另加琥珀爆闪灯"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 130,
+   "gross_lbs": 300000,
+   "notes": "触发：宽 >16'0\"；高 >16'0\"；长 ≥150'0\"（非转向挂车 >130'0\"，取较严 130）；重 ≥300,000 磅。有效期 30 天；州未设定固定垂直净空限制；高 ≥17'0\" 须列 GPS 坐标"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": null,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末（周六/周日日出前 30 分钟至日落后 30 分钟）：宽/高/长/重/悬不限。夜间：原文仅写\"宽 >16'0\" 仅限 9:00pm–6:00am 行驶\"（superload 周日至周四 9pm–6am），未说明普通超限货能否夜间行驶，故 null。无 curfew。节假日禁行（2026）：Memorial Day 5/23 日落–5/26 日出；独立日 7/2 日落–7/6 日出；Labor Day 9/5 日落–9/8 日出；感恩节 11/26 日落–12/1 日出（2025）；圣诞 12/24 日落–12/26 日出；元旦 12/31 日落–1/2 日出"
+  },
+  "frost_laws": "无霜冻法",
+  "permit_validity": "5 天",
+  "divisible_rule": "年票仅限不可拆货物；附件导致轴重超限时必须拆除另车运输；推土机/装载机铲斗突出时机头朝前装（铲斗在后）",
+  "other_notes": "所有年票和单次许可均需 Accord 责任险证书（抬头列 Alabama 为证书持有人）；超重时升降轴必须放下；州警护送须先取得许可预批再联系 ALEA（334-242-4393）；护送车无需认证；办公时间 7:00am–4:45pm 中部时间"
+ },
+ {
+  "state": "AR",
+  "name": "Arkansas",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Arkansas Highway and Transportation Department (ARDOT)",
+  "phone": "501-569-2381",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53.5,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 50000,
+   "notes": "单车 40'0\"；车头+挂车 65'0\"；挂车 53'6\"（≤53'6\" 可超 65'0\"）；Kingpin 40'0\"。三轴法定 50,000 按原文照录。豁免：杆/管/机械/钢梁等结构件白天 ≤90' 总长免许可（夜间需许可）"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 46000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 68000,
+   "gross_max_lbs": null,
+   "notes": "四轴组 68,000（可要求工程审查）；总重无固定上限；注册总重 80,000。Superload 节列双轴 40,000（与此处 46,000 不一致）"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 145,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 宽 ≥12'1\"：2 车道 1 前（4 车道未列）"
+   },
+   {
+    "dimension": "width",
+    "over": 169,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "原文 宽 ≥14'1\"：2 车道前后各 1；4 车道 1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 4,
+    "where": "front+rear",
+    "notes": "宽 >18'0\"：全路段前后各 2（限 9:00am–3:00pm）"
+   },
+   {
+    "dimension": "height",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >15'0\"：1 前带测高杆（杆高出货 6\"）"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >17'0\"：电力公司陪同（非护送车数量）"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 长 ≥100'0\"：2 车道 1 前、4 车道 1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 115,
+    "unit": "ft",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "长 >115'0\"：2 车道前后各 1"
+   },
+   {
+    "dimension": "length",
+    "over": 130,
+    "unit": "ft",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "长 >130'0\"：前后各 1"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 198,
+   "height_in": 186,
+   "length_ft": 100,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 180000,
+   "notes": "宽 >16'6\"；高 ≥15'6\"；长 ≥100'0\"；总重 >180,000（+$250 附加费）；悬未列。轴重：单 20,000/双 40,000/三 60,000/四轴组 68,000。高 >16'0\" 须取得电力/信号灯书面协议；>17'0\" 电力代表须陪同"
+  },
+  "survey": {
+   "width_in": 216,
+   "height_in": 204,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：宽 ≥18'0\"（州际；州高速 20'0\"，取较严 18'）；高 >17'0\"。净空 6\"；许可办公室生成查勘表，勘测员签字；高 >17'0\" 须电力/信号灯业主书面许可+陪同"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 102,
+   "night_max_length_ft": 90,
+   "notes": "周末（日出–日落）：宽/高/长/重/悬不限；活动房周日禁行。夜间：宽 8'6\"、高 13'6\"、长 ≤90'0\"、重量不限（即超宽/超高夜间不可走）；活动房夜间禁行。有 curfew（细节未列）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "可拆附件允许；推土机铲刀等危险附件 >14' 宽须倾斜收至 14' 宽",
+  "other_notes": "网站无阿肯色警车开道触发尺寸数据（州警 501-618-8800）；超重时升降轴必须放下；超重费按吨按里程；>180,000 磅 superload +$250；路线/重量修改须作废重办；保险仅活动房/房屋/土方设备要求"
+ },
+ {
+  "state": "AZ",
+  "name": "Arizona",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "ADOT",
+  "phone": "602-255-0072",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "挂车长：州际 57'0\"；其他公路 53'0\"（取较严 53）。直车 40'0\"；组合（非州际）65'0\"；双挂每节 28'6\"；运车车 80'0\"。单轴 20,000（或注册重量）；四轴 44,000–46,000。豁免：管材/电杆/结构件 ≤80'0\" 长、后悬 4'0\""
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": 250000,
+   "notes": "单轴 20,000（或注册重量）；双轴/三轴/四轴原文\"见重量表\"，未给数值。总重 <250,000 磅；超过需桥梁分析（约 10 个工作日），列为 Class C 许可（非绝对上限）。注册总重 80,000；16 轮 trunnion 轴组每组最多 60,000；bonus tridem 重量全州公路可走"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "工作日：宽 >10'0\" 2 车道路 1 前+1 后（4 车道路此档原文未列）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "工作日：宽 >14'0\" 4 车道路 1 后（原文未单列 2 车道路 >14' 要求）"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "工作日：高 >16'0\" 1 前+1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "工作日：长 >120'0\" 2 车道路 1 前+1 后；4 车道路 1 后"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文\"前悬 20'0\"：1 前\"，未注明 > 或 ≥"
+   },
+   {
+    "dimension": "width",
+    "over": 132,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "周末：宽 >11'0\" 1 后（11'–14'0\" 1 后）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "周末：宽 14'–16'0\" 1 前+1 后"
+   },
+   {
+    "dimension": "height",
+    "over": 182,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "周末：高 >15'2\" 1 辆带测高杆（第 12 节写\"超 15' 高需带测高杆护送车\"，两处不一致）"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >14'0\"（对向车流受影响时）；Class C 许可下州有权要求 DPS 警官"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >16'0\"（对向车流受影响时）"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >120'0\"（对向车流受影响时）"
+   },
+   {
+    "dimension": "weight",
+    "over": 250000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 >250,000 磅（需桥梁分析时）；限重桥梁必须配警车；警官 $93.18/小时/人 + $0.825/英里/车"
+   }
+  ],
+  "superload": {
+   "width_in": 168,
+   "height_in": 192,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 250000,
+   "notes": "宽 >14'0\"；高 >16'0\"；长 >120'0\"；总重 >250,000 磅（桥梁分析 $125/每 50 英里，7–14 工作日）；悬未列。Class C 申请至少提前 72 小时；宽 ≥18'0\" 需交通管制预案"
+  },
+  "survey": {
+   "width_in": 216,
+   "height_in": 192,
+   "length_ft": null,
+   "gross_lbs": 250000,
+   "notes": "触发：宽 ≥18'0\"；高 >16'0\"（15'10\" 州可酌情要求）；长：影响对向车流时（无数值）；重 >250,000 磅。有效期 30 天；宽 ≥18'0\" 需交通管制预案"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": null,
+   "night_max_length_ft": 120,
+   "notes": "周末 24 小时可走：宽 ≤10'0\"、高 ≤14'6\"、长 ≤120'0\"、重 ≤250,000、后悬 ≤10'0\"；周末 3:00am–12:00pm 放宽至宽 ≤14'0\"、高 ≤16'0\"、长 ≤120'0\"、重 ≤250,000。夜间可走：高 ≤14'6\"、长 ≤120'0\"、后悬 ≤10'0\"（原文未写夜间宽度上限，故 null）。有 curfew（见州链接）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "4 天",
+  "divisible_rule": "Envelope 许可：非特定不可拆货物；可拆附件拆除耗时 >8 小时可带附件行驶（需设备所有人出函），<8 小时须拆下另车运输",
+  "other_notes": "护送车需认证；年票申请人须有 AZ 商业地址、车辆注册重量 80,000；超重时升降轴不必放下；单次 Class A & C 可因天气/故障修改；有 curfew；AZ 无夏令时"
+ },
+ {
+  "state": "CA",
+  "name": "California",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "CALTRANS Transportation Permits Section",
+  "phone": "916-322-1297",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 34000,
+   "notes": "法定长 65'0\"（CA）；STAA 不限；单车长未单列。挂车 48/53（STAA）：≤48'0\" kingpin 不限；48'–53'0\" kingpin 最长 40'0\"（取较严 48）。后悬为 2/3 轴距（第 2 轴中心到最后轴中心），无固定数值。三轴按轴间距：8'0\"–8'11\"=34,000；9'0\"–9'11\"=42,500；10'0\"+=43,500（取较严 34,000）。四轴不合法。长度豁免：电杆、木材、管材、一体结构件"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": 250000,
+   "notes": "单轴 20,000（有检验报告可到 22,000）；双轴/三轴见重量表（未给数值）；四轴不合法。总重上限 250,000，超过需结构审查（最多 30 个工作日）。16 轮 trunnion 轴组每组最多 60,000"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 宽 12'0\" 起（≥）；数量/位置按 Pilot Car Maps 路线分级决定"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 长 120'0\" 起（≥）；按 Pilot Car Maps 路线分级决定"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >17'0\"；数量未列"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"悬 >25'0\"\"，未注明前/后"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"悬 >25'0\"\"，未注明前/后"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "Green/Blue/Brown 2 车道 >15'0\"；Yellow 4 车道路线 >16'0\"（取较严 15'）"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >17'0\"（若不压中线可豁免）"
+   },
+   {
+    "dimension": "length",
+    "over": 135,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "Blue/Brown >135'0\"；Yellow/Green >185'0\"（取较严）；借用对向车道或压中线时必须"
+   },
+   {
+    "dimension": "weight",
+    "over": null,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重量：州决定（许可要求降速、桥上走中线、或州认为必要；借用对向车道时必须）"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 204,
+   "length_ft": 135,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 250000,
+   "notes": "宽 >16'0\"；高 >17'0\"；长 >135'0\"；悬：超过 2/3 轴距（无固定数值）；总重 >250,000（结构审查最多 30 工作日）；单轴 22,000。Variance 许可：高 >17'0\"；宽 Green/Blue/Brown >15'0\"、Yellow >16'0\"；审批最多 30 天"
+  },
+  "survey": {
+   "width_in": 264,
+   "height_in": 204,
+   "length_ft": 135,
+   "gross_lbs": null,
+   "notes": "触发：宽 ≥22'0\"；高 >17'0\"；长 >135'0\"（Variance 部门可能要求）、>185'0\"（所有货物必须）；重量仅结构要求时。净空 3\"；高 >18'0\" 可能需电力 clearance；有效期 30 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末与夜间：可走；非 superload 在 4 车道高速上一般允许；重量 <250,000（具体时间见 24/7 链接）。有 curfew：Los Angeles、Sacramento、San Diego、San Francisco 城市地图"
+  },
+  "frost_laws": "无",
+  "permit_validity": "7 天",
+  "divisible_rule": "可拆附件：允许，工程机械可拆下附件以缩小尺寸再装回；木箱货须注明 \"Load is Crated for Protection\" 并提供货物描述",
+  "other_notes": "许可不允许修改；护送/警车要求按路线颜色（Yellow/Green/Blue/Brown/Red）分级，需查 Pilot Car Maps；CA 本地车队回加州需 CA Fuel permit；无收费高速"
+ },
+ {
+  "state": "CO",
+  "name": "Colorado",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "CDOT",
+  "phone": "303-757-9539",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 57.33,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 4,
+   "rear_overhang_ft": 10,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 36000,
+   "tridem_axle_lbs": 54000,
+   "notes": "高 13'6\"（指定道 14'6\"）。半挂 57'4\"；双挂各 28'6\"；总长 70'0\"（挂车 >57'4\" 或双挂 >28'6\" 时）；船/汽车运输车 75'0\"。总重：州际 80,000 / 非州际 85,000。双轴：州际 36,000 / 非州际 40,000；双轴组合 36,000；三轴组合 54,000。轮胎链法：GVW >26,000 商用车 9/1–5/31，I-70 Dotsero（MM 133）至 Golden（MM 259）"
+  },
+  "overweight": {
+   "single_axle_lbs": 27000,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 65000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "耳轴无额外重量；总重无固定上限；注册总重 85,000"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 102,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "蓝线 >8'6\"：前导 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 132,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "黄线 >11'0\"：双车道前导 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 132,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "蓝线 >11'0\"：前后各 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "绿线 >13'0\"：双车道前导 1 辆/四车道后导 1 辆或车尾黄闪灯；黄线 >13'0\" 四车道后导 1 辆或黄闪灯；蓝线 >13'0\" 按特别许可定"
+   },
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "州际/白线 >15'0\"：后导 1 辆或车尾黄闪灯；黄线 >15'0\" 按特别许可定"
+   },
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "绿线 >15'0\"：前后各 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "州际/白线、绿线 >17'0\"：按 Chapter 6 特别许可定；红线一律特别许可定"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >16'0\"：1 辆带高度杆"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >17'0\"：1 辆带高度杆 + 经过架空信号灯路口须持证信号承包商"
+   },
+   {
+    "dimension": "length",
+    "over": 85,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "长 >85'0\"：山区双车道前导 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "长 >110'0\"：双车道前导 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 115,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >115'0\"：四车道后导 1 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "前悬 >15'0\"：前导 1 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "后悬 >25'0\"：后导 1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "height",
+    "over": 210,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >17'6\""
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"宽 20'0\"\"，未注明 > 或 ≥"
+   },
+   {
+    "dimension": "length",
+    "over": 130,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"长 130'0\"\"，未注明 > 或 ≥"
+   }
+  ],
+  "superload": {
+   "width_in": 204,
+   "height_in": 192,
+   "length_ft": 130,
+   "front_overhang_ft": 25,
+   "rear_overhang_ft": 25,
+   "gross_lbs": 200000,
+   "notes": "宽 >17'0\"；高 16'0\"、长 130'0\"、重 200,000、悬 25'0\"（未注明 >/≥，悬未注明前/后）。轴重 27,000/50,000/65,000/72,000。高 >17'0\" 过架空信号灯路口须 IMSA 二级信号承包商；重 >200,000 须第三方重量文件随车"
+  },
+  "survey": {
+   "width_in": 240,
+   "height_in": 210,
+   "length_ft": 130,
+   "gross_lbs": null,
+   "notes": "宽 >20'0\"；高 >17'6\"；长 >130'0\"。有效期 30 天；架空障碍 4\" 净空；州可对任何尺寸酌情要求"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 168,
+   "night_max_length_ft": null,
+   "notes": "周末：周六、周日日出至日落，限宽 17'0\"×高 16'0\"×长 120'0\"×重 192,000，悬不限。夜间：允许，限宽 <14'0\"（严格小于）× 其余法定（夜间长度上限即法定长度，未给具体数值）；特殊要求注于许可。有 Curfews（见 CO Curfew Restrictions 链接）；无科罗拉多专属节假日页"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "Load Attachments：不允许保留连接；年许可有\"超重可分割\"类别（多为非州际，见费用节）",
+  "other_notes": "护送车须认证（互认 CO、AZ、FL、MN、OK、UT、WA），护送车保险 ≥$100 万；宽度护送按路线颜色（白/绿/黄/蓝/红）分级；许可可在线免费修改，最多 2 次 5 天延期；I-70 轮胎链法"
+ },
+ {
+  "state": "CT",
+  "name": "Connecticut",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "CT DOT",
+  "phone": "860-594-2880",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 36000,
+   "tridem_axle_lbs": 58400,
+   "notes": "法定长 65'0\"（未分单车/组合，单车长未列）；挂车 48'0\""
+  },
+  "overweight": {
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限（须按许可重量注册车辆）；单程 >200,000 磅收工程分析费"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道 1 前、4 车道 1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 162,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 宽 ≥13'6\"：2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "原文 宽 ≥15'0\"：1 前 2 后"
+   },
+   {
+    "dimension": "height",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'0\"：1 辆（不需测高杆）"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 高 ≥14'6\"：1 测高杆"
+   },
+   {
+    "dimension": "height",
+    "over": 184,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 高 ≥15'4\"：1 前 + 2 州警"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >80'0\"：2 车道 1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >100'0\"：2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 119.92,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >119'11\"：+2 州警（第 9 节为 长 >119'0\" 1 州警+1 前+1 后护送）"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"悬：25'0\"\"，未注明前/后、数量"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"悬：25'0\"\"，未注明前/后、数量"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "height",
+    "over": 184,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "原文 高 ≥15'4\"：1 前+1 后州警 + 1 前护送"
+   },
+   {
+    "dimension": "height",
+    "over": 181,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "宽高组合 ≥13'6\"（宽）×15'1\"（高）同时满足时：1 前+1 后州警 + 1 前护送"
+   },
+   {
+    "dimension": "length",
+    "over": 119,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "第 9 节：长 >119'0\" 1 州警+1 前+1 后护送；第 7 节：长 >119'11\" +2 州警。两处不一致，取较严（119'0\"、2 名）"
+   }
+  ],
+  "superload": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 200000,
+   "notes": "原文 Superload：长 ≥150'0\"；总重 >200,000；宽/高未列。高 ≥14'0\"/宽 ≥13'6\"/长 ≥120'0\"：限周一–周五 9:00am–4:00pm 行驶"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 168,
+   "length_ft": 120,
+   "gross_lbs": null,
+   "notes": "触发：高 >14'0\"；长 ≥120'0\"；宽\"见注 1\"但原文未提供注 1。净空 3\"；有效期 14 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周六/周日（日出前半小时–中午 12:00）：仅不可拆货，申请时注明，另发周末许可；限宽 ≤12'0\"、高 ≤13'6\"、长 ≤80'0\"、重 <160,000。夜间不允许。高 ≥14'0\"/宽 ≥13'6\"/长 ≥120'0\" 限周一–周五 9am–4pm。有 curfew（细节未列）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "3 天",
+  "divisible_rule": "周末许可仅限不可拆货；可拆附件须拆下另车运输；年票仅可拆货（按重量计费），无超尺寸年票",
+  "other_notes": "许可有效期仅 3 天；许可不允许修改；办公时间 8:00am–3:00pm 东部；超重时升降轴必须放下；护送车需认证（外州证互认）"
+ },
+ {
+  "state": "DE",
+  "name": "Delaware",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "DelDOT",
+  "phone": "302-744-2700",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": null,
+   "notes": "单车 40'0\"；州际/美道半挂 53'0\"；其他道路 60'0\"。三轴法定未列。豁免：农机（耕作时走州道）"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "双轴/三轴超上述值需工程审查；总重无固定上限；注册总重 80,000；单轴 >25,000（或许可办定的更低值）需桥梁管理审查"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >13'0\"：2 车道 1 前、4 车道 1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >15'0\"：2 辆 + 1 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 180,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 高 ≥15'0\"：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 210,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 高 ≥17'6\"：2 辆 + 1 州警"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 长 ≥90'0\"：1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "原文 长 ≥100'0\"：1 前 1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 长 ≥120'0\"：2 辆 + 1 州警"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文\"悬 ≥15'0\"：1 后\"，未注明前/后悬"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文\"悬 ≥15'0\"：1 后\"，未注明前/后悬"
+   },
+   {
+    "dimension": "weight",
+    "over": 120000,
+    "unit": "lbs",
+    "escorts": 2,
+    "where": null,
+    "notes": "重 >120,000 磅：2 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >15'0\"：1 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 210,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 高 ≥17'6\"：1 州警"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 长 ≥120'0\"：1 州警"
+   }
+  ],
+  "superload": {
+   "width_in": 180,
+   "height_in": 180,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 119000,
+   "notes": "宽 ≥15'0\"；高 ≥15'0\"；长 ≥120'0\"；总重 >119,000；悬未列。轴重 20,000/40,000/60,000/80,000；逐案审"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 180,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：高 15'0\"（未注明 >/≥；≥14'6\" 许可部门可要求）。净空 3\"；有效期 14 天；高 ≥15'0\" 须 DOT 信号主管审批，承运人联系各县信号主管"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": 75,
+   "notes": "周末（日出–日落）：尺寸重量不限；杆/桩 24/7 可走。夜间须申请（许可 special provisions 注明），21:00–5:00，限长 ≤75'、宽 ≤12'、高 ≤14'6\"、重 ≤120,000。无 curfew。节假日禁行：劳工节 9/6 中午–9/8 5:00am；独立日 7/3 中午–7/5 9:00am；阵亡将士日 5/24 中午–5/26 9:00am；圣诞 12/24 中午–12/26 9:00am；元旦 12/31 中午–1/2 9:00am；感恩节 11/26 中午–11/29 9:00am"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "可拆附件须拆下另车运输",
+  "other_notes": "无年票；电话列表显示 324-744-2700，疑为 302 笔误；传真只走邮件 haulpermit@delaware.gov；有收费高速费 $11；许可可修改（故障延期 3 天等，修改费 $10）"
+ },
+ {
+  "state": "FL",
+  "name": "Florida",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "FDOT",
+  "phone": "850-410-5777",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22000,
+   "tandem_axle_lbs": 44000,
+   "tridem_axle_lbs": null,
+   "notes": "法定宽 8'6\"（路 <12' 宽时 8'0\"，取较严 96）。法定长 65'0\"（单车长未单列）；挂车 48'0\"；Kingpin 41'0\"；三轴法定未列。净空由承运人自行核查（州不审路线尺寸）"
+  },
+  "overweight": {
+   "single_axle_lbs": 25000,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限（超额需 DOT 审查）；注册总重 80,000"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "仅 Florida Keys：宽 >10'–14' 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "宽 >12'0\"：1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "宽 >14'0\"：前后各 1；Keys >14' 需州警"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >14'6\"：1 前带测高杆（杆高出货 ≥6\"）"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >16'0\"：+ 警车"
+   },
+   {
+    "dimension": "length",
+    "over": 95,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >95'0\"：1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "长 >150'0\"：前后各 1"
+   },
+   {
+    "dimension": "length",
+    "over": 250,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >250'0\"：州警 + 1 后"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >16'0\"；州可酌情加派"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "仅 Florida Keys：宽 >14'0\" 需州警（$45/小时，最低 4 小时 + $9 手续费）"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >16'0\""
+   },
+   {
+    "dimension": "length",
+    "over": 250,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >250'0\""
+   },
+   {
+    "dimension": "weight",
+    "over": 199000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 重 ≥199,000 磅"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 199000,
+   "notes": "宽 >16'0\"；高 >16'0\"；长 >150'0\"；总重 199,000（未注明 >/≥）；悬未列。轴重 22,000/44,000/66,000/72,000（与第 2 节超重上限不同）。提前 ≥10 天申请；夜间/超 50 英里需 Letter of Essentiality；总重 >300,000 需车辆示意图"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 180,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：宽 >16'0\"；高 >15'0\"。净空 6\"；两侧各需 2' 宽裕；有效期 10 天；须公司抬头纸；州只审重量不审路线尺寸"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 80,
+   "notes": "周末（日出前半小时–日落后半小时）：宽 ≤10'0\" 7 天可走；宽 >10'0\"/长 >80'0\"/高 >14'6\" 仅白天（节假日除外）。夜间：宽 ≤10'0\"、高 14'6\"、长 80'0\"、重量不限；超限夜间须逐案批 + Letter of Essentiality。有 curfew；Florida Keys（Florida City 以南）：≤10' 宽日出前半小时–日落后半小时，>10' 宽周一–五 21:00–5:00"
+  },
+  "frost_laws": "无",
+  "permit_validity": "10 天",
+  "divisible_rule": "可拆附件：州际须拆下另车运输；非州际可保留至超法定 10%（≤88,000 磅），超则拆下",
+  "other_notes": "州不审路线尺寸，净空/路线由承运人自行核查；护送车需认证（8 小时课程+商业驾照，认可 AZ/CO/GA/MN/NC/OK/PA/UT/VA/WA）；许可不允许修改；Blanket 年票 14'×14'6\"×95'、162,000 磅"
+ },
+ {
+  "state": "GA",
+  "name": "Georgia",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Georgia Oversize Permit Office (DPS)",
+  "phone": "888-262-8306",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 10,
+   "rear_overhang_ft": 5,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20340,
+   "tandem_axle_lbs": 40680,
+   "tridem_axle_lbs": 61020,
+   "notes": "文件表格：法定长 100'0\"（未说明是单车还是组合总长，故 single_vehicle_length_ft 为 null）；挂车长 53'0\"；四轴 70,000 磅；Kingpin 41'0\"。"
+  },
+  "overweight": {
+   "single_axle_lbs": 23000,
+   "tandem_axle_lbs": 46000,
+   "tridem_axle_lbs": 69000,
+   "quad_axle_lbs": 92000,
+   "gross_max_lbs": null,
+   "notes": "总重：无固定上限（视配置）；注册总重 80,000 磅。>150,000 磅起有轴数/单轴限重配置要求（见 superload）。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "宽 >12'0\"：2 车道前后各 1（可用琥珀灯许可代替后车）；4 车道 1 后；州际 1 后（可用琥珀灯代替）。"
+   },
+   {
+    "dimension": "width",
+    "over": 176,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'8\"：2 车道 2 辆、4 车道 1 后。"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >16'0\"：许可办公室定。"
+   },
+   {
+    "dimension": "height",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文'高 ≥15'0\"/15'6\"：1 前带测高杆（进大城市信号灯区强制）'；≥ 按 > 处理，阈值 15'0\" 与 15'6\" 二者并列未说明适用条件，取较严 15'0\"。"
+   },
+   {
+    "dimension": "length",
+    "over": 75,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >75'0\"：1 后（可用琥珀灯代替）。"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >100'0\"：1 后。"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >125'0\"：2 辆。"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "宽 >16'0\"：1 前警车（州际 ≥16'4\"）。房屋（任何尺寸）：前后各 1。$80/小时/人，最低 4 小时；州警电话 404-624-7862。"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "宽 >16'0\"；高 >16'0\"；总重 >150,000 磅；未列长度/悬。配置：>150,000 磅 ≥8 轴（单轴 ≤23,000）；>160,000 ≥9 轴（≤21,000）；>175,000 ≥10 轴（≤21,000）；>180,000 ≥11 轴（≤21,000，过桥需桥梁分析）；>150,000 不许 4 轴以上轴组。Mega Load（>299,999 磅）需合格工程师研究，提前 6 周提交。高 >18'0\" 须 NJUNS 电力净空票号。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "不要求路线勘测；架空障碍物需 3\" 净空。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 102,
+   "night_max_length_ft": 100,
+   "notes": "周末（日出–日落）：宽/高/长不限，重量 ≤125,000 磅。法定尺寸 + ≤125,000 磅可 24/7（须按具体重量申请单次许可，标准单次不给）；文件未提超尺寸夜间，夜间上限按'法定尺寸'填（法定宽 8'6\"，法定长 100'0\"）。有 curfew（无细则）。节假日：劳工节、阵亡将士日、圣诞、元旦当天禁行；感恩节关门 11/27–28，当天禁行；其他假日关门但无行车限制。"
+  },
+  "frost_laws": "无",
+  "permit_validity": null,
+  "divisible_rule": "可拆附件：允许；工程机械可拆可装降尺寸；≤8 小时能拆的须拆；推土机+1 附件可批 100,000 磅，3 件以上按 80,000。木箱货允许，需货物描述。",
+  "other_notes": "文件未写单次许可有效期（海运柜许可 31 天）。许可经 GAPROS 办理。>75'0\" 长升降轴必须放下。保险：>10,000 磅 人身 $300,000/人、财产 $1,000,000。护送车须 GA DOT 认证（认可 AZ、CO、NC、FL、OK、VA、WA）。年票须承运人直接向州购买。单次费 $31（≤16'宽/16'高/150,000 磅），Superload $126，>180,000 磅 $501。"
+ },
+ {
+  "state": "IA",
+  "name": "Iowa",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Iowa DOT",
+  "phone": "515-237-3264",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "单动力车 45'0\"；低平板挂车（仅运施工设备）57'0\"；挂车 53'0\"。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "双轴：1 组最大 46,000 磅，其余每组最大 40,000 磅（取较严 40,000）。总重无固定上限；注册总重'见注'（文件未给数值）。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：1 辆（或用牵引车+货物尾部琥珀灯/爆闪代替）。"
+   },
+   {
+    "dimension": "width",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >14'6\"：双车道 1 辆 / 四车道 1 辆（或琥珀灯代替）。"
+   },
+   {
+    "dimension": "width",
+    "over": 198,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'6\"：2 辆。"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\"：1 辆（带高度传感器）。"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >120'0\"：1 辆。"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\"；长/重由许可办公室按路线/特殊情况酌定。州警电话 515-725-6090。"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >18'0\"。"
+   }
+  ],
+  "superload": {
+   "width_in": 216,
+   "height_in": 192,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 156000,
+   "notes": "门槛：宽 18'0\"（原文未写 >）/ 高 >16'0\" / 长 >120'0\" / 重 ≥156,000 磅（≥ 按同数处理）。轴重：单 20,000 / 双 40,000 / 三 60,000 / 四 80,000。高 >16'0\" 须电力公司批准；≥156,000 磅须工程师审核；宽 >18'0\" 不得上州际。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "无固定门槛，州认为必要时可要求；有效期 30 天；架空障碍物须 2 英寸净空。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 132,
+   "night_max_length_ft": 100,
+   "notes": "周末周六日日出至日落，尺寸重量不限。夜间：宽 ≤11'0\" × 高 ≤14'6\" × 长 ≤100'0\"，重量不限；路面宽 ≥22'0\"、车道宽 ≥11'0\"；须照明。无 curfew；无爱荷华专属假日页。"
+  },
+  "frost_laws": "有；3 月–5 月；总重 80,000；三轴 42,000；四轴 42,000",
+  "permit_validity": "5 天",
+  "divisible_rule": "附件致超重须拆下单独运输。木箱货一箱一件，需描述。All Systems 超重年许可（商用及农用）可分割/不可分割均可，非州际，8'6\" × 13'6\" × 法定长，轴 ≤20,000，5 轴 89,600 / 6 轴 100,800 / 7 轴 107,520 磅。",
+  "other_notes": "办公室周三仅至中午 12:00。许可修改仅限牌照/州/VIN/品牌型号，改货物或路线须重新办证。超重时升降轴必须放下。引导车无需认证。"
+ },
+ {
+  "state": "ID",
+  "name": "Idaho",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "ITD",
+  "phone": "208-872-3163",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 4,
+   "rear_overhang_ft": 10,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "挂车/半挂：非国家公路网 48'0\"、国家公路网 53'0\"（取较严 48）；另列'挂车长 53'0\"'。后悬 10'0\" 自车尾计。豁免：原木、纸浆木、钢材、杆、桩、矿石、精矿、散装砂砾、未加工农产品（含牲畜）。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 46000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "无固定上限；轴重为'参考值'（单轴 20,000 / 双轴 46,000 / 三轴 60,000）；耳轴须许可部门分析批准；超重载荷须逐案分析，失败转桥梁部门审核。注册总重 129,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "州际：宽 >15'0\" 后导 1 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "黑线路：宽 >12'0\" 前导 1 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "黑线路：宽 >14'0\" 2 辆。"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "黑线路：长 >120'0\" 前导 1 辆；宽 >8'7\" + 长 >120'0\" 前导 1 辆；宽 >12'1\" + 长 >120'0\" 2 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 102,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "红线路：宽 >8'6\" 前导 1 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "红线路：宽 >10'0\" 2 辆。"
+   },
+   {
+    "dimension": "length",
+    "over": 75,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "红线路：长 >75'0\" 前导 1 辆；宽 >8'6\" + 长 >75'0\" 2 辆。"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >16'0\" 须引导（数量见引导颜色编码地图，文件未给）。"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文'宽 18'0\" / 高 16'0\" / 长 120'0\"'，未写 > 或 ≥，按 over 填。州警电话 208-884-7200。"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "同上（高 16'0\"）。"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "同上（长 120'0\"）。"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 110,
+   "front_overhang_ft": 15,
+   "rear_overhang_ft": 15,
+   "gross_lbs": 200000,
+   "notes": "门槛原文：宽 16'0\" / 高 16'0\" / 长 110'0\" / 重 200,000 磅；悬 15'0\"（未分前后，两项均填 15）。高 >17'0\" 须电力公司批准协助；高 >16'0\"、宽 >18'0\"、长 ≥120'0\" 须区批准；>200,000 磅桥梁分析 5 个工作日，>250,000 磅 10 个工作日，>800,000 磅须第三方桥梁分析。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "宽/高/长/悬不强制勘测；重量由桥梁工程师定；架空障碍物须 3 英寸净空。高 >16'6\"：须标明冲突点、匝道避让方案、安全停车区；高 >17'0\"：须证明已通知沿线区办公室、电力公司、信号灯业主并获批准。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 100,
+   "notes": "周末周六日均可（按夜间规则）。夜间限宽 10'0\"、高 14'6\"、法定重；长：州际 ≤120'0\" 全天、>120'0\" 仅白天；黑线 ≤100'0\" 全天、>100'0\" 仅白天（取较严 100）。有 curfew（无细则）。假日禁行：阵亡将士日当天；圣诞 12/24 日落–12/26 日出；元旦 12/31 日落–1/2 日出；劳工节、独立日、感恩节按尺寸及路线有禁行时段（详见源文件）。"
+  },
+  "frost_laws": "有；3 月–5 月；总重 80,000；三轴 48,000",
+  "permit_validity": "5 天",
+  "divisible_rule": "可分割载荷（年许可）：圆柱干草捆 ≤11'6\" 宽；法定轴重；长 ≤115'0\"；高 14'0\"–14'9\" 限指定公路。附件须拆下以减小尺寸（可装同车）。",
+  "other_notes": "路线分红线/黑线/州际，引导车要求因路线而异。不允许修改许可。超重时升降轴必须放下。引导车无需认证。需重入许可、需 DOT。"
+ },
+ {
+  "state": "IL",
+  "name": "Illinois",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "IDOT",
+  "phone": "217-785-1477",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42500,
+   "notes": "法定长 65'0\"（未说明是单车还是组合）；Kingpin 45'6\"（>45'6\" 一律算超长）；未列前后悬。豁免：电杆/管材/机械等最长 100'0\"（货物本身 ≤80'0\"）；干草/秸秆等宽最大 12'0\"；农机具宽不限。"
+  },
+  "overweight": {
+   "single_axle_lbs": 24000,
+   "tandem_axle_lbs": 48000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 80,000 磅；须审核轴重/轴距逐案批准，桥梁审核另收费。Superload 段另列三轴 75,000 / 四轴 80,000，双轴 >48,000 或三轴 >60,000 须 IDOT 审核；耳轴最大 58,000。"
+  },
+  "escorts": [
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\"：1 辆（带高度杆），文件未写位置。多维组合（>14'6\" 宽、>14'6\" 高、>110'0\" 长中占 2 项）：1 辆带高度杆 + 1 辆后导。"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 3,
+    "where": null,
+    "notes": "高 >18'0\"：1 辆带高度杆 + 后导 2 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "宽 >14'6\"：后导 1 辆。夜间（宽 ≤12'0\"）行驶须 1 辆引导车。"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "宽 >16'0\"：前导 1 + 后导 2。"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >110'0\"：后导 1 辆。"
+   },
+   {
+    "dimension": "length",
+    "over": 145,
+    "unit": "ft",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "长 >145'0\"：前导 1 + 后导 2。"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\"。另：桥梁分析/区调查认为必要、超重加桥梁限制、需额外交通管制时也需州警；全程在市/县界内可用地方警察代替。州警电话 217-782-6527。"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >18'0\"。"
+   },
+   {
+    "dimension": "length",
+    "over": 200,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >200'0\"。"
+   }
+  ],
+  "superload": {
+   "width_in": 174,
+   "height_in": 180,
+   "length_ft": 145,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 120000,
+   "notes": "门槛：宽 14'6\" / 高 15'0\" / 长 145'0\" / 总重 ≥120,000 磅（≥ 按同数处理）。轴重：单 24,000 / 双 48,000 / 三 75,000 / 四 80,000。区调查（宽 >16'0\" / 高 >17'0\" / 长 >200'0\"）预留 10 个工作日。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "无固定勘测门槛：许可办公室做内部区审批，若认为必要申请公司负责勘测所有地方道路；架空障碍物须 3 英寸净空。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": 200,
+   "notes": "周末日出前半小时至日落后半小时：高 ≤15'0\"/宽 ≤14'6\" 可走；高 ≤17'0\"/宽 ≤16'0\" 周六至中午、周日禁行；高 >17'0\"/宽 >16'0\" 周末禁行，仅周一至周五 9:00am–3:00pm；长 ≤200'0\" 周末可走。夜间（日落后半小时至日出前半小时）：宽 ≤12'0\" 且长 ≤200'0\" 可走，须 1 辆引导车。有 curfew（无细则）；假日无伊利诺伊专属页。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "附件可保留 ≤5 英里；超 5 英里须拆下单独运输；拆除需 5–7 工时可整件运输。木箱货允许，需货物描述。",
+  "other_notes": "许可修改：允许，发车前可改路线、起终点、尺寸、重量、牵引车，每许可仅 1 次。年许可：12'0\" 宽 × 13'6\" 高 × 115'0\" 长，5 轴 100,000 / 6 轴 120,000。费用见 IL Permit Fees 链接。引导车无需认证。"
+ },
+ {
+  "state": "IN",
+  "name": "Indiana",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Indiana DOR",
+  "phone": "317-615-7200",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 51000,
+   "notes": "2 车组合 60'0\"；2 车组合（五轮）不限；挂车/货物长 53'0\"；Kingpin 42'6\"。豁免：州道作业农机、公路施工养护设备、消防设备。"
+  },
+  "overweight": {
+   "single_axle_lbs": 28000,
+   "tandem_axle_lbs": 48000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限。注意：Superload 段轴重列单轴 24,000 / 双 48,000 / 三 60,000 / 四 80,000，与超重许可单轴 28,000 不一致，原文如此。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 148,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "宽 >12'4\"：前导 1 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 172,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'4\"：双车道 2 辆 / 四车道 1 辆。"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\"：1 辆（带高度传感器）。"
+   },
+   {
+    "dimension": "height",
+    "over": 180,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >15'0\"：州际外须铲斗车（可申请豁免）。"
+   },
+   {
+    "dimension": "height",
+    "over": 186,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >15'6\"：所有路线须 1 辆铲斗车。"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >110'0\"：1 辆。"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 204,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >17'0\"：2 名州警（可加派）。州警电话 812-533-1100；cvedsuperloads@isp.in.gov。"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文'仅风车叶片/模具 ≥110'0\" 需 2 名'（≥ 按同数处理），其他货物不适用。"
+   },
+   {
+    "dimension": "weight",
+    "over": 200000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 ≥200,000 磅：桥梁减速须州警；<200,000 磅路况差时可能需要。"
+   },
+   {
+    "dimension": "weight",
+    "over": 250000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "≥250,000 磅且走非州际或有桥梁减速：须警察护送（人数由执法机构定）。"
+   }
+  ],
+  "superload": {
+   "width_in": 204,
+   "height_in": 180,
+   "length_ft": 110,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 120000,
+   "notes": "宽 >17'0\" / 高 >15'0\" / 长 >110'0\" / 重 >120,000 磅。高 >15'0\" 州际外须铲斗车；>17'0\" 路线勘测 + 电力公司协调。≥134,000 磅 7–10 个工作日审批，须示意图。运营时间周一至周五 8:30am–3:30pm（宽 ≥16'0\" / 高 ≥15'0\" / 重 >120,000 磅）。"
+  },
+  "survey": {
+   "width_in": 216,
+   "height_in": 204,
+   "length_ft": 130,
+   "gross_lbs": 200000,
+   "notes": "宽 >18'0\" / 高 >17'0\" / 长 >130'0\"（无后转向轴）/ 重 ≥200,000 磅需勘测；有效期 14 天；架空障碍物 3 英寸净空；申请公司负责地方道路授权及市政许可/警察护送。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 110,
+   "notes": "24/7 可行：≤10'0\" 宽 × 13'6\" 高 × 110'0\" 长 × <200,000 磅；超此每周 7 天日出前半小时至日落后半小时。周末上限 14'4\" 宽 × 15'0\" 高 × 110'0\" 长 × 200,000 磅。移动房屋周六仅至中午，周日禁行，超宽移动房屋夜间禁行。有 curfew（无细则）。假日禁行时段：劳工节、独立日、阵亡将士日、感恩节、圣诞（前一天中午起，详见源文件）。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "15 天",
+  "divisible_rule": "附件致超重（>80,000 磅）须拆下单独运输；拆除需 >7 工时可保留连接，按不可分割件处理。可分割超重载荷收费 $0.25/ESAL·英里（>2.4 ESAL）。",
+  "other_notes": "许可修改：允许（延期 1 次、牵引车、尺寸重量、起终点内路线），须签发 3 天内申请。引导车无需认证，车辆 ≥4 轮、≤11,000 磅 GVW。"
+ },
+ {
+  "state": "KS",
+  "name": "Kansas",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "KDOT",
+  "phone": "785-368-6501",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 59.5,
+   "single_vehicle_length_ft": 42.5,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "法定长 75'0\"；卡车组合 65'0\"；双挂各 28'6\"；挂车 59'6\"；Kingpin 41'0\"。总重：州际 80,000 / KS、US 公路 85,500（取较严 80,000）。四轴按联邦桥式。豁免：钢杆/梁/管最长 85'0\"，挂车最长 59'6\"。"
+  },
+  "overweight": {
+   "single_axle_lbs": 22000,
+   "tandem_axle_lbs": 45000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 65000,
+   "gross_max_lbs": null,
+   "notes": "单轴：非驱动 22,000 / 驱动 24,000（取较严）。耳轴及超限重量按 Superload 审核。总重无固定上限；超重载荷须注册 85,500 磅。特殊移动设备双轴 49,000。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 辆。Large Structure（>126'0\" 长 / >16'6\" 宽 / >18'0\" 高）：2 辆。"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 ≥120'0\"：后导 1 辆（≥ 按同数处理）。"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >16'0\"：前导 1 辆（带高度传感器）。"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 198,
+   "height_in": 216,
+   "length_ft": 126,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "门槛：宽 16'6\" / 高 18'0\" / 长 126'0\"（原文未写 >，费用段写 >）/ 重 >150,000 磅。仅超尺寸的 Superload 称 Large Structure。高 >18'0\" 被许可人须事先联系电力和铁路公司。轴重：单 20,000 / 双 45,000 / 三 60,000 / 四 65,000。"
+  },
+  "survey": {
+   "width_in": 168,
+   "height_in": 216,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "高 >18'0\"：州酌情要求；宽 >14'0\"：逐案要求（非强制）。有效期 14 天，不得早于发车前 14 天；架空障碍物 3 英寸净空；申请公司负责联系沿线电力、信号灯、铁路业主。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 102,
+   "night_max_length_ft": 75,
+   "notes": "周末周六日日出至日落，尺寸重量悬不限。夜间：仅限法定尺寸（按法定宽 8'6\"、法定长 75'0\" 填），重量不限。无 curfew；无堪萨斯专属假日页。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "7 天",
+  "divisible_rule": "附件须拆下单独运输。木箱货：超重一箱限一件，需描述。",
+  "other_notes": "堪萨斯州警不提供护送（州警电话 785-296-7189）。不允许修改许可。超重时升降轴必须放下。引导车须认证（暂认 CO、FL、MN、NC、OK、VA、UT、WA），须在 KDOT 登记并持 MUTCD 旗手证，须填 Escort Trip Report。年许可 16'6\" × 15'0\" × 126'0\" × 120,000 磅。"
+ },
+ {
+  "state": "KY",
+  "name": "Kentucky",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Kentucky Transportation Cabinet",
+  "phone": "502-564-1257",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 0,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 48000,
+   "notes": "宽：8'6\"（州际/parkway/指定高速；非指定高速 8'0\"），取较严 96。法定长 65'0\"；卡车+挂车+货 65'0\"（仅非指定高速）。前悬填 0：原文'组合车不许前悬'。"
+  },
+  "overweight": {
+   "single_axle_lbs": 24000,
+   "tandem_axle_lbs": 45000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "双轴：45,000（≤5 轴）/ 48,000（≥6 轴），取较严。总重无固定上限；注册总重 80,000。按轴数总重上限：5 轴 96,000 / 6 轴 120,000 / 7 轴 160,000 / 8 轴 188,000。吊车：单轴/转向 23,000、双轴 46,000、三轴 69,000；4 轴 92,000 / 5 轴 115,000。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道 2 辆、4 车道 1 后。"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 辆。"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 4,
+    "where": "front+rear",
+    "notes": "宽 >16'0\"：4 辆（2 前 2 后）。"
+   },
+   {
+    "dimension": "height",
+    "over": 179,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >14'11\"：1 前带测高杆。"
+   },
+   {
+    "dimension": "length",
+    "over": 75,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "长 >75'0\"：2 车道 1 前。"
+   },
+   {
+    "dimension": "length",
+    "over": 85,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >85'0\"：2 车道 2 辆。"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >110'0\"：4 车道 1 后。"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "长 >120'0\"：3 辆（1 前 2 后）。"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文'悬 >10'0\"：1 后'，未区分前/后悬，前后悬各列一条。"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文'悬 >10'0\"：1 后'，未区分前/后悬，前后悬各列一条。"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 192,
+   "height_in": 186,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 200000,
+   "notes": "宽 >16'0\"；高 >15'6\"；长 >120'0\"（需转向设备）；总重 ≥200,000 磅（≥ 按同数处理；需桥梁分析，申请不可取消）。轴重：单 24,000 / 双 48,000 / 三 60,000 / 四 80,000。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "高：许可办公室逐案定（安全需要时）；无固定净空标准。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末及夜间 24/7：宽/高/长/重/悬不限（故夜间上限为 null）。活动房：周一–周六白天，周日禁行。有 curfew（无细则）。假日：感恩节关门（superload/搬房除外可走），其他假日无行车限制。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "10 天",
+  "divisible_rule": "可拆附件：宽 ≤14'0\" 可保留；>14'0\" 须拆下另车（推土机铲刀可拆下同车重装）。木箱货一箱一件，需描述。年票 A05 金属货 120,000 磅可拆/不可拆。",
+  "other_notes": "网站无肯塔基警车触发尺寸数据（州警 502-782-1800）。许可修改仅年票可改车头信息 1 次。引导车无需认证。单次 $60 + $2.40 刷卡费。>10,000 磅须 DOT 号。"
+ },
+ {
+  "state": "LA",
+  "name": "Louisiana",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "LaDOTD Truck Permit Office",
+  "phone": "800-654-1433",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 59.5,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 4,
+   "rear_overhang_ft": 8,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "高：州际 14'0\" / 非州际 13'6\"（取较严 162）。法定长 65'0\"（未说明单车/组合）。轴重：单 20,000（州际）/ 22,000（非州际）；双 34,000/37,000；三 42,000/45,000；四 50,000/53,000（取州际较严值）。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "单轴：24,000（总重 ≤120,000）/ 20,000（总重 >120,000），转向轴 ≤13,000；双轴：48,000（总重 ≤120,000），总重 ≤254,000 时 45,000/40,000（按轴组间距）；均取较严。trunnion（16 轮 10' 宽）每组 54,000。总重未写固定上限：>232,000 磅为 superload；>254,000 磅须优先铁路/水运 + 独立工程分析，约 30 天。注册总重 88,000。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：1 辆。宽 >16'0\" 需 1 州警（见 police）。"
+   },
+   {
+    "dimension": "height",
+    "over": 190,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >15'10\"：1 前带测高杆（州维护高速）。"
+   },
+   {
+    "dimension": "height",
+    "over": 200,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >16'8\"：1 前带抬线能力。"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >18'0\"：铲斗车。"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >90'0\"：1 后。长 >125'0\" 需 1 州警（见 police）。"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >16'0\"：1 州警。州警电话 225-925-6006；大都会区/教区本地警察可能另要求。"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >18'0\"：2 州警。"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >18'0\"：可能 2 州警。"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >125'0\"：1 州警（须配转向架）。"
+   }
+  ],
+  "superload": {
+   "width_in": 216,
+   "height_in": 197,
+   "length_ft": 125,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 232000,
+   "notes": "宽 >18'0\"；高 >16'5\"；长 >125'0\"；总重 >232,000 磅。轴重：单 20,000 / 双 45,000 / 三 60,000 / 四 80,000。宽 >16'0\" 不许走州际；>18'0\" 宽需预审路线。Mega load（>300,000 磅、17' 高、20' 宽）审批 7–14 工作日。"
+  },
+  "survey": {
+   "width_in": 216,
+   "height_in": 197,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：宽 >18'0\"；高 >16'5\"（>18'0\" 需区维护工程师授权号+电力公司批准）。净空 2\"；有效期 15 天；高 >16'5\" 需提前 48 小时申请预审路线。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 102,
+   "night_max_length_ft": 65,
+   "notes": "周末日出–日落：宽/高/长/重/悬不限。夜间：宽法定、高 ≤14'4\"、长法定（按法定长 65'0\" 填）、重 ≤120,000、悬法定。无 curfew；假日仅 PDF 链接，无路易斯安那单独数据。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "仅超尺寸 1–5 天；超重 5 天",
+  "divisible_rule": "可拆附件：允许；推土机铲刀/侧吊须拆下可同车重装。木箱货超重时一箱一件，无需货物描述。",
+  "other_notes": "护送车须 LA ESCORT VEHICLE PERMIT（外州 $10/年，护送车许可需保险 $500,000）。许可保险 $100,000。许可修改逐案审。宽 ≥10'0\" 需琥珀灯、标识和旗。"
+ },
+ {
+  "state": "MA",
+  "name": "Massachusetts",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MassDOT",
+  "phone": "857-368-3690",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 24000,
+   "tridem_axle_lbs": 36000,
+   "notes": "法定长：单车 40'0\" / 无半挂组合 60'0\" / 鞍式挂组合 75'0\"；原文列\"双轴 34,000\"与\"双轴组合 24,000\"，按规则取较严 24,000（数值可疑，需核实）；三轴 36,000；施工设备最大 130,000 磅"
+  },
+  "overweight": {
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "单/双/三/四轴视轴距定；总重无固定上限，逐案审；注册总重 80,000 磅；5–8 轴组合：可减重 99,000 磅；不可减重 130,000 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\" 1 辆（铲斗车带铲 >12'0\" 需 2 辆）"
+   },
+   {
+    "dimension": "width",
+    "over": 162,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >13'6\" 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 179,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'11\" 2 辆 + 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 164,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >13'8\" 1 辆（无需高度传感器）"
+   },
+   {
+    "dimension": "height",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥14'0\" 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 171,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front",
+    "notes": "原文 ≥14'3\" 2 辆前导，强烈建议高度传感器"
+   },
+   {
+    "dimension": "height",
+    "over": 179,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 ≥14'11\"：\"2 辆 + 1 辆带高度传感器 + 州警\"，总数不明确（可能 3 辆），需核实"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥80'0\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 95,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥95'0\" 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 134,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥134'0\" 2 辆 + 州警"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 191,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >15'11\"（护送车节为 >14'11\" 需州警，两节不一致）"
+   },
+   {
+    "dimension": "height",
+    "over": 179,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >14'11\""
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 ≥100'0\"（护送车节为 ≥134'0\" 需州警）"
+   },
+   {
+    "dimension": "length",
+    "over": 135,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >135'0\" 需 2 名州警"
+   },
+   {
+    "dimension": "weight",
+    "over": 130000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 >130,000 磅；州警须在许可签发前联系许可办公室"
+   }
+  ],
+  "superload": {
+   "width_in": 179,
+   "height_in": 179,
+   "length_ft": 134,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 130000,
+   "notes": "总重 >130,000 磅即 Superload；州路：宽 >14'11\"（移动/模块房 >14'0\"）/ 高 >14'11\" / 长 >134'0\" / 重 >130,000，仅周二、三、四 9:30am–3:30pm；I-90 Turnpike（Int.1–14）：宽 >12'0\" / 高 >13'6\" / 长 >100'0\" / 重 >130,000 须证明必要性，同样仅周二至周四；超重需桥梁研究 + 外部工程公司；所有 Superload 需勘测"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 164,
+   "length_ft": null,
+   "gross_lbs": 130000,
+   "notes": "高 >13'8\" 或重 >130,000 磅需勘测；所有 Superload 需勘测；有效期 15 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末周六日均可，限日出前半小时至中午 12:00；州路禁行 >14'11 高 × 14'11 宽 × 134'0 长、>130,000 磅；I-90 收费段禁行 >12'0 宽 × 100'0 长、>130,000 磅；夜间禁行；有 curfew；Labor Day、Memorial Day、Christmas–New Year 等有禁行时段（见假日 PDF）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "5–8 轴组合：可减重 99,000 磅；不可减重 130,000 磅；附件 >14'0\" 宽或造成超重时须拆下单独运输；不允许整箱（木箱）运输",
+  "other_notes": "办公时间 7:00am–4:00pm（东部）；州警 508-820-2300；州路与 I-90 Turnpike 限值不同，过 I-90 须单独核对；超重时升降轴必须放下；海运柜 88,000 磅 5 轴，半年有效；年许可 12'0\"×13'6\"×80'0\""
+ },
+ {
+  "state": "MD",
+  "name": "Maryland",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MDOT (Maryland DOT)",
+  "phone": "410-582-5757",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42500,
+   "notes": "高 13'6\"（州际或距州际 10 英里内/指定高速 14'0\" 合法）；后悬 6'0\"（运车车 4'0\"）；半挂 53'0\"（kingpin ≤41'0\"）；运车/船 65'0\"；豁免：杆/桩/原木 ≤75'0\"、不可拆货 ≤70'0\"（组合车白天免许可）"
+  },
+  "overweight": {
+   "single_axle_lbs": 27000,
+   "tandem_axle_lbs": 52000,
+   "tridem_axle_lbs": 63000,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "单轴 30,000 磅（总重 ≤110,000）/ 27,000（总重 >110,000），取较严 27,000；总重无固定上限；注册总重 80,000 磅；四轴本节未列（Superload 节列四轴 80,000）"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >13'0\" 1 辆（活动房不需）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥14'0\" 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥16'0\" 2 辆 + 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 ≥14'6\" 1 辆前导带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 85,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >85'0\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 140,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥140'0\" 2 辆"
+   },
+   {
+    "dimension": "weight",
+    "over": 120000,
+    "unit": "lbs",
+    "escorts": 1,
+    "where": null,
+    "notes": "重 >120,000 磅 1 辆"
+   },
+   {
+    "dimension": "weight",
+    "over": 150000,
+    "unit": "lbs",
+    "escorts": 1,
+    "where": null,
+    "notes": "重 >150,000 磅 1 辆 + 1 州警"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 ≥16'0\"；护送车节注明 2 辆护送车 + 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 ≥16'0\""
+   },
+   {
+    "dimension": "length",
+    "over": 140,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 ≥140'0\""
+   },
+   {
+    "dimension": "weight",
+    "over": 150000,
+    "unit": "lbs",
+    "escorts": 1,
+    "where": null,
+    "notes": "警察节原文 ≥150,000 磅；护送车节为 >150,000 磅 1 辆 + 1 州警。需提前 24–48 小时；$250/次（首 4 小时）"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 140,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "宽 >16'0\"；高 >16'0\"；长 >140'0\"；总重 >150,000 磅（需桥梁审查）；双轴 52,000；三轴 63,000；四轴 80,000；Mega move（500,000 磅）30 天审批；superload 无州警认定不许夜间/周末"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 175,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：高 ≥14'7\"；无固定净空标准；有效期 30 天；必须实地开车勘测，不接受电子勘测"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 168,
+   "night_max_length_ft": 139,
+   "notes": "周末（日出–日落）：宽 ≤14'0\"、高 ≤14'6\"、长 ≤139'0\"、重 ≤225,000 磅、悬不限；24/7 可走同上尺寸；夜间同上尺寸 8:30pm–6:00am；superload 无州警认定不许夜间/周末；有 curfew；2025 感恩节 11/26 中午–12/1 9:00am 禁行"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "豁免：杆/桩/原木 ≤75'0\"、不可拆货 ≤70'0\"（组合车白天免许可）；可拆附件须拆下另车运输",
+  "other_notes": "办公时间 7:30am–4:30pm（东部）；紧急移动 410-582-5650；州警 410-653-4218；年票 宽<12'0\"×高<14'0\"×长<75'0\"，2025-07-08 后购买的 blanket 须路线授权；海运柜仅往返巴尔的摩港 90,000 磅（≥5 轴）；木箱货需货物描述"
+ },
+ {
+  "state": "ME",
+  "name": "Maine",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Maine BMV",
+  "phone": "207-624-9000",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "挂车长 53'0\"；Kingpin 43'0\"；组合 65'0\"；原文另有\"挂车 <45'0\"→69'0\"，<48'0\"→74'0\"，<53'0\"\"（不完整）。原文同时列\"双轴 38,000；三轴 48,000\"与\"双轴组合 34,000；三轴组合 42,000\"，取较严的 34,000/42,000。前悬未注明。"
+  },
+  "overweight": {
+   "single_axle_lbs": 25000,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 72000,
+   "quad_axle_lbs": 110000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 100,000 磅；超标准发放的重量需审核；极端载荷可附加条件。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\" 1 辆；移动房屋：宽 >12'0\" 1 辆，>14'6\" 2 辆，基部 >16'0\" 或屋檐 >16'9\" 需 1 辆 + 1 警察护送（仅移动房屋）"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >16'0\" 1 辆（带高度传感器）"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >80'0\" 1 辆；极端尺寸可加派。木材采伐：宽 ≤11'6\" 或长 ≤75'0\" 需 2 辆，仅夜间可走"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥16'0\" 1 名警察"
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥20'0\" 2 名"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥125'0\" 1 名"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥150'0\" 2 名；极端尺寸可加派；费用按实际成本，至少 4 小时"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 125,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 160000,
+   "notes": "门槛：宽 >16'0\" / 高 >16'0\" / 长 >125'0\" / 重 >160,000 磅；轴重：单轴 25,000 / 双轴 50,000 / 三轴 75,000 / 四轴 72,000（原文如此）；宽 ≥20'0\" 或长 ≥150'0\" 可能需市/镇额外批准；高 >16'0\" 许可方须联系电力公司"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "不需要勘测；垂直净空要求至少 3 英寸"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末周六日均可，日出至日落，尺寸重量不限；7 月、8 月周末禁行；夜间禁行；Curfews 无；假日无缅因专属页（仅通用假日 PDF）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "7 天",
+  "divisible_rule": "附件不允许保留连接，须拆下单独挂车运输",
+  "other_notes": "办公时间 8:00am–5:00pm（东部）；州警 207-624-8909；海运集装箱允许（5 轴 93,000 / 6 轴 100,000 磅，车辆+路线绑定）；Long Term（月）许可 11'4 宽×13'6 高×75'0 长 $25；年许可 11'6\"×13'6\"×75'0\"；许可修改允许（未发车）"
+ },
+ {
+  "state": "MI",
+  "name": "Michigan",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MDOT (Michigan DOT)",
+  "phone": "517-241-8999",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 32000,
+   "tridem_axle_lbs": 39000,
+   "notes": "法定宽 8'6\"（部分非州际道 8'0\" 合法），取较严 8'0\"；Kingpin 41'0\"；单车长未注明；原文列\"双轴 32,000；三轴 39,000\"与\"双轴组合 34,000；三轴组合 42,000\"，取较严 32,000/39,000"
+  },
+  "overweight": {
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "单/双/三/四轴及总重无固定上限，逐桥分析轴距轴宽定；须注册承运重量；最大注册重量 160,001 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\" 1 辆（带测量杆）"
+   },
+   {
+    "dimension": "height",
+    "over": 180,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "高 >15'0\" 1 辆带测量杆 + 1 辆后导"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：双车道前导 1 辆 / 四车道后导 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\" 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >90'0\" 后导 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >100'0\" 2 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"悬 >15'0\" 需引导车\"，未注明前/后及数量"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"悬 >15'0\" 需引导车\"，未注明前/后及数量"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 192,
+   "height_in": 180,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": null,
+   "notes": "门槛：宽 >16'0\" / 高 >15'0\" / 长 >150'0\"；总重无固定上限（过桥即行）；Frost Law 限制期间不发 Superload 许可（紧急情况经证明可例外）"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 180,
+   "length_ft": 150,
+   "gross_lbs": null,
+   "notes": "宽 >16'0\" / 高 >15'0\" / 长 >150'0\" 需勘测；有效期 21 天；垂直净空无固定要求，承运人负责"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 102,
+   "night_max_length_ft": null,
+   "notes": "周末：周六日出至日落，周日日出至下午 3:00，限宽 10'0\"×高 14'0\"×长 90'0\"，重量不限；移动/模块房周末禁行；夜间仅允许法定尺寸内（重量不限），即仅超重可 24/7，超尺寸不可夜间（夜间宽按法定 8'6\" 填）；有 curfew；移动房屋假日禁行时段更长"
+  },
+  "frost_laws": "有；3 月–5 月（每年随天气浮动）；总重 80,000；单轴 18,000；三轴 39,000；四轴 39,000；冻土期不发 Superload 许可",
+  "permit_validity": "5 天",
+  "divisible_rule": "无可分割载荷许可；附件致超限须拆下单独运输；不允许整箱（木箱）运输",
+  "other_notes": "警察护送无固定门槛，按辖区逐案定，许可批准时告知（州警 517-332-2521）；超重时升降轴必须放下；许可不允许修改；年许可 85'0 长×12'6 宽×14'0 高、150,000 磅、任轴 ≤24,000"
+ },
+ {
+  "state": "MN",
+  "name": "Minnesota",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MnDOT",
+  "phone": "651-296-6000",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "法定长 75'0\"；卡车/拖拉机+半挂 75'0\"（指定道可更长）；半挂 48'0\" 或 53'0\"（取较严 48）；Kingpin ≤43'0\"；后悬：法定总长内不限，>4'0\" 日间须红旗、夜间须灯；豁免：电杆（仅超长）、农机（<30mph，禁上州际）"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "双轴 40,001–46,000 磅须额外桥梁审核；总重无固定上限；须按承运重量注册"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 150,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'6\"：仅夜间 1 辆（或 MN 批准卡车 LED 灯组）"
+   },
+   {
+    "dimension": "width",
+    "over": 174,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'6\"：四车道 1 辆 / 双车道 2 辆；货物底部 >15'0\" 或顶部 >16'0\"：非分隔道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\" 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 95,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >95'0\"：仅夜间 1 辆（或 LED 灯组）"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >110'0\" 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >16'0\"：建议 1 辆带高度传感器（非强制）"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 174,
+   "height_in": 186,
+   "length_ft": 95,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 140000,
+   "notes": "门槛：宽 >14'6\" / 高 >15'6\" / 长 95'0\"（视路线）/ 重 >140,000 磅；轴重：单轴 20,000 / 双轴 46,000 / 三轴 60,000 / 四轴 72,000；单轴最大 26,000；耳轴组 52,000；须桥梁检查"
+  },
+  "survey": {
+   "width_in": 240,
+   "height_in": 192,
+   "length_ft": 175,
+   "gross_lbs": null,
+   "notes": "宽 >20'0\" / 高 >16'0\" / 长 >175'0\" 需勘测；签发前 14 天内；架空障碍物须 6 英寸净空；须实地勘测 + 在线 Pre-Trip Route Survey 表"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 174,
+   "night_max_length_ft": 110,
+   "notes": "周末/夜间：限宽 ≤14'6\"×高 ≤16'0\"×长 ≤110'0\"，重量悬不限；阵亡将士纪念日至劳工节之间的周末禁行；周五和周日 2:00–8:00pm 限行 >12'6 宽、>110'0 长；双子城都会区周一至周五 0:00–5:00am 限行（非分隔道 >14'6 宽、分隔道 >16'0 宽）；有 curfew；假日禁行：Labor Day、Independence Day、Thanksgiving（>12'6 宽或 >110'0 长）、Christmas（>9'0 宽和/或 >100'0 长）"
+  },
+  "frost_laws": "有；3 月–5 月；总重 88,000；单轴 18,000；三轴 42,000；四轴 42,000",
+  "permit_validity": "7 天",
+  "divisible_rule": "附件须拆下单独运输；木箱货一箱一件，需货物描述",
+  "other_notes": "警察护送无固定门槛，跨越中心线/侵入对向车道时须 1 名州警（州警电话原文 654-201-7100，区号可疑）；引导车须 MN 公共安全部认证（互认 AZ、CO、FL、GA、NC、OK、UT、WA）；所有许可另 +4% 交易费；办公时间 8:00am–4:30pm（中部）"
+ },
+ {
+  "state": "MO",
+  "name": "Missouri",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MoDOT Motor Carrier Division",
+  "phone": "1-866-831-6277",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "高 13'6\"（指定道 14'0\" 合法）；法定长 65'0\"（单车长未单列）；挂车长 53'0\" 及/或货物；指定道单轴 20,000 / 双轴 34,000，次级道单轴 22,000 / 双轴 36,000，取较严；三轴视轴距，三轴组合 42,000"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 46000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "四轴组限 72,000 磅（任轴 ≤19,000 磅）；8 轴配置总重可至 160,000 磅；总重无固定上限；注册总重 80,000 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "height",
+    "over": 186,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >15'6\" 1 辆（带高度杆）"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >16'0\"：所有公路 1 辆带高度杆 + 双车道前导 1 辆；>17'0\" 同上"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >18'0\"：1 辆带高度杆 + 州警（原文未说明双车道前导是否仍需）"
+   },
+   {
+    "dimension": "width",
+    "over": 150,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >12'6\"：州际/指定道 1 辆，州主干道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：州际/分隔道 1 辆，双车道/非分隔道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\" 所有公路 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >18'0\" 2 辆 + 双车道州警"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >110'0\" 后导 1 辆（分隔道除外）"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >125'0\" 所有公路后导 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "长 >150'0\" 后导 1 辆 + 双车道前导 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 200,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >200'0\" 后导 1 辆 + 州警"
+   },
+   {
+    "dimension": "weight",
+    "over": 160000,
+    "unit": "lbs",
+    "escorts": 1,
+    "where": "front",
+    "notes": "重 >160,000 磅且有其他尺寸引导要求时：双车道前导；桥梁爬行（>160,000 磅，堪萨斯城/圣路易斯）前导 1 + 后导 2"
+   },
+   {
+    "dimension": "weight",
+    "over": 220000,
+    "unit": "lbs",
+    "escorts": 1,
+    "where": "front",
+    "notes": "重 >220,000 磅：双车道前导"
+   },
+   {
+    "dimension": "weight",
+    "over": 350000,
+    "unit": "lbs",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "重 >350,000 磅：所有公路前后各 1 辆 + 双车道再加前导 1 辆（双车道共 3 辆）"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\"（双车道或州际/双车道均适用）"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >18'0\""
+   },
+   {
+    "dimension": "length",
+    "over": 200,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文\"长 200'0\"\"，未注明 > 或 ≥"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 160000,
+   "notes": "门槛：宽 >16'0\" / 高 >16'0\" / 长 >150'0\" / 重 >160,000 磅；轴重 单 20,000/双 40,000/三 60,000/四 72,000；<160,000 磅但任轴 >20,000 磅按 Superload 提交；高 >16'0\" 全程须铲斗车，>17'0\" 须电力公司书面文件；Superload/Large Load 保险最低 $200 万"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 150,
+   "gross_lbs": 160000,
+   "notes": "宽/高 >16'0\"、长 >150'0\"、重 >160,000 磅需勘测；有效期 60 天；架空障碍物须 1 英寸净空"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 150,
+   "night_max_length_ft": 110,
+   "notes": "周末周六日均可，日出至日落，宽 ≤16'0\"，高/长/重不限；夜间限宽 ≤12'6\" × 法定高 × 长 ≤110'0\" × 重 ≤112,000 磅，悬按法定；有 curfew；12 个假日见 Holiday Closures 分类"
+  },
+  "frost_laws": "无",
+  "permit_validity": null,
+  "divisible_rule": "可用手工具拆卸的附件属可减部分；超重时须保留连接（原文如此）；木箱+货物视为单一商品",
+  "other_notes": "许可有效期原文未注明（海运柜许可 7 天）；单程许可须入境前签发并随车携带，不含地方桥梁/市政许可；引导车不可串车队，每车每维度须单独引导车；州警 573-751-3313"
+ },
+ {
+  "state": "MS",
+  "name": "Mississippi",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MSDOT",
+  "phone": "888-737-0061",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 14.92,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "法定长 99'0\"；车头+挂车组合 53'0\"；前悬 3'0\"（≥3' 需许可）；后悬 14'11\"（≥15' 需许可；林产品 28'0\" 后悬仅白天）"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 48000,
+   "tridem_axle_lbs": 63000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限（逐案审，视路线/轴间距/胎宽转向限 550 磅/英寸）；注册总重 80,000 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥13'0\" 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\" 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "仅夜间：宽 ≥10'0\"：2 车道 1 前、4 车道 1 后"
+   },
+   {
+    "dimension": "height",
+    "over": 187,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 ≥15'7\" 1 辆前导带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 99,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >99'0\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >120'0\" 2 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥15'0\" 1 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥15'0\" 1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "height",
+    "over": 189,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 ≥15'9\"：逐案定"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "必须配警车（Blue Light Escort）：高 17'0\"（原文未注明 > 或 ≥）"
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "必须配警车：宽 20'0\"（原文未注明 > 或 ≥）"
+   },
+   {
+    "dimension": "weight",
+    "over": 250000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "必须配警车：总重 >250,000 磅"
+   }
+  ],
+  "superload": {
+   "width_in": 203,
+   "height_in": 187,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 190000,
+   "notes": "宽 >16'11\"；高 ≥15'7\"；长 >120'0\"；总重 ≥190,000 磅（页面显示 \"190,0000\"，按笔误 190,000 填，需核实）；轴重 单 20,000/双 48,000/三 63,000/四 72,000；高 >17'0\" 须电力+铁路书面许可；长 >120'0\" 须铁路书面许可"
+  },
+  "survey": {
+   "width_in": 203,
+   "height_in": 187,
+   "length_ft": 121,
+   "gross_lbs": 189000,
+   "notes": "触发：宽 16'11\"；高 ≥15'7\"；长 ≥121'0\"；重 >189,000 磅；净空 4\"；有效期 15 天；宽 ≥18'0\" 另须独立专业勘测"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": 99,
+   "notes": "周末（日出–日落）：宽 ≤12'0\" 24/7 可走；海运柜 24/7 可走；夜间：宽 ≤12'0\"、高 ≤13'6\"、长 ≤99'0\"、重 ≤150,000 磅、后悬 ≤4'0\"；有 curfew；2026 阵亡将士日 5/23 中午–5/26 日出后半小时禁行"
+  },
+  "frost_laws": "无",
+  "permit_validity": "3 天",
+  "divisible_rule": "木箱货仅超尺寸不许超重，一箱一件，需货物描述；推土机铲刀须拆下可同车重装",
+  "other_notes": "保险：受益人 Mississippi DOT，保额 $750,000，须列为证书持有人；超重时升降轴必须放下；州警 662-453-4515；警车联系人 Danny Slade 601-916-7627；海运柜 95,000 磅（5 轴）仅往返港口"
+ },
+ {
+  "state": "MT",
+  "name": "Montana",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "MDT",
+  "phone": "406-444-6130",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 55,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "法定长 75'0\"；汽车运输车 75'0\"；牵引车/卡车+半挂 75'0\"；前悬 3'0\"、后悬 4'0\" 原文注明\"仅汽车/船运输\"，其他车辆未注明"
+  },
+  "overweight": {
+   "single_axle_lbs": 22000,
+   "tandem_axle_lbs": 48000,
+   "tridem_axle_lbs": 51750,
+   "quad_axle_lbs": 55440,
+   "gross_max_lbs": null,
+   "notes": "总重按轴数：5 轴 107,000 / 6 轴 110,000 / 7 轴 114,200 / 8 轴 126,000 磅；耳轴 61,600（须桥梁分析）；须注册 ≥85,500 磅（建议 132,000）；逐案按轴距路线审核"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 150,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'6\"：双车道/非州际 1 辆；过桥时双车道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 198,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'6\"：双车道/非州际 2 辆，州际 1 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >17'0\" 前导 1 辆（带高度传感器）"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >110'0\"：双车道/非州际 1 辆；州际 >120'0\" 1 辆"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 216,
+   "height_in": 204,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 200000,
+   "notes": "门槛：宽 >18'0\" / 高 >17'0\" / 长 >150'0\" / 重 200,000 磅（未注明 > 或 ≥）；轴重 单 >22,000/双 >48,000/三 >51,750/四 >55,440；高 >17'0\" 须提交路线并发车前实地走一遍，高度无固定上限"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 204,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "高 >17'0\" 需勘测（随 Superload 申请提交）；有效期未注明；架空障碍物须 6 英寸净空"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 110,
+   "notes": "周末限宽 18'0\"×高 18'0\"×长 120'0\"，重量悬不限；Red Route：周五 15:00 至周六日出禁行，周日 12:00 至周一日出禁行，夜间禁行；>18'0 宽×18'0 高×150'0 长 周五 15:00 后禁行；夜间限宽 ≤10'0\"×高 ≤15'6\"×长 ≤110'0\"；有 curfew（见 MT Highway Functional Classification Map）"
+  },
+  "frost_laws": "有；3 月–5 月；总重 80,000；单轴 16,000；三轴 48,000",
+  "permit_validity": "5 天",
+  "divisible_rule": "不可分割（仅长）年许可可至 120'0\"；附件：州际—拆除需 >8 工时或破坏货物价值可保留连接，拆下可装回同车；非州际—须拆下装回同车；不得超许可限值",
+  "other_notes": "警察护送无固定门槛（州警 406-444-3780）；保险：临时卡车/燃油许可 $750,000，其他许可最低 $1,000,000；超重时升降轴必须放下；年许可 15'0\"×14'6\"×95'0\"；延期可逐案批"
+ },
+ {
+  "state": "NC",
+  "name": "North Carolina",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "NCDOT",
+  "phone": "888-574-6683",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 38000,
+   "tridem_axle_lbs": null,
+   "notes": "法定长 60'0\"（车组合 60'0\"）；挂车长 53'0\"（53' 以上挂车罚款）；Kingpin 41'0\"；单车 40'0\"；三轴未列；豁免：管/杆/梁（仅长度，85'0\" 长含 15'0\" 后悬）、船（宽 ≤9'6\"，须装法定挂车）"
+  },
+  "overweight": {
+   "single_axle_lbs": 25000,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "四轴 >68,000 按 superload（桥梁审）；总重无固定上限；注册总重 80,000 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道 1 前、4 车道 1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 车道 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 173,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >14'5\"：1 前带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >110'0\"：1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >150'0\"：2 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "后悬 ≥15'0\"（原文为 ≥）：1 辆"
+   },
+   {
+    "dimension": "weight",
+    "over": 149999,
+    "unit": "lbs",
+    "escorts": 1,
+    "where": "front",
+    "notes": "重 >149,999 磅：1 前"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >16'0\"；州警电话 919-733-7952"
+   },
+   {
+    "dimension": "height",
+    "over": 197,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >16'5\""
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": null,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 132000,
+   "notes": "宽 >16'0\"；总重 >132,000 磅（轴重超政策需工程审查）；轴重 单 25,000/双 50,000/三 60,000/四 80,000；高/长未列（费用表写 Superload 宽 ≥17'0\"/高 ≥16'0\" 加 $100 申请费，与此门槛不一致）"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：宽 ≥16'0\"（活动房；原文为 ≥）；其他货物未列；净空 3\"；有效期 14 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末（日出–日落）：宽/高/长/重/悬不限；活动房 ≥16'0\" 宽仅周一–周六 9:00am–2:30pm；superload 周一–周六；夜间：宽/高/长/悬法定、重 ≤112,000 磅（超尺寸夜间不可走，故记 false）；法定尺寸 + ≤112,000 磅可 24/7；有 curfew（细则未列）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "10 天",
+  "divisible_rule": "Load Attachments：宽 ≤14'0\" 可保留；>14'0\" 须拆下（可同车）；53' 挂车上可多件连装",
+  "other_notes": "返程须在初次申请时申请，同货同路线，许可有效期内完成；护送车须认证（认可 CO、FL、GA、KS、MN、NY、OK、UT、VA、WA 证）；纯尺寸年票 12'0\"×13'6\"×105'0\" 无需护送；海运柜最大总重 94,500 磅（最少 5 轴）"
+ },
+ {
+  "state": "ND",
+  "name": "North Dakota",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "NDHP",
+  "phone": "701-328-2621",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 50,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 48000,
+   "notes": "组合长：州际/US 路 75'0\"，其他道路 95'0\"；挂车长 53'0\"；总重：州际 80,000 磅，其他道路 105,500 磅（取州际值）；悬未列"
+  },
+  "overweight": {
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": 68000,
+   "gross_max_lbs": null,
+   "notes": "单/双/三轴见 Weight Limitation Chart 链接；四轴 68,000 磅；总重见重量表；注册总重 105,500 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >14'6\"：双车道 1 辆（可用灯代替）"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：双车道 2 辆 / 四车道 1 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >18'0\"：1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >120'0\"：1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\"：逐案定；州警电话 701-328-2455；州警费 $50/小时/警员 + $0.50/英里/车"
+   }
+  ],
+  "superload": {
+   "width_in": 216,
+   "height_in": 216,
+   "length_ft": 200,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "门槛：宽 >18'0\" / 高 >18'0\" / 长 ≥200'0\"（原文为 ≥）/ 重 >150,000 磅；轴重 单 24,000/双 45,000/三 60,000/四 68,000"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "不需要勘测；所有架空障碍物须 3 英寸净空"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": null,
+   "notes": "周六、周日均可，日出至日落；宽 >16'0\"：周六仅至中午 12:00，周日禁行（长 110'0\"，高/重/悬不限）；夜间允许，限宽 ≤12'0\" × 法定高长，重量不限（夜间长度为法定长，故记 null）；无 curfew；无专属假日页"
+  },
+  "frost_laws": "有；3 月–5 月；轴重/总重每日变化，见 ND Spring Weight Chart",
+  "permit_validity": "5 天",
+  "divisible_rule": "年许可仅限超宽不可分割载荷；Load Attachments：附件可保留连接或拆下同车运输",
+  "other_notes": "升降轴超重时必须放下；外州引导车须临时注册；超重费分级，>200,000 磅 $78 + $0.05/吨/英里；许可仅可延期（过期后 3 天内）"
+ },
+ {
+  "state": "NE",
+  "name": "Nebraska",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Nebraska DOT",
+  "phone": "402-471-4567",
+  "legal": {
+   "width_in": 102,
+   "height_in": 174,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 4,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "法定长 65'0\"（卡车/挂车组合 65'0\"；单车 40'0\"；半挂/挂车 53'0\"）；前后悬各 4'0\"；总重：州际 80,000 磅，非州际 95,000 磅（取州际值）；驾驶室卡须注明 94,000 磅承运重"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 70000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册重量最低：5 轴 86,000 磅；6 轴 90,000 磅；7 轴及以上 94,000 磅。注：特大件轴重表四轴为 80,000"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：双车道前导 1 辆 / 四车道后导 1 辆或灯条；I-80 批准绕行路线符合灯条要求可免引导车"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\"：可能须 1 辆（带高度传感器，许可办公室酌定）"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >16'0\"：1 辆（带高度传感器）"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 >100'0\"：双车道后导 1 辆 / 四车道后导 1 辆或灯条"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 ≥20'0\"（原文为 ≥）；州可酌情要求州警护送；州警电话 402-471-4545"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 191,
+   "length_ft": 100,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 160000,
+   "notes": "门槛：宽 >16'0\" / 高 >15'11\" / 长 >100'0\" / 重 >160,000 磅；轴重 单 20,000/双 40,000/三 60,000/四 80,000；可能须桥梁处/区工程师审核；高 >18'0\" 须电力公司通知/批准；悬未列"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 192,
+   "length_ft": 150,
+   "gross_lbs": null,
+   "notes": "高 16'0\" / 长 >150'0\" 需勘测（高未注明 > 或 ≥）；2026/10/1 起：长 ≥175'0\" 或高 ≥17'0\" 须实地勘测（不接受仅用数字地图）；有效期 30 天；架空障碍物须 3 英寸净空"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周六、周日均可，日出至日落，尺寸重量悬不限；林肯市界内州道周六周日中午 12:00 后禁行（I-80 除外）；奥马哈市界内州道/州际周六周日中午 12:00 后禁行；夜间禁行，仅超重可 24/7 行驶；Curfews 有（细则缺）；无专属假日页"
+  },
+  "frost_laws": "无",
+  "permit_validity": "10 天",
+  "divisible_rule": "Load Attachments：附件须拆下单独运输；Crated Items：一箱一件，需货物描述",
+  "other_notes": "年许可（Continuous）州际及国防公路系统无效；I-80 批准绕行路线（US 30/US 34/US 6）符合灯条要求可免引导车；Permit Amendments 每许可 1 次 $10，不可改变许可类型"
+ },
+ {
+  "state": "NH",
+  "name": "New Hampshire",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "NH DOT",
+  "phone": "603-271-2691",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 48000,
+   "notes": "单车 45'0\"；卡车/拖拉机+半挂 48'0\"；半挂：非指定道 48'0\"，州际 53'0\"（取 48）；双挂各 28'0\"；Kingpin 41'0\"；后悬 4'0\"；单/双/三/四轴见官方重量链接，文件给出双轴组合 34,000、三轴组合 48,000；单轴未列；农用机械在州道上作业时豁免"
+  },
+  "overweight": {
+   "single_axle_lbs": 25000,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 70000,
+   "quad_axle_lbs": 85000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 80,000 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 ≥12'0\"（原文为 ≥）：1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 ≥12'0\" 且后悬 ≥15'0\"：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'0\"：1 辆（带高度传感器）"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 ≥90'0\"（原文为 ≥）：1 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文为 悬 ≥15'0\"：1 辆（未区分前/后悬）"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文为 悬 ≥15'0\"：1 辆（未区分前/后悬）"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 ≥14'0\"（原文为 ≥）：2 名州警；州警电话 603-271-6298"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 ≥100'0\"（原文为 ≥）：1 名州警（天气/能见度/车流良好可豁免）"
+   }
+  ],
+  "superload": {
+   "width_in": 180,
+   "height_in": 162,
+   "length_ft": 110,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "门槛：宽 ≥15'0\"（原文为 ≥）/ 高 >13'6\" / 长 >110'0\" / 重 >150,000 磅；轴重 单 25,000/双 50,000/三 70,000/四 85,000；费用表另写 Superload ≥100,000 磅"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 162,
+   "length_ft": 110,
+   "gross_lbs": null,
+   "notes": "高 >13'6\" 或长 >110'0\" 需勘测；有效期 30 天；同公司同货物同路线可复用"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周六、周日均可，日出前半小时至中午 12:00 EST，重量不限；夜间允许、重量不限，但所有夜间许可运输需州警护送，须提前 48 小时通知；夜间尺寸上限未列；无 curfew；许可办公室假日关闭（12 个假日）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "单程 5 天 / 往返 10 天",
+  "divisible_rule": "Load Attachments：附件必须拆下，用单独挂车运输；Crated Items：一箱超重货物限一件，箱体须显示货物序列号，需货物描述",
+  "other_notes": "移动房屋另有规定：高 ≥14'6\" 需 1 辆引导车 + 高度勘测；宽 >12'0\" 1 辆，>14'0\" 1 辆 + 2 名州警；长 ≥90'0\" 1 辆，≥100'0\" 1 辆 + 1 名州警；封路需 3 名州警。Hazmat 不可运输；许可不允许修改；需 IRP、IFTA、DOT 号"
+ },
+ {
+  "state": "NJ",
+  "name": "New Jersey",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "NJDOT",
+  "phone": "609-963-2085",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 56400,
+   "notes": "法定宽 8'0\"（全路网）/ 8'6\"（指定干线）；长度：单车 40'0\"；不可拆货单车 50'0\"；车头/半挂 62'0\"；挂车 48'0\"；半挂 53'0\"（kingpin ≤41'0\"）；悬未列"
+  },
+  "overweight": {
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "单/双/三/四轴按轴间距逐案批；总重无固定上限；轴重按 800 磅/英寸胎宽计算；注册总重 80,000 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >14'0\"：1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >100'0\"：1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >120'0\"：2 辆"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "总重 150,000 磅起（>150,000 磅桥梁审查 2–5 天）；纯超尺寸不算 superload；>14'0\" 宽/高建议勘测（14'6\" 以内无勘测也可发证，高不保证）"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 174,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "宽 >16'0\"：勘测；高 ≥14'6\"（原文为 ≥）必须勘测，高 ≥14'0\" 强烈建议；无固定净空标准；有效期 21 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末（日出–日落）：宽/高/长/重/悬不限；夜间仅超重车可走（超尺寸限法定尺寸），故超尺寸记为不允许；引导车部分提到夜间获批时可能加车；无 curfew；无新泽西单独假日条目"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "Load Attachments：允许，附件须拆下另车运输",
+  "other_notes": "引导车：高 >14'0\" 见电线规定，高 >16'0\" 见勘测要求；夜间获批时可能加护送车。Police Dimensions 网站未列具体尺寸，州警电话页面原文 608-882-2000（疑应为 609 区号）。海运柜年票：最大总重 90,000 磅，双轴 38,000/三轴 56,400。需保险（人身 $100,000/$300,000，财产 $100,000）；DOT number 不需要"
+ },
+ {
+  "state": "NM",
+  "name": "New Mexico",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "NMDOT",
+  "phone": "505-476-2475",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 57.5,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 7,
+   "gross_lbs": 86400,
+   "single_axle_lbs": 21600,
+   "tandem_axle_lbs": 34320,
+   "tridem_axle_lbs": 34320,
+   "notes": "长度：单车 40'0\"；组合（非指定高速）65'0\"；半挂 57'6\"；双挂 28'6\"；运车车 73'0\"；stinger 运车车 75'0\"；三轴 34,320 磅（按轴间距，10' spread 39,000）"
+  },
+  "overweight": {
+   "single_axle_lbs": 21600,
+   "tandem_axle_lbs": 46000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 68000,
+   "gross_max_lbs": null,
+   "notes": "总重未给固定上限：>170,000 磅需桥梁审批（结构不通过需 DOT 工程分析，可能附加限制）；注册总重 86,400 磅；16 轮 trunnion 轴组每组最多 57,500 磅"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "危险 2 车道宽 >12'0\"：可能 1–2 辆（非一般要求）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 ≥14'0\"（原文为 ≥）：1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 ≥18'0\"（原文为 ≥）：2 辆；宽 ≥20'0\"（需借道）：州警"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >16'0\"：1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 110.08,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >110'1\"：1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120.08,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >120'1\"：2 辆（DOT 按路线定数量）"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 20'0\"（引导车部分写 ≥20'0\" 需借道时州警）；借用对向车道/影响交通/安全需要时；提前 ≥48 小时预约，州警 $300/天；电话 505-827-9300；重量门槛由桥梁部门定"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 17'0\"（未注明 > 或 ≥）"
+   }
+  ],
+  "superload": {
+   "width_in": 216,
+   "height_in": 192,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 170000,
+   "notes": "宽 >18'0\"；高 >16'0\"；总重 ≥170,000 磅（原文为 ≥，见 Loading Chart）；长/悬未列；轴重 单 20,000/双 46,000/三 57,500/四 68,000"
+  },
+  "survey": {
+   "width_in": 216,
+   "height_in": 186,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "宽 >18'0\"；高 ≥15'6\"（原文为 ≥）；长/重/悬由许可部门要求；净空 3\"；有效期 14 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 120,
+   "notes": "周末（日出–日落）：宽/高/长/重/悬不限；夜间连续行车尺寸：宽 ≤10'0\"、高 ≤14'6\"、长 ≤120'0\"、重 ≤140,000 磅；无 curfew；节假日禁行：阵亡将士日、独立日、劳工节、感恩节、圣诞、元旦等（具体时段见源文件第 16 节）"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "Load Attachments：允许；≤8 小时能拆的须拆下另车运输；>8 小时可保留",
+  "other_notes": "Port of Entry 不再售卖超尺寸/超重许可；护送车须 NM 认证（每年更新）；8'6\" 以上被认定为 hazard 也可能要求护送车；升降轴超重时必须放下；超重重量里程费 $0.25/吨/英里（>86,400 磅部分）；需 DOT number 及责任险证书"
+ },
+ {
+  "state": "NV",
+  "name": "Nevada",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "Nevada DOT",
+  "phone": "775-888-7410",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 10,
+   "rear_overhang_ft": 10,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 19200,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "法定长 70'0\"（文件未区分单车/组合，故单车长为 null）；挂车长 53'0\"；前/后悬各 10'0\"（总长 ≤75'0\" 才算法定）；单轴 19,200 磅（轮胎 600 磅/平方英寸）"
+  },
+  "overweight": {
+   "single_axle_lbs": 19200,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": 500000,
+   "notes": "双轴见重量表；三轴最高 60,000 磅（trunnion 16 轮轴组每组最高 60,000）；四轴未列；总重最高 500,000 磅，超过按 superload（桥有问题时低于 500,000 也可能按 superload）"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：2/3 车道路 1 辆（4 车道未要求）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2/3 车道路 2 辆、4 车道路 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 186,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >15'6\"：1 辆（带测高杆）"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >110'0\"：1 辆（后转向挂车 120'0\" 内免）"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文为 悬 >25'0\"：1 辆（未区分前/后悬）"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文为 悬 >25'0\"：1 辆（未区分前/后悬）"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 ≥17'0\"（2 车道）/ ≥19'0\"（4 车道）需 Nevada DPS（原文为 ≥）；州警电话 775-687-5300"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >18'0\""
+   },
+   {
+    "dimension": "length",
+    "over": 200,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >200'0\""
+   },
+   {
+    "dimension": "weight",
+    "over": 500000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 >500,000 磅"
+   }
+  ],
+  "superload": {
+   "width_in": 204,
+   "height_in": 216,
+   "length_ft": 200,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 500000,
+   "notes": "宽：非州际 >17'0\"、州际 >19'0\"（取非州际值）；高 >18'0\"；长 >200'0\"；总重 >500,000 磅；高 >19'0\" 需市/县及电力部门批准；总重由结构设计部门逐案评估"
+  },
+  "survey": {
+   "width_in": 240,
+   "height_in": 216,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "宽 ≥20'0\"、高 ≥18'0\"（原文为 ≥）；许可办公室可酌情要求任何货物做 survey；净空 3\"；有效期 14 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": 110,
+   "notes": "周末（白天）：宽 ≤14'0\"、高 ≤15'0\"、长 ≤110'0\"（后转向可 120'0\"）、悬 ≤15'0\"、重量不限；夜间：宽 ≤12'0\"、高 ≤15'0\"、长 ≤110'0\"（后转向可 120'0\"）、悬 ≤15'0\"、重量不限；I-15（CA 边境–拉斯维加斯）、I-80（CA 边境–Sparks）宽 ≤12'0\"；年票宽 >12'0\" 不可周末行驶；有 curfew（细则未列）；无内华达单独假日数据"
+  },
+  "frost_laws": "有：2 月 1 日–4 月 30 日；总重 80,000 磅，单轴/三轴法定",
+  "permit_validity": "5 天",
+  "divisible_rule": "可分载超重：须法定宽/高、总长 ≤70'0\"、内桥 ≤66'0\"、轴重法定；Load Attachments：允许，附件可装在货物本体上同车运输，无固定尺寸重量上限",
+  "other_notes": "护送车需持证（flagger 课程，年满 18 岁）；拉活动房/办公室拖车需保险 $450,000（受益人 NV DOT）；需 DOT number；许可仅发证当天可修订；升降轴超重时不必放下"
+ },
+ {
+  "state": "NY",
+  "name": "New York",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "NYSDOT Central Permit Office",
+  "phone": "518-485-2999",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 36000,
+   "tridem_axle_lbs": 42500,
+   "notes": "法定宽 8'0\"（<10' 宽州道）/ 8'6\"（≥10' 宽州际/美道）；挂车长 48'0\"（州道）/ 53'0\"（州际/美道）；单车 40'0\"（含货/保险杠）；州道车头/半挂 65'0\"；州际/美道无固定上限；豁免：杆/梁/柱（仅长超，且宽高重法定）；悬未列"
+  },
+  "overweight": {
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "单/双/三/四轴无固定上限，按制造商轮胎额定值；总重无固定上限；须按许可重量注册车辆"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front",
+    "notes": "宽 >16'0\"：2 车道 2 前 + 1 州警"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front",
+    "notes": "宽 ≥18'0\"（原文为 ≥）：4 车道 2 前 + 1 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 ≥14'0\"（原文为 ≥）：1 辆带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 ≥80'0\"（原文为 ≥）：1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 3,
+    "where": null,
+    "notes": "长 ≥100'0\"（原文为 ≥）：2 辆（2 车道 3 辆），取 2 车道值"
+   },
+   {
+    "dimension": "length",
+    "over": 160,
+    "unit": "ft",
+    "escorts": 4,
+    "where": null,
+    "notes": "长 ≥160'0\"（原文为 ≥）：4 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "前悬 >10'0\"：1 前"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "后悬 >10'0\"：1 后"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >16'0\"（2 车道）；宽 ≥18'0\"（4 车道）；引导车部分写 1 州警；州警电话 845-344-5300"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 ≥16'0\"（原文为 ≥）"
+   },
+   {
+    "dimension": "length",
+    "over": 160,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >160'0\""
+   },
+   {
+    "dimension": "weight",
+    "over": 200000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 ≥200,000 磅（原文为 ≥）；所有 superload 须警车开道，2 个工作日提前通知"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 191,
+   "length_ft": 160,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 200000,
+   "notes": "宽 >16'0\"；高 >15'11\"；长 >160'0\"；总重 ≥200,000 磅（原文为 ≥，需示意图）；宽 >18'0\" 可能需交通控制计划；高 15'0\" 且距信号 3\" 内须 NYSDOT 信号承包商铲斗车随行；保证金 $10,000–$50,000；所有 superload 须警车开道"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 168,
+   "length_ft": 100,
+   "gross_lbs": null,
+   "notes": "宽 ≥16'0\"；高 ≥14'0\"；长 ≥100'0\"（原文均为 ≥）；活动房宽 ≥14'1\"；净空：宽 ≤11'11\" 3\"，宽 ≥12'0\" 6\"；有效期 30 天；须实地开车勘测"
+  },
+  "travel": {
+   "weekend_allowed": null,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周六仅至中午 12:00 可走，限宽 ≤12'0\"、高 ≤13'6\"、长 ≤79'11\"、重/悬不限；周日不允许（周末部分允许，故 weekend_allowed 记 null）；夜间不允许；有 curfew；节假日前后多日禁行（如阵亡将士日 5/22 中午–5/26、独立日 7/3 中午–7/6、劳工节 9/4 中午–9/8 等）；NYC 另有更严时段"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "Load Attachments：允许，可拆附件须拆下另车运输；Crated Items 须注明 \"Load is Crated for Protection\"",
+  "other_notes": "护送车须纽约 MV-64 证，不承认外州证；年票不许上纽约 Thruway；16'0\" 宽/100'0\" 长/14'0\" 高/150,000 磅及以上须提前 2 个工作日通知中央许可办+勘测备案；海运柜最大总重 100,000 磅；需 DOT number"
+ },
+ {
+  "state": "OH",
+  "name": "Ohio",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "ODOT",
+  "phone": "614-351-2300",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42500,
+   "notes": "法定长：挂车/货物超 53'0\" 需许可；超悬需许可。另列'双轴组合 34,000；三轴组合 48,000'，与三轴 42,500 并列，取较严 42,500。单车长度未列。豁免：农用机械、消防车、钻井设备、<25mph 自行/拖带设备、市政/志愿消防/救捞公司车辆、运电杆车辆。"
+  },
+  "overweight": {
+   "single_axle_lbs": 29000,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "轴距 <4'1\" 时：双轴 36,000 / 三轴 47,000 / 四轴 60,000（数字字段按一般轴距填写）。总重无固定上限；注册总重 80,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >13'0\" 1 辆；多维超限（如 >13'0\" 宽且 >90'0\" 长）2 辆，前后各 1"
+   },
+   {
+    "dimension": "width",
+    "over": 174,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'6\" 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\" 1 辆，带高度传感器"
+   },
+   {
+    "dimension": "height",
+    "over": 178,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >14'10\" 2 辆（1 辆带高度传感器）"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >90'0\" 1 辆；若同时宽 >13'0\" 则 2 辆前后各 1"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "height",
+    "over": 184,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 ≥15'4\"（州可酌情降低）；宽度逐案定（路线/结构物/配置）"
+   },
+   {
+    "dimension": "width",
+    "over": 193,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "总重 ≤160,000 磅且宽 16'1\"–17'11\" → 1 名州警"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "总重 ≤160,000 磅且宽 18'0\"–18'11\" → 2 名"
+   },
+   {
+    "dimension": "width",
+    "over": 228,
+    "unit": "in",
+    "escorts": 3,
+    "where": null,
+    "notes": "总重 ≤160,000 磅且宽 19'0\"–19'11\" → 3 名"
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": 4,
+    "where": null,
+    "notes": "总重 ≤160,000 磅且宽 ≥20'0\" → 4 名；>160,000 磅且宽 ≥20'0\" 亦 4 名"
+   },
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "总重 >160,000 磅且宽 13'0\"–14'6\" → 1 名"
+   },
+   {
+    "dimension": "width",
+    "over": 175,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "总重 >160,000 磅且宽 14'7\"–17'11\" → 2 名"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 3,
+    "where": null,
+    "notes": "总重 >160,000 磅且宽 18'0\"–19'11\" → 3 名"
+   },
+   {
+    "dimension": "width",
+    "over": 102,
+    "unit": "in",
+    "escorts": 3,
+    "where": null,
+    "notes": "18–20 轴：宽 8'6\"–20'0\" → 3 名，≥20'0\" → 4 名；双车道运输车 → 4 名"
+   }
+  ],
+  "superload": {
+   "width_in": 174,
+   "height_in": 174,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 160000,
+   "notes": "门槛：宽 >14'6\" / 高 >14'6\" / 重 >160,000 磅。高 >14'10\" 须协调电力/信号/高架标识；>200,000 磅须发货人函；>13 轴可能需桥梁监测；18–20 轴须桥梁批准；>20 轴须双车道运输车（每轴 ≤30,000，每线 ≤60,000）；>160,000 磅且路线不通过结构物须桥梁审核。"
+  },
+  "survey": {
+   "width_in": 240,
+   "height_in": 186,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "宽 >20'0\" 或高 ≥15'6\" 需勘测（许可办公室可逐案要求）；有效期 30 天；垂直净空 4\"（二级及地方道路 8\"）"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 70,
+   "notes": "周末周六日均可，日出前 30 分钟至日落后 30 分钟。宽 >12'0\"（4/1–11/30）：周五/周六/周日 3pm 至次日日出前半小时禁行。夜间限宽 10'0\" × 高 13'6\" × 长 70'0\"，挂车 ≤53'0\"，重量不限，须在原始申请注明夜间行驶。有 curfew（无细则）；假日见 Holiday Closures PDF。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "可分割载荷可发超重许可；单趟可分割载荷 >120,000 磅；90 天可分割载荷上限 120,000 磅；仅单程和 90 天许可，无年许可（原文如此）",
+  "other_notes": "州警电话 877-772-8765（手机 #677），护送时实测货物。附件：宽 12'–14' 限起点 25 英里内（有铲刀保护罩除外），>14' 须护罩否则拆下，>15' 必须拆下另车。木箱货最大 12'宽×13'6\"高×60'长×53,000 磅。保险财产损害 ≥$500,000（OS-32 由保险代理在线上传）。升降轴收起须在货物描述注明。"
+ },
+ {
+  "state": "OK",
+  "name": "Oklahoma",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "Oklahoma DOT",
+  "phone": "405-425-7012",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 59.5,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": null,
+   "notes": "法定高 13'6\"（所有地方/县道）。法定长 80'0\"；单车 45'0\"；半挂 59'6\"；双挂 53'0\"；运车车 75'0\"。前/后悬与三轴法定值未列。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 65000,
+   "gross_max_lbs": null,
+   "notes": "四轴 65,000（超需桥梁审查）；总重无固定上限；注册总重至少按实际载重，最高 90,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\" 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 车道 2 辆；多车道 1 辆（后）"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\" 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "活动房 18'0\" 宽：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 189,
+    "unit": "in",
+    "escorts": 2,
+    "where": "front+rear",
+    "notes": "高 ≥15'9\"：1 前带测高杆 + 1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "长 >80'0\"：2 车道 1 前"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >100'0\"：2 车道 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >150'0\"：州际 1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 ≥20'0\" 许可办公室酌情要求；≥23'0\" 必须"
+   },
+   {
+    "dimension": "width",
+    "over": 276,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 ≥23'0\" 必须警车开道"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 ≥150'0\" 酌情；≥200'0\" 必须"
+   },
+   {
+    "dimension": "length",
+    "over": 200,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 ≥200'0\" 必须"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 252,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 180000,
+   "notes": "宽 >16'0\"；高 >21'0\"；总重 >180,000 磅。单轴 20,000（任何轴超 20,000 不批）；双轴 40,000；三轴 60,000；四轴 80,000。审批约 3 天；特种移动/公用事业/警车开道由承运人自行安排。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "不要求路线勘测；架空障碍物需 5\" 净空"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": 102,
+   "night_max_length_ft": null,
+   "notes": "周末日出–日落，尺寸重量悬不限。夜间：宽/高/长须法定、重量不限；仅超重可申请夜间（须州认定必要）——即超尺寸货不可夜行。有 curfew（无细则）。假日仅多州 PDF 链接。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": null,
+  "other_notes": "护送车需 DPS 认证（认可 CO、FL、MN、NC、UT、WA）。升降轴超重时必须放下。许可修改须在发证 30 分钟内提出。附件 ≤8 小时能拆的须拆下另车运输。木箱不得超法定宽（箱体不得超挂车宽 24\"）。州警 405-521-6060（Troop S）。"
+ },
+ {
+  "state": "OR",
+  "name": "Oregon",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "ODOT",
+  "phone": "503-373-0000",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 4,
+   "rear_overhang_ft": 5,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "单车 40'0\"（详见 Route Map 1/7）。悬：货长 ≤40'、挂车 ≤40'、总长 ≤60' 同时满足时按 1/3 轴距后悬合法；任一超则前悬 4'0\"/后悬 5'0\" 合法；许可后悬不得超过车组轴距一半。轮胎 600 磅/英寸胎宽。"
+  },
+  "overweight": {
+   "single_axle_lbs": 21500,
+   "tandem_axle_lbs": 43000,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "三/四轴见 Weight Table 3/4/5（未给数字）。总重无固定上限；注册总重 105,500 磅。Heavy Haul Bonus（Weight Table 5，单次）：单轴 24,000、双轴 48,000、16 轮组 48,000–60,000（需 ≥9 轴；超 52,000 获批率骤降），均需桥梁分析。≥90,000 磅可能需额外前置时间；>105,500 磅需桥梁分析（最多 5 天）。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 108,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >9'0\"：Blue 路线 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 108,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >9'0\"：Red 路线 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >10'0\"：Purple/Black/Blue 路线 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >10'0\"：Red 路线 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 132,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >11'0\"：Purple 路线 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 132,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >11'0\"：Black/Blue/Red 路线 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：Green 路线 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >12'0\"：Purple/Black/Blue/Red 路线 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >14'0\"：州际/多车道 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >16'0\"：逐案定"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'6\"：1 辆带测高杆（或向 MCTD 备案免责声明）"
+   },
+   {
+    "dimension": "length",
+    "over": 95,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >95'0\"：Black/Blue/Red 路线 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >110'0\"：2 车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >120'0\"：州际/多车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >120'0\"：2 车道 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >150'0\"：逐案定"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "前悬 >15'0\" 1 辆"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 168,
+   "height_in": 204,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": null,
+   "notes": "高 >17'0\"；长 >150'0\"；宽：2 车道 >14'0\"、4 车道/州际 >16'0\"（取较严 14'0\"）；重量超 Weight Table 5 需桥梁审查（最多 5 天），无固定磅数。需货物形状图；对向无 12'0\" 路面时需交通管制计划；审批最多 10 天。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 204,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：高 ≥17'0\"（各分区阈值 17'0\"–18'0\" 不等）；净空 3\"；有效期 14 天；可能需交通管制计划"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": null,
+   "notes": "一般行车时间：日出到日落。周末（日出–日落）：州际宽 ≤14'0\"、高/长/重/悬不限。夜间：州际宽 ≤12'0\"，高/长/重/悬须法定；活动房夜间 ≤10'0\" 宽可走。有 curfew（见 OR Attachment H）。无俄勒冈单独假日数据。"
+  },
+  "frost_laws": "有：宽 >8'6\" 在路面结冰/能见度 <500' 或大风时禁行；承运人自行判断安全，高速巡警执法罚款",
+  "permit_validity": "最长 10 天",
+  "divisible_rule": "可分载年票：105,500 磅 GVW、法定轴重（Weight Table 1/2）",
+  "other_notes": "警车开道无固定触发尺寸，辖区可因公共安全要求（州警 503-378-3720）；superload 可能派 DOT 人员 Monitored Moves 跟车，费用直收。护送车无需认证。许可不允许修改。升降轴超重时无需放下。"
+ },
+ {
+  "state": "PA",
+  "name": "Pennsylvania",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "PennDOT Central Permit Office",
+  "phone": "717-787-2838",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42500,
+   "notes": "法定宽 8'6\"（非指定道路 8'0\"，数字取较严 8'0\"）。法定长 70'0\"（挂车/货物，超长须挂旗）。豁免：仅长超的不可拆货——挂车/货 ≤70'0\" 可不办证；总长 >90'0\" 或悬 >15'0\" 则须办证。单车长度未列。"
+  },
+  "overweight": {
+   "single_axle_lbs": 27000,
+   "tandem_axle_lbs": 52000,
+   "tridem_axle_lbs": 63000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限（可申请追加/桥梁审查）；注册总重 80,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 156,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >13'0\" 1 辆；宽 >13'0\" 且长 >120'0\"：1 前 1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 ≥14'0\" 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >14'6\"：1 前带测高杆；且宽 >13'0\" 时 +1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 90,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >90'0\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >120'0\" 2 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "后悬 >15'0\" 1 辆；+其他尺寸违规 2 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >16'0\"；所有 superload 都须州警"
+   },
+   {
+    "dimension": "length",
+    "over": 160,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >160'0\""
+   },
+   {
+    "dimension": "weight",
+    "over": 201000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 >201,000 磅"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 193,
+   "length_ft": 160,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 201000,
+   "notes": "宽 >16'0\"；高 16'1\"（原文无 > 号）；长 >160'0\"；总重 >201,000 磅。单轴 27,000；双轴 52,000；三/四轴按轴间距。承运人直接向中央许可办公室申请；高度无上限。"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 174,
+   "length_ft": 160,
+   "gross_lbs": null,
+   "notes": "触发：宽 >16'0\"；高 >14'6\"；长 >160'0\"；净空 3\"；有效期 21 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 70,
+   "notes": "周末（日出–日落）尺寸重量悬不限。夜间：宽 ≤10'0\"、高 ≤13'6\"、长 ≤70'0\"、重 ≤135,000 磅、悬法定；城市化区域 3:00am–7:30am 允许；Fort Pitt、Liberty Tunnels、Squirrel Hill 另行限制。有 curfew（城市化区域文件 M-938）。无宾州单独假日摘录。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "5 天",
+  "divisible_rule": "仅长超的不可拆货：挂车/货 ≤70'0\" 可不办证；总长 >90'0\" 或悬 >15'0\" 须办证",
+  "other_notes": "护送车需宾州认证（互认 CO、FL、GA、NC、VA、WA），保险 $1,000,000。升降轴超重时必须放下。铲宽 12'–15' 须刀片护罩（申请时提供序列号），>15' 须拆下另车。单程可延期 5 天。州警 717-783-5599。"
+ },
+ {
+  "state": "RI",
+  "name": "Rhode Island",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "RIDOT",
+  "phone": "401-222-2450",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 22400,
+   "tandem_axle_lbs": 36000,
+   "tridem_axle_lbs": null,
+   "notes": "法定长 N/A。挂车长 48'0\"（指定道 53'0\"，数字取较严）。三轴法定值未列。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 44000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "四轴 80,000 逐案审。总重按配置定；注册总重 80,000 磅。注意：原文超重单轴 20,000 低于法定单轴 22,400，照录。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 ≥12'0\" 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 161,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >13'5\" 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 167,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >13'11\" 1 辆带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 ≥80'0\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 95,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >95'0\" 2 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "悬 >15'0\" 2 辆（原文未区分前/后悬）"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "悬 >15'0\" 2 辆（原文未区分前/后悬）"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 168,
+   "height_in": 168,
+   "length_ft": 100,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 104800,
+   "notes": "宽 >14'0\"；高 >14'0\"；长 >100'0\"；总重 >104,800 磅（逐案工程审查）；≥200,000 磅须外部工程咨询公司做全线结构分析"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 162,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "I-95 高 >13'11\" 或非州际 >13'6\" 须勘测（RIDOT 许可办酌定），数字取较严 13'6\"；无固定净空标准；有效期 30 天"
+  },
+  "travel": {
+   "weekend_allowed": false,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周六、周日不允许；夜间不允许；无 curfew。2026 假日禁行（节选）：劳工节 9/5–9/7；哥伦布日 10/10–10/13；独立日 7/3–7/4；六月节 6/18 中午–6/20；阵亡将士日 5/23–5/25；耶稣受难日 4/4 晚+4/5；圣诞 12/24 15:00–12/26 0:01；元旦 12/31 15:00–1/2 0:01；感恩节 11/26–12/1 日出；退伍军人日 11/10 日落后–11/12。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "7 天",
+  "divisible_rule": null,
+  "other_notes": "警车开道由州工程师办公室逐案定（州警 401-444-1100）。护送车无需认证。许可不允许修改。升降轴超重时必须放下。年票 12/31 到期。木箱货须注明 \"Crated\"，一箱一件。"
+ },
+ {
+  "state": "SC",
+  "name": "South Carolina",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "SCDOT",
+  "phone": "803-737-6769",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 35200,
+   "tridem_axle_lbs": 35200,
+   "notes": "挂车长 48'0\"（2 车道）–53'0\"（4 车道），取较严。单轴 20,000（州际）/22,000（非州际）；双轴 35,200（州际）/39,600（非州际）；三轴 35,200（州际）/39,600（非州际），均取较严（三轴原文与双轴相同，照录）。悬：<48' 挂车前 3'0\"/后 15'0\"；48' 挂车 5'0\"；53' 挂车不许（除非许可）；单车前/后 5'0\"。豁免：筑路机械 ≤12'0\" 宽且 ≤90,000 磅；农机 ≤16'0\" 宽且 ≤90,000 磅。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 80,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\" 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：2 辆 + 2 州警"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 ≥16'0\"：1 前带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "长 ≥125'0\"：1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >150'0\" 2 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "后悬 15'–25'：1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"（护送车段写明 2 州警）；高/长/重/悬逐案定"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 125,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 130000,
+   "notes": "宽 >16'0\"；高 >16'0\"；长 >125'0\"（含悬）；总重 >130,000 磅。>180,000 磅需保险证明；>200,000 州可要求工程研究；>300,000 需货主重量尺寸证明+车头挂车注册；>500,000 收 mega-load 影响费。宽 >16'0\" 走周一–周五；超重需桥梁审查。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 192,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：高 ≥16'0\"；净空 6\"；有效期 15 天"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": false,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末（日出–日落）宽/高/长/悬不限、重量 ≤130,000 磅；周日连续行须逐案批。夜间原则不批；连续夜间行须逐案批。宽 >16'0\" 仅周一–周五。有 curfew（无细则）。2026 假日禁行：劳工节 9/7、独立日 7/4、阵亡将士日 5/25、圣诞 12/25、元旦 1/1、感恩节 11/27 等。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "7 天",
+  "divisible_rule": "年票限不可拆货（宽 14'0\"×高 13'6\"、100,000 磅，双轴 ≤40,000，最少 6 轴）",
+  "other_notes": "州警 803-896-7920。保险：一般责任 $250,000 + 汽车责任 $100,000，受益人 SCDOT。升降轴仅当某轴 >23,000 磅时须放下。宽 ≥16'0\" 的附件须拆下另车。木箱货 ≤12'0\" 宽、≤90,000 磅。许可修改须传真，路线/护送/日期不许改。"
+ },
+ {
+  "state": "SD",
+  "name": "South Dakota",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "SD DOT",
+  "phone": "605-224-7364",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "长度细则：单车 45'0\"；半挂 53'0\"；双挂各 28'6\"；汽车运输车 53'0\"；直卡/挂车 80'0\"；牵引/挂车（挂车 ≤81'6\"）总长不限；鞍式挂 97'0\"；牵引车/双挂车 70'0\"。总重 80,000 磅；另列组合 5 轴 85,000 / 6 轴 90,000 / 7 轴+ 95,000，数字取 80,000。豁免：捆干草高至 14'3\"；农机、消防设备高度不限。"
+  },
+  "overweight": {
+   "single_axle_lbs": null,
+   "tandem_axle_lbs": null,
+   "tridem_axle_lbs": null,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "单/双/三/四轴及总重均无固定上限，逐案审核，许可办公室按结构物规划路线；须按承运重量注册；超重时除转向轴外所有轴须着地且双胎。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 120,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >10'0\" 特殊情形：黑山地区、施工区，看许可条款定是否需要"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >12'0\"：次级道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >16'0\"：四车道 1 辆（州可酌情加至 2 辆）"
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >20'0\"：双车道 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 288,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >24'0\"：双车道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 360,
+    "unit": "in",
+    "escorts": 3,
+    "where": null,
+    "notes": "宽 >30'0\"：双车道 3 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >18'0\" 1 辆（带高度杆）"
+   },
+   {
+    "dimension": "length",
+    "over": 130,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >130'0\" 2 辆"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": null,
+   "notes": "宽/高/长/重均无固定上限，逐案审核，按常规单程许可签发"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": 200,
+   "gross_lbs": null,
+   "notes": "长 >200'0\" 需勘测 + 交通管制计划（Captain Broers 605-773-4578）；有效期 30 天；净空 2\""
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": null,
+   "notes": "周末周六日均可，尺寸重量悬不限。夜间：宽 ≤10'0\" × 高 ≤14'6\" × 法定长，重量不限，悬法定。无 curfew；无南达科他专属假日页。"
+  },
+  "frost_laws": "有；2 月–4 月；总重 80,000；三轴 42,000",
+  "permit_validity": "3 天",
+  "divisible_rule": "年许可仅限不可分割载荷",
+  "other_notes": "警车开道无固定门槛，逐案审核（州警 605-773-3105）。附件不允许保留，须拆下单独运输。保险：人身 $100,000/人、$300,000/事故，财产 $100,000，证书随车。网站邮箱显示 DOT.OSOW@dot.ri.gov，疑为网站数据错误。"
+ },
+ {
+  "state": "TN",
+  "name": "Tennessee",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "TDOT",
+  "phone": "615-741-3821",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": null,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 34000,
+   "notes": "法定宽 8'6\"（2 车道/非指定高速 8'0\"，数字取较严）。法定长 >75'0\" 需许可（未说明是总长还是挂车长，故挂车/单车长度字段留空）。Kingpin：五轮中心到挂车尾/货物尾（取大）>48'0\" 需许可。三轴原文 34,000，照录。悬未列。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "双轴 46,000（轴宽 ≤10'0\"）/40,000，取较严。总重无固定上限；注册总重 80,000 磅。16 轮 trunnion 轴组上限 46,000；自走固定货 >150,000 磅须拖挂。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 121,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 ≥10'1\"：1 辆（路宽 <24'0\" 时）"
+   },
+   {
+    "dimension": "width",
+    "over": 151,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 ≥12'7\"：1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 163,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 ≥13'7\"：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 181,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 ≥15'1\"：1 前带测高杆"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "船屋高 >17'0\"：3 辆（2 前 1 后）"
+   },
+   {
+    "dimension": "length",
+    "over": 90.08,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 ≥90'1\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120.08,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 ≥120'1\" 2 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >18'0\"（州警，按路宽定）；最少 2 人、最少 4 小时，$65/小时/人 + $0.13/英里/人；无州警时需 4 辆民用护送车（2 前 2 后）"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >18'0\"；最少 2 人"
+   },
+   {
+    "dimension": "length",
+    "over": 130,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 ≥130'0\"；最少 2 人"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 186,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 165000,
+   "notes": "宽 >16'0\"（需 TN Letter of Necessity）；高 >15'6\"（需勘测）；长 >120'0\"；总重 >165,000 磅。单轴 20,000；双轴 40,000；三轴 60,000；四轴 80,000。"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 186,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：宽 >16'0\"；高 >15'6\"；净空 1\"；有效期 15 天；一勘测一许可"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 192,
+   "night_max_length_ft": null,
+   "notes": "原文：周末/夜间 宽 ≤20'0\"/16'0\"、高 15'6\"、长不限、悬不限（未说明 20'/16' 分别对应何种情形，夜间宽取较严 16'0\"）。重 <165,000 磅可 24/7；>165,000 磅仅白天。船屋/活动房/现场建造房周末禁行；superload、船屋、活动房、现场建造房限白天（curfew）。假日：需护送的货物多在假日前一天中午起禁行（如劳工节 9/4 中午–9/7 日出、感恩节 11/26 中午–11/30 日出）。"
+  },
+  "frost_laws": "无",
+  "permit_validity": "10 天",
+  "divisible_rule": null,
+  "other_notes": "保险：每人 $300,000、每次事故 $1,000,000，受益人 TDOT。附件：宽 >10'6\" 凸出部须装尾部；宽 >13'6\" 须拆下。纯尺寸年票 13'6\"宽×13'10\"高×90'长。州警 865-594-5793。护送车无需认证。"
+ },
+ {
+  "state": "TX",
+  "name": "Texas",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "TXDMV",
+  "phone": "800-299-1700",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 59,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "总重 80,000 磅按轴数+轮胎尺寸核定；四轴 50,000 磅。长度：单车 45'0\"；半挂 59'0\"；双挂 28'6\"；运车车 65'0\"；卡车+挂车 65'0\"；stinger 转向运车车 81'0\"。豁免：电杆/管材 65'0\" 长。"
+  },
+  "overweight": {
+   "single_axle_lbs": 25000,
+   "tandem_axle_lbs": 46000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 72000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限，按轴间距+轮胎尺寸核定；注册总重 80,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >14'0\" 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\" 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >110'0\" 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >125'0\" 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >17'0\" 1 辆（带测高杆）；位置原文未注明"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >18'0\" 2 辆（其一带测高杆）"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "前悬 >20'0\" 1 辆（前）"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "后悬 >20'0\"：2 车道/4 车道各 1 辆（后）"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 240,
+   "height_in": 227,
+   "length_ft": 125,
+   "front_overhang_ft": 25,
+   "rear_overhang_ft": 30,
+   "gross_lbs": 254300,
+   "notes": "宽 >20'0\"、高 >18'11\"、长 >125'0\"（含车头挂车）需路线查勘；>200,000 磅需托运人重量证明；>254,300 磅需货物图、MCD-305-SH CERT 认证协议、车组皮重、货重、TX 认证工程师。"
+  },
+  "survey": {
+   "width_in": 240,
+   "height_in": 227,
+   "length_ft": 125,
+   "gross_lbs": 254300,
+   "notes": "触发：宽 >20'0\"；高 >18'11\"；长 >125'0\"；重 >254,300 磅；悬 25'0\"/30'0\"。所有架空障碍物需 3\" 间隙；有效期 30 天（风电叶片及部件 6 个月）；TX 许可系统生成路线查勘表，需勘测员签字注明日期；申请公司负责联系沿线区办公室/电力/信号灯业主并提供证明。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 100,
+   "notes": "周末（六/日）日出到日落可走，宽/高/长/重/悬均不限；夜间可走：宽 ≤10'0\"、高法定、长 ≤100'0\"、悬法定、重量不限。有 curfew（详见 Permit Movement Conditions and Curfews 链接）；节假日见 12 个节假日 PDF（WCS 多州对照表）。"
+  },
+  "frost_laws": null,
+  "permit_validity": "5 天",
+  "divisible_rule": "超重木箱货限一箱一件，需货物描述；可拆附件原则上须拆下另车运输（法定重量内除外），推土机铲刀若拆除能减小总宽、降低公共 hazard 可按 \"Non-Dismantle\" 出许可。",
+  "other_notes": "每个违规项各需一辆护送车（如 16' 宽 + 112' 长 = 2 辆；长和悬同时超只算一项），允许车队编队；escort flagger 须培训认证。警车开道网站未列触发尺寸（州警 512-424-2000）。超重时升降轴不必放下。海运柜：年票可，最大 100,000 磅、最多 7 轴、仅 6/7 轴组合，仅限 Freeport / Houston（Barbours Cut、IH610）港口 30 英里内。许可可延期、改车头、因施工或邻州限制改路线。Frost Laws：无。"
+ },
+ {
+  "state": "UT",
+  "name": "Utah",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "UDOT",
+  "phone": "801-965-4508",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42500,
+   "notes": "法定长 65'0\"；单车 45'0\"；双挂 61'0\"；汽车运输车（五轮）65'0\"；其他组合 65'0\"；鹅颈转向 75'0\"。挂车长 48'0\"。双轴组合 34,000；三轴组合 42,500。"
+  },
+  "overweight": {
+   "single_axle_lbs": 29500,
+   "tandem_axle_lbs": 50000,
+   "tridem_axle_lbs": 61750,
+   "quad_axle_lbs": null,
+   "gross_max_lbs": null,
+   "notes": "四轴原文未列（Superload 段写四轴按轴距定）。耳轴组（16 胎 × 10 宽）每组 ≤60,000 磅；多轴组合减重，UT 计算机分析定。总重无固定上限；注册总重 129,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >12'0\"：双车道 1 辆（四车道原文未说明）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：双车道 2 辆 / 四车道 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >16'0\"：1 辆（带高度杆，杆高出货物 3\"）"
+   },
+   {
+    "dimension": "length",
+    "over": 105,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >105'0\"：双车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >120'0\"：双车道 2 辆 / 四车道 1 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 '悬 >20'0\"：1 辆'，未区分前/后悬"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 '悬 >20'0\"：1 辆'，未区分前/后悬"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 204,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >17'0\"：双车道 1 名州警"
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >20'0\"：2 名"
+   },
+   {
+    "dimension": "height",
+    "over": 210,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "高 >17'6\"：2 名"
+   },
+   {
+    "dimension": "length",
+    "over": 175,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >175'0\"：双车道 1 名"
+   },
+   {
+    "dimension": "length",
+    "over": 200,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >200'0\"：2 名；州可按区域/时间/难度加派"
+   }
+  ],
+  "superload": {
+   "width_in": 204,
+   "height_in": 210,
+   "length_ft": 105,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": null,
+   "notes": "门槛：宽 >17'0\" / 高 >17'6\" / 长 >105'0\"；悬未列；总重无固定上限；轴重：单轴 29,500 / 双轴 50,000 / 三轴 61,750 / 四轴按轴距定。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "不需要勘测；无垂直净空要求。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": 105,
+   "notes": "周末六日均可，日出至日落，尺寸重量悬不限。夜间允许：宽 ≤10'0\" × 高 ≤14'0\" × 长 ≤105'0\" × 法定重，悬前/后 ≤3'0\"/10'0\"。有 curfew（无细则）。假日禁行（>10'0 宽、105'0 长、14'6 高）：圣诞 12/24 14:00–12/26 日出；元旦 12/31 14:00–1/2 日出；劳工节 9/4 14:00 起、9/7 0:01–日出（9/5 日出至 9/6 午夜可走）；独立日 7/3 14:00–7/5 日出（>12'0 宽、14'6 高、105'0 长）；阵亡将士日 5/22 14:00–午夜及 5/25 0:01–日出；感恩节 11/26 14:00–11/28 日出。"
+  },
+  "frost_laws": null,
+  "permit_validity": "5 天",
+  "divisible_rule": "年许可仅限不可分割载荷；宽 >16'0\" 的附件须拆下（可装同车）。",
+  "other_notes": "年许可：宽 14'6\" × 高 14'0\" × 长 105'0\"（电杆 120'0\"）× <125,000 磅，前后悬各 10'0\"，$540。引导车须认证（Pilot Training and Certifications）；引导车 GVW ≤12,000 磅、轴距 ≥95\"。保险：有，受益人 State of Utah DOT Port of Entry Section，金额未注明，传真 801-965-4399。州警 801-965-4518。许可可修改（不改变费用）。Frost Laws：无。"
+ },
+ {
+  "state": "VA",
+  "name": "Virginia",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Virginia DMV",
+  "phone": "804-786-2787",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": null,
+   "notes": "法定长 65'0\"（组合）；单车 40'0\"；半挂 53'0\"；Kingpin 41'0\"。后悬：4 车道 4'0\" / 2 车道 5'0\"（取较严 4'0\"）。三轴法定原文未列。"
+  },
+  "overweight": {
+   "single_axle_lbs": 24000,
+   "tandem_axle_lbs": 44000,
+   "tridem_axle_lbs": 54500,
+   "quad_axle_lbs": 64500,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限（按轴间距/配置，须过联邦桥梁公式）；注册总重 80,000 磅。注：Superload 段四轴写 >63,500，与此处 64,500 不一致。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道 2 辆、4 车道/州际 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "宽 >14'0\"：2 车道 3 辆（2 前 1 后）、4 车道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 4,
+    "where": "front+rear",
+    "notes": "宽 >16'0\"：2 车道 4 辆（2 前 2 后）、4 车道 3 辆（1 前 2 后）"
+   },
+   {
+    "dimension": "height",
+    "over": 173,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >14'5\"：1 辆带测高杆；>17'0\" 另加州警"
+   },
+   {
+    "dimension": "length",
+    "over": 85,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >85'0\"：2 车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 120,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "长 >120'0\"：4 车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >150'0\"：2 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 '悬 >10'0\"：1 前'，未区分前/后悬"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 '悬 >10'0\"：1 前'，未区分前/后悬"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 '悬 >15'0\"：1 后'；是否在 1 前之外另加未说明"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 '悬 >15'0\"：1 后'；是否在 1 前之外另加未说明"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\""
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 >100'0\""
+   },
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 >17'0\"（+ 州警）"
+   }
+  ],
+  "superload": {
+   "width_in": 180,
+   "height_in": 180,
+   "length_ft": 150,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": null,
+   "notes": "宽 >15'0\"；高 >15'0\"；长 >150'0\"；总重按轴间距/配置；轴重 单轴 24,000 / 双轴 >44,000 / 三轴 >54,500 / 四轴 >63,500。>18'0\" 宽 / >16'0\" 高 / >200'0\" 长 / >250,000 磅需 variance 信 + 详细行车计划 + 保险证书。7/8 轴 >115,000 磅桥梁审查；9 轴以上自动桥梁审查；桥梁申请 10 天。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "州要求时才勘测（无固定触发尺寸）；净空 3\"；有效期 30 天。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": null,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末（日出–日落）：宽 ≤14'0\"、高 ≤15'0\"、长 ≤150'0\"、重量不限；周日须在申请时备注。宽 14'1\"–15'0\"：周一–周五（分日夜走）；宽 >15'0\"：周一–周四（9am–4pm 或 10pm–6am，逐案批）。仅超重：24/7。一般超尺寸夜间规则原文未明确。有 curfew。"
+  },
+  "frost_laws": null,
+  "permit_validity": "13 天（宽 >14'5\" 的许可 5 天）",
+  "divisible_rule": "木箱货允许，需货物描述；铲/斗/勺附件：宽 >8'0\" 可保留，>11'0\" 须刀片护罩，>14'0\" 不许保留。",
+  "other_notes": "护送车须 VA 认证（互认 FL、GA、MN、NC、OK、UT、WA）。超重时升降轴必须放下。许可不允许修改。保险：受益人 Virginia DMV，一般/汽车责任各 $1,000,000（原文 \"1,000.000.000\"，疑为 $1,000,000），superload 须双证备案。年票：14'0\" 宽×14'0\" 高×100'0\" 长、后悬 15'0\"、115,000 磅，需 MP 227 表。海运柜限往返海港，53' 挂车。州警 804-674-2000。Frost Laws：无。"
+ },
+ {
+  "state": "VT",
+  "name": "Vermont",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "Vermont DMV",
+  "phone": "802-828-2064",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": null,
+   "notes": "法定长：州道 68'0\" / 其他公路 75'0\"；挂车长 53'0\"；Kingpin 43'0\"；单车长及前后悬原文未列。轴重：州际 单轴 20,000 / 双轴 34,000；非州际 单轴 22,400 / 双轴 36,000（取较严的州际值）；三轴无固定上限；双轴组合 34,000；三轴组合 54,000。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 40000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": 149999,
+   "notes": "总重最大 149,999 磅；≥150,000 磅需工程分析；注册总重 80,000 磅；转向轴最大 12,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '宽 ≥12'0\" 需引导车'（≥ 按 over 记），未写辆数/位置"
+   },
+   {
+    "dimension": "length",
+    "over": 80,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '长 ≥80'0\" 需引导车'，未写辆数/位置"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '悬 ≥15'0\" 需引导车'，未区分前/后、未写辆数"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 15,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '悬 ≥15'0\" 需引导车'，未区分前/后、未写辆数"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 180,
+   "height_in": 169,
+   "length_ft": 101,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 150000,
+   "notes": "原文为 ≥：宽 ≥15'0\" / 高 ≥14'1\" / 长 ≥101'0\" / 重 ≥150,000 磅（地方道路除外）须工程分析。Superload 保险：人身伤亡 $250,000/人、$500,000/事故，财产 $250,000；受益人 State of Vermont DMV，发至 DMV.VTePermits@vermont.gov。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "州未要求则无需勘测；工程分析门槛同 Superload；垂直净空至少 1 英寸。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 102,
+   "night_max_length_ft": null,
+   "notes": "周末六日均可，日出至日落，限 <10'6\" 宽 × 13'6\" 高 × 100'0\" 长 × 108,000 磅。夜间：允许（法定尺寸内）——即夜间宽以法定 8'6\" 为限，长度按法定（州道 68'0\"/其他 75'0\"）。有 curfew（无细则）；假日见 12 个假日 PDF。"
+  },
+  "frost_laws": null,
+  "permit_validity": "10 天",
+  "divisible_rule": "木箱货允许，一箱一件，货物描述须注明 \"Crated\"；附件可保留连接或拆下同车运输。",
+  "other_notes": "州警护送逐案定（DOT 首席代理决定；802-828-2064 / 802-244-8781）。车队行驶许可车辆间距 ≥1,000 英尺；引导车无需认证。总重 >92,000 磅时升降轴必须放下。许可不允许修改。年许可：宽 10'6\" × 高 14'0\" × 长 100'0\"、108,000 磅（<68'0\" 长可至 12'0\" 宽）。海运柜允许，最大 149,999 磅。Frost Laws：无。"
+ },
+ {
+  "state": "WA",
+  "name": "Washington",
+  "collected": "oversizeloadassistant.com, 2026-10-15",
+  "agency": "WSDOT",
+  "phone": "360-704-6340",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 40,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 15,
+   "gross_lbs": 105500,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "前悬 3'0\"（计入总长）；后悬从最后轴中心 15'0\"。长度：单车 40'0\"；半挂 53'0\"（运车 56'0\" 需许可）；双挂 60'0\"；运车车 65'0\"；卡车+挂车 75'0\"。"
+  },
+  "overweight": {
+   "single_axle_lbs": 22000,
+   "tandem_axle_lbs": 43000,
+   "tridem_axle_lbs": 65000,
+   "quad_axle_lbs": 70000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 105,500 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 132,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >11'0\"：2 车道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "宽 >14'0\"：4 车道 1 后"
+   },
+   {
+    "dimension": "width",
+    "over": 240,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >20'0\"：4 车道 2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 174,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >14'6\"（普货）：1 前带测高杆；活动房 >15'0\" 1 前带测高杆；又高又宽（>14'6\" 高 + >12'0\" 宽）：1 后 + 1 前带测高杆"
+   },
+   {
+    "dimension": "length",
+    "over": 105,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥105'0\"：2 车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "原文 ≥125'0\"：4 车道 1 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 20,
+    "unit": "ft",
+    "escorts": 1,
+    "where": null,
+    "notes": "后悬 >20'0\"：2 车道 1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\"；需提前 48 小时通知"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": 125,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 200000,
+   "notes": "宽 >16'0\"；高 >16'0\"；长 >125'0\"；总重 >200,000 磅。<200,000 磅提前 5 天申请；>200,000 磅提前 30 天（需辖区批准）；>300,000 磅送路面部门分析。"
+  },
+  "survey": {
+   "width_in": 192,
+   "height_in": 192,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "触发：2 车道宽 >16'0\"；高 >16'0\"（州不保证自助许可 14'0\" 以上净空，须自行核查）。净空最低 3\"；有效期 30 天；宽 16'0\" 需交通管制计划；申请公司负责联系电力/信号灯业主并提供证明。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": 105,
+   "notes": "周末（日出–日落）宽/高/长/重/悬不限。夜间：宽 <12'0\"、高 <14'6\"、长 <105'0\"（含法定悬）、悬法定、重量不限（原文为严格小于）。仅超重 24×7。有 curfew。"
+  },
+  "frost_laws": null,
+  "permit_validity": "3 天",
+  "divisible_rule": "附件可装可拆同车运输，申请时须明确申报。",
+  "other_notes": "不许编队（除非许可注明）。护送车须认证（认可 AZ、CO、GA、KS、MN、NC、OK、UT、VA）。超重时升降轴必须放下。许可作废/重开须有正当理由（天气不算），须发证当天作废。年票：宽 14'0\"、高 15'0\"、重 125,000 磅。海运柜仅限 SR 509，最大 105,500 磅。无特殊保险要求。州警 360-596-3800。Frost Laws：无。"
+ },
+ {
+  "state": "WI",
+  "name": "Wisconsin",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "WisDOT",
+  "phone": "608-266-7320",
+  "legal": {
+   "width_in": 102,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": 45,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 4,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": 42000,
+   "notes": "长度：单车巴士/房车 45'0\"（原文仅此单车值）；半挂 53'0\"；卡车/挂车及地方道路车辆 65'0\"；牵引车/挂车 70'0\"；其他组合 75'0\"；>100'0\" 须可转向轴组。Kingpin 43'0\"。双轴组合 34,000；三轴组合 37,000。豁免：农机 12'0 宽、其余法定，禁上州际。"
+  },
+  "overweight": {
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 60000,
+   "tridem_axle_lbs": 81000,
+   "quad_axle_lbs": 90000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 80,000 磅；按配置、轴距、路线定。（单轴 20,000 与法定相同，按原文照录。）"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "宽 >15'0\"：1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 192,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >16'0\"：2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 125,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >125'0\"：2 辆"
+   },
+   {
+    "dimension": "height",
+    "over": 192,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '高 16'01\" 需引导车'（即 >16'0\"），未写辆数"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 >18'0\"；低于此州可逐案要求"
+   },
+   {
+    "dimension": "height",
+    "over": 207,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '高 17'3\"'，未写 > 或 ≥"
+   },
+   {
+    "dimension": "length",
+    "over": 160,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "原文 '长 160'0\"'，未写 > 或 ≥"
+   }
+  ],
+  "superload": {
+   "width_in": 192,
+   "height_in": 207,
+   "length_ft": 160,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 250000,
+   "notes": "总重 >250,000 磅须桥梁+路面审核；高 >17'03\" / 宽 >16'0\" / 长 >160'0\" 须区域审核；轴重 20,000/60,000/81,000/90,000。Megaload：>400,000 磅 GVW；任轴线 >40,000 磅；宽 >22'0\"；高 >19'0\"；长 >220'0\"。"
+  },
+  "survey": {
+   "width_in": 264,
+   "height_in": 228,
+   "length_ft": 220,
+   "gross_lbs": 400000,
+   "notes": "宽 >22'0\" / 高 >19'0\" / 长 >220'0\" / 重 >400,000 磅（或任轴线 >40,000 磅）需勘测；有效期 30 天；架空障碍物 3 英寸净空；须提供路线图/航拍图、冲突点及应对方案、逆行路段、停靠点、公用设施通知证明。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 144,
+   "night_max_length_ft": 150,
+   "notes": "周末：周六至中午 12:00，周日至下午 4:00；超尺寸（>12'0 宽、13'6 高、150'0 长）周六至中午；超重可 24/7。夜间允许：限宽 12'0\" × 高 13'6\" × 长 150'0\"，重量不限。有 curfew（见 WI Hours & Day Operation Chart）；无威斯康星专属假日页。"
+  },
+  "frost_laws": "有；12 月–次年 2 月；总重 98,000；单轴 23,000；三轴 46,000",
+  "permit_validity": "5 天",
+  "divisible_rule": "年许可可分割载荷：原木、收获物、农产品、可回收物、废料；不可分割：风塔。木箱货超重一箱限一件，需货物描述；附件拆除需 ≥8 工时可保留连接，<8 工时须拆下单独运输。",
+  "other_notes": "引导车须认证、≥18 岁。超重时升降轴必须放下。年许可：宽 14'0\" × 高 16'0\" × 长 150'0\"。许可可延期 2 次、可改牵引车/挂车牌照。海运柜最大 90,000 磅、6–8 轴、单程有效 14 天。无特殊保险要求。州警 844-847-1234。"
+ },
+ {
+  "state": "WV",
+  "name": "West Virginia",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "WVDOT",
+  "phone": "304-558-9547",
+  "legal": {
+   "width_in": 96,
+   "height_in": 162,
+   "semi_trailer_length_ft": 53,
+   "single_vehicle_length_ft": null,
+   "front_overhang_ft": 3,
+   "rear_overhang_ft": 6,
+   "gross_lbs": 80000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 34000,
+   "tridem_axle_lbs": null,
+   "notes": "法定宽 8'6\"（车道 >10' 宽）；8'0\"（车道 ≤10' 宽的地方道）——取较严 8'0\"。长度：州际/全国网无限长；美/州/县/市道 70'0\"；半挂 53'0\"；后牵引轴到挂车首轴 37'0\"；活动房 45'0\"；马鞍挂 97'0\"；单车长原文未列。豁免：钢梁/杆 80'0\" 长须用加长挂车或杆拖车。三轴法定未列。"
+  },
+  "overweight": {
+   "single_axle_lbs": 28000,
+   "tandem_axle_lbs": 45000,
+   "tridem_axle_lbs": 60000,
+   "quad_axle_lbs": 80000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限（超则逐区桥梁审，按轴间距定）；注册总重 80,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "width",
+    "over": 126,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "原文 ≥10'6\"：2 车道 1 前"
+   },
+   {
+    "dimension": "width",
+    "over": 144,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >12'0\"：2 车道 2 辆 / 4 车道 1 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "宽 >14'0\"：2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 3,
+    "where": "front+rear",
+    "notes": "宽 >15'0\"：2 车道 3 辆（2 前 1 后）/ 4 车道 3 辆（1 前 2 后）"
+   },
+   {
+    "dimension": "height",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": null,
+    "notes": "高 >15'0\"：1 辆（测高杆车不能当额外前车用）"
+   },
+   {
+    "dimension": "length",
+    "over": 75,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 ≥75'0\"：2 车道 1 后"
+   },
+   {
+    "dimension": "length",
+    "over": 95,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >95'0\"：2 车道 2 辆 / 4 车道 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 100,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "长 >100'0\"：2 辆"
+   },
+   {
+    "dimension": "front_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "悬 >10'0\" 前/后：1 前"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 10,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "front",
+    "notes": "悬 >10'0\" 前/后：1 前"
+   }
+  ],
+  "police": [],
+  "superload": {
+   "width_in": 192,
+   "height_in": null,
+   "length_ft": null,
+   "front_overhang_ft": 15,
+   "rear_overhang_ft": 30,
+   "gross_lbs": 120000,
+   "notes": "宽 >16'0\"（限周日日出–中午走）；高/长无固定上限（路线能容则无进一步审）；悬前 15'0\" / 后 30'0\"；总重 >120,000 磅（路线分析过桥则免桥梁分析）；轴重 28,000/45,000/60,000/80,000；桥梁监护需提前 24 小时通知。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": 192,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "原文：高 16'0\"：强烈建议先拿路线批准/许可再勘测（是否为强制触发未明确）；净空 3\"。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": null,
+   "night_max_length_ft": null,
+   "notes": "周末：宽 ≤14'0\"、高 ≤14'6\"、长 ≤95'0\"、重 ≤110,000、悬 <10'0\"（连续/周末行须申请）。收费高速：高 14'6\"×宽 14'0\"×长 95'0\"、110,000 磅、前后悬合计 15'0\"。夜间：原文仅写 '重 ≤110,000 可走'，夜间尺寸上限未列。Superload 宽 >16'0\" 限周日日出–中午。有 curfew。假日禁行（当天）：阵亡将士日、圣诞、元旦、感恩节（11/27）；其他假日关门无限制。"
+  },
+  "frost_laws": null,
+  "permit_validity": "5 天（活动房单次 10 天）",
+  "divisible_rule": "超重木箱货一箱一件，需货物描述；附件须拆下另车（推土机铲刀斜对来车方向、≤14'0\" 可保留）。",
+  "other_notes": "州警护送宽/重逐案审（州+区官员定；304-746-2100）。护送车无需认证。超重时升降轴不必放下。许可可修改：车牌/挂车牌二改其一、延期 3 天、开工前改日期。年票按路线等级（州际最大 14'0\" 宽×14'6\" 高×95'0\" 长、110,000 磅）。保险仅活动房要求（$300,000）。海运柜最大 90,000 磅。Frost Laws：无。"
+ },
+ {
+  "state": "WY",
+  "name": "Wyoming",
+  "collected": "oversizeloadassistant.com, 2026-10-16",
+  "agency": "WYDOT",
+  "phone": "307-777-4376",
+  "legal": {
+   "width_in": 102,
+   "height_in": 168,
+   "semi_trailer_length_ft": 48,
+   "single_vehicle_length_ft": 60,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 117000,
+   "single_axle_lbs": 20000,
+   "tandem_axle_lbs": 36000,
+   "tridem_axle_lbs": 42000,
+   "notes": "原文长度：组合 60'0\"（单车；卡车牵引+半挂中的半挂）；双挂半挂 81'0\"；其他组合 85'0\"；三挂半挂 97'0\"；挂车 — 半挂 48'0\"，挂车或第二半挂 40'0\"；另有 '挂车长：60'0\"'，与 48'0\" 矛盾，取较严 48。单车 60'0\" 按原文括注取值。前后悬未列。双轴组合 36,000；三轴组合 42,500。豁免：钢梁/柱/杆等 <60'0\"。"
+  },
+  "overweight": {
+   "single_axle_lbs": 25000,
+   "tandem_axle_lbs": 55000,
+   "tridem_axle_lbs": 65000,
+   "quad_axle_lbs": 74000,
+   "gross_max_lbs": null,
+   "notes": "总重无固定上限；注册总重 117,000 磅。"
+  },
+  "escorts": [
+   {
+    "dimension": "height",
+    "over": 204,
+    "unit": "in",
+    "escorts": 1,
+    "where": "front",
+    "notes": "高 >17'0\"：前导 1 辆（带高度测量装置）"
+   },
+   {
+    "dimension": "width",
+    "over": 168,
+    "unit": "in",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥14'0\"：双车道 2 辆"
+   },
+   {
+    "dimension": "width",
+    "over": 180,
+    "unit": "in",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 ≥15'0\"：四车道后导 1 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 110,
+    "unit": "ft",
+    "escorts": 2,
+    "where": null,
+    "notes": "原文 ≥110'0\"：双车道 2 辆"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 ≥150'0\"：四车道后导 1 辆"
+   },
+   {
+    "dimension": "rear_overhang",
+    "over": 25,
+    "unit": "ft",
+    "escorts": 1,
+    "where": "rear",
+    "notes": "原文 后悬 ≥25'0\"：双车道和四车道后导 1 辆"
+   }
+  ],
+  "police": [
+   {
+    "dimension": "width",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "宽 18'0\" 以上逐案定"
+   },
+   {
+    "dimension": "height",
+    "over": 216,
+    "unit": "in",
+    "escorts": null,
+    "where": null,
+    "notes": "高 18'0\" 以上逐案定"
+   },
+   {
+    "dimension": "length",
+    "over": 150,
+    "unit": "ft",
+    "escorts": null,
+    "where": null,
+    "notes": "长 150'0\" 以上逐案定"
+   },
+   {
+    "dimension": "weight",
+    "over": 150000,
+    "unit": "lbs",
+    "escorts": null,
+    "where": null,
+    "notes": "重 150,000 磅以上逐案定"
+   }
+  ],
+  "superload": {
+   "width_in": 216,
+   "height_in": 204,
+   "length_ft": 120,
+   "front_overhang_ft": null,
+   "rear_overhang_ft": null,
+   "gross_lbs": 160000,
+   "notes": "门槛：宽 >18'0\" / 高 >17'0\" / 长 >120'0\" / 重 >160,000 磅；轴重 25,000/55,000/65,000/74,000。批准至少提前 24 小时通知；一二级公路校车时段禁行；可能有额外宵禁；须经 Highway Patrol 预批（307-777-4376 / 307-777-4747）。"
+  },
+  "survey": {
+   "width_in": null,
+   "height_in": null,
+   "length_ft": null,
+   "gross_lbs": null,
+   "notes": "不需要勘测；所有架空障碍物须 6 英寸净空。"
+  },
+  "travel": {
+   "weekend_allowed": true,
+   "night_allowed": true,
+   "night_max_width_in": 120,
+   "night_max_length_ft": null,
+   "notes": "周末六日均可，日出至日落，尺寸重量悬不限。夜间允许：限宽 10'0\" × 法定高长，重量不限（法定长因组合而异，未填数值）。无 curfew；无怀俄明专属假日页。"
+  },
+  "frost_laws": "有；3 月–5 月；总重 80,000；单轴 20,000；三轴 42,500",
+  "permit_validity": "4 天",
+  "divisible_rule": "木箱货允许，须提单确认货物描述，超重一箱限一件；施工设备附件可保留连接或拆下同车运输。",
+  "other_notes": "所有超限/超重载荷入境后须在第一个 Port of Entry 停车并过磅；POE 超尺寸容差 ≤6 英寸，Superload（OWL）≤1 英寸。无年许可。许可不允许修改。超重时升降轴必须放下。引导车无需认证。无特殊保险要求。州警 307-777-4301。"
+ }
+]

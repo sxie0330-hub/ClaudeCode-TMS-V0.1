@@ -9,10 +9,10 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
 from django.views.decorators.http import require_POST
 
-from . import ai, ai_leads, quote_pdf, quotes
+from . import ai, ai_leads, oog, quote_pdf, quotes
 from .forms import (CarrierQuoteForm, CustomerQuoteForm, LeadCargoForm, LeadForm, LeadLaneForm, carrier_quote_lines_formset,
                     customer_quote_lines_formset)
-from .models import Carrier, CarrierQuote, Charge, CustomerQuote, Lead, LeadCargo, LeadLane, Profile, Role
+from .models import Carrier, CarrierQuote, Charge, CustomerQuote, Lead, LeadCargo, LeadLane, Profile, Role, TrailerType
 from .notify import notify
 from .permissions import can_quote
 from .views import _confirm_delete, _edit, _need
@@ -113,7 +113,8 @@ def lead_detail(request, pk):
     lead = _lead(request, pk)
     lanes = list(lead.lanes.all())
     cargo = list(lead.cargo.select_related("lane"))
-    screen = [(c, *quotes.screen_cargo(c)) for c in cargo]
+    trailers = list(TrailerType.objects.filter(active=True))
+    screens = [oog.screen_lane(lane, oog.lane_cargo(lane, lanes, cargo), trailers) for lane in lanes]
     cqs = list(lead.carrier_quotes.select_related("carrier", "lane").prefetch_related("lines"))
     chosen = {q.pk for q in quotes.chosen_quotes(lead).values()}
     by_lane = []
@@ -125,7 +126,7 @@ def lead_detail(request, pk):
     for cq in customer_quotes:
         cq.m = quotes.margin(cq)
     return render(request, "core/lead_detail.html", {
-        "lead": lead, "lanes": lanes, "screen": screen, "by_lane": by_lane, "chosen": chosen,
+        "lead": lead, "lanes": lanes, "cargo": cargo, "screens": screens, "by_lane": by_lane, "chosen": chosen,
         "customer_quotes": customer_quotes, "questions": [x for x in lead.questions.splitlines() if x.strip()],
     })
 

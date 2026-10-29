@@ -1033,7 +1033,20 @@ class AiSheetUploadTests(Base):
         wb.save(buf)
         text = ai.sheet_to_text(SimpleUploadedFile("list.xlsx", buf.getvalue()))
         self.assertIn("## 工作表：柜号", text)
-        self.assertIn("TEXU0009861\tSHZ8660350\t2026-11-08", text)
+        self.assertIn("第 2 行：Container=TEXU0009861；MBL=SHZ8660350；ETA=2026-11-08", text)
+
+        # packing list: merged cells filled, Excel serial dates in date columns, blank cells skipped, units kept in the label
+        wb2 = Workbook()
+        ws2 = wb2.active
+        ws2.append(["数量", "目的地", "客户交期", "毛重kg", "长cm", "宽cm", "高cm"])
+        ws2.append([2, "Seneca SC 29678", 46366, 9700, 325, 222, 254])
+        ws2.append([1, None, None, 6422, 238, 214.5, 224.5])
+        ws2.merge_cells("B2:B3")
+        buf2 = io.BytesIO()
+        wb2.save(buf2)
+        text = ai.sheet_to_text(SimpleUploadedFile("pl.xlsx", buf2.getvalue()))
+        self.assertIn("第 2 行：数量=2；目的地=Seneca SC 29678；客户交期=2026-12-10；毛重kg=9700；长cm=325；宽cm=222；高cm=254", text)
+        self.assertIn("第 3 行：数量=1；目的地=Seneca SC 29678；毛重kg=6422；长cm=238；宽cm=214.5；高cm=224.5", text)
         self.assertIn("柜号,MBL", ai.sheet_to_text(SimpleUploadedFile("a.csv", "柜号,MBL\nX,Y".encode("gb18030"))))
         with self.assertRaises(ai.AiError):
             ai.sheet_to_text(SimpleUploadedFile("a.pdf", b"%PDF"))
@@ -1491,7 +1504,8 @@ class MailFindTests(Base):
         self.assertEqual(n, 1)
         self.assertIn('subject:"项目开始 #4915"', self.queries[0])
         self.assertIn("--- 附件：柜号.xlsx ---", seen["text"])
-        self.assertIn("TGHU7777777\tSHZ555", seen["text"])
+        self.assertIn("TGHU7777777", seen["text"])
+        self.assertIn("SHZ555", seen["text"])
         self.assertIn("未读取的附件：photos.zip", seen["text"])
         self.assertIn("AI 直接阅读：BOL.pdf", seen["text"])
         self.assertEqual(seen["docs"], [{"name": "BOL.pdf", "mime": "application/pdf", "data": self.pdf}])
@@ -1741,18 +1755,77 @@ class LeadFlowTests(Base):
         self.assertEqual(rad.weight_lbs, Decimal("4000.0"))  # 8,000 total for 2 -> per piece
         self.assertEqual(rad.lane, lane)
 
-    def test_oog_screen(self):
-        from . import quotes
+    def test_oog_screen_uses_state_rules_trailer_and_gross(self):
+        from . import oog
+        from .models import TrailerType
 
+        self.assertEqual(len([k for k in oog.regs() if k != "US"]), 48)
+        self.assertTrue(TrailerType.objects.filter(key="rgn_9axle", active=True).exists())  # seeded by migration
         lead, _, _ = self.make_lead()
-        flags, suggestion = quotes.screen_cargo(lead.cargo.get(description="Power transformer"))
-        text = " ".join(flags)
+        lane = lead.lanes.get()
+        lane.origin_state, lane.destination_state, lane.via_states = "TX", "TX", ""
+        lane.save()
+        res = oog.screen_lead(lead)[0]
+        self.assertEqual(res["states"], ["TX"])
+        L = res["loaded"]
+        # gross = transformer + 1 radiator per truck + tractor and trailer tare, not cargo alone
+        self.assertEqual(L["gross_lbs"], Decimal("185188.3") + 4000 + res["trailer"].combo_tare_lbs)
+        self.assertEqual(L["height_in"], Decimal("13.75") * 12 + res["trailer"].deck_height_in)
+        text = " ".join(res["rows"][0]["permits"])
         self.assertIn("超宽", text)
-        self.assertIn("超高", text)
-        self.assertIn("超重", text)
-        self.assertEqual(suggestion, "多轴 RGN / 特种车")
-        flags, suggestion = quotes.screen_cargo(lead.cargo.get(description="Radiator"))
-        self.assertEqual((flags, suggestion), ([], "Step Deck"))  # 9'6" + 5' deck > 13'6" on a flatbed
+        self.assertIn("超重：总重", text)
+        self.assertTrue(res["permit"])
+
+        # a radiator alone on a step deck is legal in Texas
+        lead.cargo.filter(description="Power transformer").delete()
+        res = oog.screen_lead(lead)[0]
+        self.assertEqual(res["rows"][0]["permits"], [])
+        self.assertFalse(res["permit"])
+
+    def test_oog_divisible_and_route_states(self):
+        from types import SimpleNamespace
+
+        from . import oog
+        from .models import TrailerType
+
+        self.assertEqual(oog.state_from_text("318 Cooper Circle, Peachtree City, GA 30269"), "GA")
+        self.assertEqual(oog.state_from_text("Houston, Texas"), "TX")
+        lane = SimpleNamespace(origin="Savannah, GA 31401", destination="Houston, TX", origin_state="", destination_state="",
+                               via_states="AL, MS,LA", trucks=1, trailer_id=None, trailer=None)
+        self.assertEqual(oog.route_states(lane), ["GA", "AL", "MS", "LA", "TX"])
+        steel = SimpleNamespace(qty=1, weight_lbs=Decimal(60000), length_ft=Decimal(40), width_ft=Decimal(8), height_ft=Decimal(8),
+                                divisible=True, hazmat=False, description="Steel coils")
+        res = oog.screen_lane(lane, [steel], list(TrailerType.objects.all()))
+        ga = res["rows"][0]
+        self.assertTrue(any("超重" in p for p in ga["permits"]))
+        self.assertTrue(any("不可拆分" in p for p in ga["permits"]))
+        # 8'6" is legal on the National Network even where a state file lists 8'0" for local roads
+        lane.via_states, lane.origin, lane.destination = "", "Newark, NJ", "Trenton, NJ"
+        steel.weight_lbs, steel.width_ft = Decimal(20000), Decimal("8.5")
+        res = oog.screen_lane(lane, [steel], list(TrailerType.objects.all()))
+        self.assertEqual(res["rows"][0]["permits"], [])
+
+    def test_trailer_library_pages(self):
+        from .models import TrailerType
+
+        t = TrailerType.objects.get(key="stepdeck53")
+        self.client.force_login(self.op)
+        self.assertContains(self.client.get("/data/trailer/"), "53&#x27; Step Deck")
+        self.assertContains(self.client.get(f"/data/trailer/{t.pk}/"), "来源")
+        self.assertEqual(self.client.get(f"/data/trailer/{t.pk}/edit/").status_code, 403)  # management only
+        lead, _, _ = self.make_lead()
+        r = self.client.get(f"/leads/{lead.pk}/lanes/{lead.lanes.get().pk}/")
+        self.assertContains(r, "途经州")
+        self.assertContains(r, "OOG 初筛按哪种车算")
+
+    def test_lead_page_shows_state_screen(self):
+        lead, _, _ = self.make_lead()
+        lead.lanes.update(origin_state="TX", destination_state="TX")
+        self.client.force_login(self.op)
+        r = self.client.get(f"/leads/{lead.pk}/")
+        self.assertContains(r, "OOG 初筛（按州）")
+        self.assertContains(r, "TXDMV")
+        self.assertContains(r, "超宽")
 
     def test_rfq_email_has_no_customer_and_uses_ft_in(self):
         from . import quotes
