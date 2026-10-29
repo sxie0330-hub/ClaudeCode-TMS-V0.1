@@ -6,7 +6,7 @@ from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from . import ai
-from .models import AiChange, AiExtraction, Carrier, Company, Customer, Location, Project, Shipment
+from .models import AiChange, AiExtraction, CargoLine, Carrier, Company, Customer, Location, Project, Shipment
 from .permissions import can_edit_ops
 from .views import _need
 
@@ -58,7 +58,7 @@ def ai_review(request, pk):
         "loc_data": list(Location.objects.values("code", "name", "address", "city", "state", "postal_code")) if open_props else [],
         "customer_names": list(Customer.objects.values_list("name", flat=True)) if open_props else [],
         "carrier_names": list(Carrier.objects.values_list("name", flat=True)) if open_props else [],
-        "companies": Company.choices, "equipments": Shipment.Equipment.choices, "services": Shipment.Service.choices,
+        "companies": Company.choices, "equipments": Shipment.Equipment.choices, "handling_types": CargoLine.HandlingType.choices, "services": Shipment.Service.choices,
     })
 
 

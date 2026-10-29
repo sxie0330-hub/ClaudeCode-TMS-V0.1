@@ -1459,3 +1459,101 @@ class MailFindTests(Base):
         with mock.patch.object(mailscan, "find_and_extract", side_effect=mailscan.ScanError("邮箱里没找到主题包含「x」的邮件")):
             r = self.client.post(reverse("mail_find"), {"q": "x"}, follow=True)
         self.assertContains(r, "没找到")
+
+
+class UnitTests(TestCase):
+    def test_length_parsing(self):
+        from .units import parse_length_ft as L
+
+        for text, ft in [("40", "40.00"), ("13'6\"", "13.50"), ("13' 6", "13.50"), ("13'-6\"", "13.50"), ("13 ft 6 in", "13.50"),
+                         ("162 in", "13.50"), ("162\"", "13.50"), ("12.19 m", "39.99"), ("410 cm", "13.45"), ("4100mm", "13.45"),
+                         ("8.5 ft", "8.50"), ("1,200 in", "100.00")]:
+            self.assertEqual(L(text), Decimal(ft), text)
+        self.assertIsNone(L(""))
+        for bad in ("abc", "13 furlongs", "13'14\""):
+            with self.assertRaises(ValueError):
+                L(bad)
+
+    def test_weight_parsing(self):
+        from .units import parse_weight_lbs as W
+
+        for text, lbs in [("44000", "44000.0"), ("44,000 lbs", "44000.0"), ("35,000 kg", "77161.8"), ("20 t", "44092.5"),
+                          ("20 MT", "44092.5"), ("10 tons", "20000.0"), ("20吨", "44092.5"), ("1000 公斤", "2204.6")]:
+            self.assertEqual(W(text), Decimal(lbs), text)
+        with self.assertRaises(ValueError):
+            W("20 stone-ish")
+
+
+class CargoFormUnitsTests(Base):
+    def test_cargo_form_accepts_any_unit(self):
+        self.login(self.op)
+        r = self.client.post(reverse("child_create", args=[self.s.pk, "cargo"]), {
+            "handling_qty": "1", "handling_type": "UNIT", "description": "Transformer", "weight_lbs": "35,000 kg",
+            "length_ft": "12.19 m", "width_ft": "102 in", "height_ft": "13'6\""})
+        self.assertEqual(r.status_code, 302, getattr(r, "context", None) and r.context["form"].errors)
+        line = CargoLine.objects.get(shipment=self.s, description="Transformer")
+        self.assertEqual((line.weight_lbs, line.length_ft, line.width_ft, line.height_ft),
+                         (Decimal("77161.8"), Decimal("39.99"), Decimal("8.50"), Decimal("13.50")))
+        r = self.client.get(reverse("child_edit", args=["cargo", line.pk]))
+        self.assertContains(r, 'value="13.5"')
+
+    def test_cargo_form_rejects_unknown_unit(self):
+        self.login(self.op)
+        r = self.client.post(reverse("child_create", args=[self.s.pk, "cargo"]), {
+            "handling_qty": "1", "handling_type": "UNIT", "description": "X", "length_ft": "3 cubits"})
+        self.assertEqual(r.status_code, 200)
+        self.assertContains(r, "不认识的长度单位")
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiCargoTests(Base):
+    CARGO = [{"description": "Transformer", "qty": "1", "handling_type": "UNIT", "weight": "35,000 kg", "weight_is_each": "false",
+              "length": "12.19 m", "width": "2.44 m", "height": "2.9 m"},
+             {"description": "Radiator", "qty": "2", "handling_type": "CRATE", "weight": "4,000 lbs", "weight_is_each": "true",
+              "length": "10'", "width": "6'6\"", "height": "", }]
+
+    def test_new_project_cargo_converted_and_created(self):
+        import copy
+        from . import ai
+
+        res = copy.deepcopy(NEW_PROJECT_RESULT)
+        res["new_project"]["loads"][1]["cargo"] = self.CARGO
+        ext = ai.extract("项目开始", self.op, caller=fake_gemini(res))
+        prop = ai.proposal(ext)
+        cargo = prop["loads"][1]["cargo"]
+        self.assertEqual((cargo[0]["weight_lbs"], cargo[0]["length_ft"], cargo[0]["height_ft"]), ("77161.8", "39.99", "9.51"))
+        self.assertEqual(cargo[1]["weight_lbs"], "8000")  # 2 × 4,000 lbs each
+        self.assertEqual(cargo[0]["original"], "35,000 kg；12.19 m x 2.44 m x 2.9 m")
+        self.login(self.op)
+        self.assertContains(self.client.get(ext.get_absolute_url()), "原文：35,000 kg")
+        form = AiNewProjectTests.form_from_proposal(None, prop)
+        for j, c in enumerate(cargo):
+            for k, v in (("description", c["description"]), ("qty", c["qty"]), ("type", c["handling_type"]),
+                         ("weight", c["weight_lbs"]), ("length", c["length_ft"]), ("width", c["width_ft"]), ("height", c["height_ft"])):
+                form[f"np_load_1_cargo_{j}_{k}"] = v
+        form["np_load_1_cargo_count"] = "2"
+        form["np_load_1_cargo_1_height"] = "5 ft 3 in"  # edited on the form, any unit
+        self.client.post(reverse("ai_create_project", args=[ext.pk]), form)
+        s = Shipment.objects.get(container_number="TEXU0009861")
+        lines = {c.description: c for c in s.cargo_lines.all()}
+        self.assertEqual(lines["Transformer"].weight_lbs, Decimal("77161.8"))
+        self.assertEqual(lines["Transformer"].length_ft, Decimal("39.99"))
+        self.assertEqual((lines["Radiator"].handling_qty, lines["Radiator"].handling_type, lines["Radiator"].height_ft),
+                         (2, "CRATE", Decimal("5.25")))
+
+    def test_existing_load_gets_cargo_after_confirm(self):
+        from . import ai
+
+        res = {"summary": "dims", "unmatched": "", "loads": [
+            {"container_number": "CYMU2523606", "carrier_load_number": "", "note": "", "updates": [], "cargo": self.CARGO[:1]}]}
+        ext = ai.extract("dims", self.op, project=self.project, caller=fake_gemini(res))
+        c = ext.changes.get(field="cargo_line")
+        self.assertIn("39.99 x 8.01 x 9.51 ft", c.new_display)
+        self.assertIn("77,161.8 lbs", c.new_display)
+        ai.apply_changes(ext, self.op, [c.pk])
+        line = self.s.cargo_lines.get()
+        self.assertEqual((line.description, line.width_ft), ("Transformer", Decimal("8.01")))
+        # A second email does not add duplicates on top of existing lines.
+        ext2 = ai.extract("dims", self.op, project=self.project, caller=fake_gemini(res))
+        self.assertFalse(ext2.changes.filter(field="cargo_line").exists())
+        self.assertIn("已有货物明细", ext2.unmatched)
