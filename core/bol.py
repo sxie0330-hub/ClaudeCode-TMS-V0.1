@@ -17,7 +17,7 @@ from reportlab.lib.enums import TA_CENTER, TA_RIGHT
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import Flowable, Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 STATIC = Path(__file__).parent / "static" / "core"
 
@@ -475,10 +475,39 @@ def instructions_sheet(ctx):
     return [head, Spacer(1, 8), info, Spacer(1, 8), text, Spacer(1, 8), ack]
 
 
+class _BolMark(Flowable):
+    """Zero-size marker at the start of each BOL, so the page footer knows
+    which BOL a page belongs to and its page number within that BOL."""
+
+    def __init__(self, bol_number):
+        super().__init__()
+        self.bol_number = bol_number
+
+    def wrap(self, *args):
+        return 0, 0
+
+    def draw(self):
+        doc = self.canv._doctemplate
+        doc.bol_number, doc.bol_page = self.bol_number, 0
+
+
+class _BolDoc(SimpleDocTemplate):
+    bol_number, bol_page = "", 0
+
+    def afterPage(self):
+        self.bol_page += 1
+        c = self.canv
+        c.saveState()
+        c.setFont("Helvetica", 7)
+        c.drawRightString(self.pagesize[0] - self.rightMargin, self.bottomMargin * 0.45,
+                          f"BOL {self.bol_number}  ·  Page {self.bol_page}")
+        c.restoreState()
+
+
 def render_bols(contexts):
     """contexts: list of bol_context() dicts → PDF bytes, one page (or more) per BOL."""
     buf = BytesIO()
-    doc = SimpleDocTemplate(
+    doc = _BolDoc(
         buf, pagesize=LETTER, leftMargin=0.4 * inch, rightMargin=0.4 * inch, topMargin=0.4 * inch, bottomMargin=0.4 * inch,
         title="Bill of Lading", author=(contexts[0]["company"]["name"] if contexts else settings.TMS_COMPANY_NAME),
     )
@@ -486,6 +515,6 @@ def render_bols(contexts):
     for i, ctx in enumerate(contexts):
         if i:
             story.append(PageBreak())
-        story += fit_page(ctx, doc.width, doc.height)
+        story += [_BolMark(ctx["bol_number"])] + fit_page(ctx, doc.width, doc.height)
     doc.build(story)
     return buf.getvalue()
