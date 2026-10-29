@@ -158,6 +158,11 @@ gcloud run deploy tms --source . --region $REGION \
 
 公司地址、电话这两项只打印在 BOL 上，地址里常带逗号，不方便写进上面的命令。部署完成后在网页上加：Cloud Run → tms → **Edit & deploy new revision** → Variables & Secrets，添加 `TMS_COMPANY_ADDRESS` 和 `TMS_COMPANY_PHONE`，然后点 Deploy。
 
+**BOL 抬头按项目的公司（ATS / PTT）分开印：**
+- ATS 用上面的 `TMS_COMPANY_NAME`（默认 Advantage Transport Solution Inc）、`TMS_COMPANY_ADDRESS`、`TMS_COMPANY_PHONE`，Logo 是 `core/static/core/logo.jpg`。
+- PTT 用 `TMS_PTT_NAME`（不设时只印 "PTT"）、`TMS_PTT_ADDRESS`、`TMS_PTT_PHONE`，在同一个页面添加。PTT 的 Logo 放到 `core/static/core/logo-ptt.png`（或 .jpg）；没有 Logo 时抬头印公司名。
+- BOL 只印英文：中文字符会被去掉；司机须知、营业时间里含中文的整行不印。
+
 ---
 
 ## 第 8 步：把新网址加进 Google 登录

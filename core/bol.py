@@ -4,6 +4,8 @@ The same layout covers a drayage HQ, a flat rack, a BESS unit on an RGN or a
 53' van full of pallets: everything variable lives in the commodity table,
 which grows to as many cargo lines as the shipment has.
 """
+import re
+import unicodedata
 from decimal import Decimal
 from io import BytesIO
 from pathlib import Path
@@ -17,7 +19,7 @@ from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
 from reportlab.platypus import Image, PageBreak, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-LOGO = Path(__file__).parent / "static" / "core" / "logo.jpg"
+STATIC = Path(__file__).parent / "static" / "core"
 
 GREY = colors.HexColor("#D9D9D9")
 LINE = colors.black
@@ -58,8 +60,48 @@ CARRIER_ACK = (
 CONSIGNEE_ACK = "Received the above described property in apparent good order, except as noted."
 
 
+# BOLs are English-only. The built-in PDF fonts cover Windows-1252 (Latin)
+# characters; anything else (Chinese, emoji, arrows) would print as boxes.
+_SWAP = {"→": "->", "←": "<-", "⇒": "->", "～": "~", "、": ", ", "。": ". ", "【": "[", "】": "]",
+         "「": '"', "」": '"', "『": '"', "』": '"', "《": '"', "》": '"', "✓": "X", "✔": "X"}
+_CJK = re.compile(r"[\u2e80-\u9fff\uac00-\ud7af\uf900-\ufaff]")
+
+
+def _latin(ch):
+    try:
+        ch.encode("cp1252")
+        return True
+    except UnicodeEncodeError:
+        return False
+
+
+def english(text, drop_lines=False):
+    """Text safe for the BOL. drop_lines: free-text notes lose any line written
+    in Chinese (a half-stripped sentence reads worse than none); names and
+    addresses just lose the non-Latin characters."""
+    text = str(text or "")
+    if drop_lines:
+        text = "\n".join(line for line in text.splitlines() if not _CJK.search(line))
+    text = "".join(_SWAP.get(ch, ch) for ch in text)
+    text = unicodedata.normalize("NFKC", text)  # full-width ，：（） → ASCII
+    text = "".join(ch for ch in text if ch == "\n" or _latin(ch))
+    lines = [re.sub(r"[ \t]{2,}", " ", line).strip(" ·-/,;:|") for line in text.split("\n")]
+    out = "\n".join(lines)
+    return re.sub(r"\n{3,}", "\n\n", out).strip()
+
+
+def company_info(project):
+    """Name, address, phone and logo for the BOL header: ATS or PTT, from the project."""
+    key = getattr(project, "company", None) or "ATS"
+    info = dict(settings.TMS_DOC_COMPANIES.get(key) or settings.TMS_DOC_COMPANIES["ATS"])
+    logo = info.get("logo") or ""
+    candidates = [STATIC / logo] if Path(logo).suffix else [STATIC / f"{logo}.png", STATIC / f"{logo}.jpg"]
+    info["logo_path"] = next((c for c in candidates if logo and c.exists()), None)
+    return info
+
+
 def esc(text):
-    return (str(text or "")).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br/>")
+    return english(text).replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;").replace("\n", "<br/>")
 
 
 def P(text, style=s_value):
@@ -83,14 +125,16 @@ def party_block(title, loc):
     if loc is None:
         return [P(title, s_label), P("—")]
     lines = [P(title, s_label)]
-    if loc.name:
-        lines.append(P(loc.name, s_value_b))
-    lines.append(P(loc.full_address or loc.code, s_value if loc.name else s_value_b))
-    contact = " · ".join(x for x in [loc.contact_name, loc.contact_phone] if x)
+    name = english(loc.name)
+    if name:
+        lines.append(P(name, s_value_b))
+    lines.append(P(english(loc.full_address) or loc.code, s_value if name else s_value_b))
+    contact = " · ".join(x for x in [english(loc.contact_name), english(loc.contact_phone)] if x)
     if contact:
         lines.append(P(f"Contact: {contact}", s_cell))
-    if loc.hours:
-        lines.append(P(f"Hours: {loc.hours}", s_cell))
+    hours = english(loc.hours, drop_lines=True)
+    if hours:
+        lines.append(P(f"Hours: {hours}", s_cell))
     return lines
 
 
@@ -120,11 +164,12 @@ def bol_context(shipment, leg=None):
         "lines": list(shipment.cargo_lines.all()),
         "instructions": "\n\n".join(
             x for x in [
-                (leg.bol_instructions if leg else ""),
-                (project.bol_instructions if project else ""),
-            ] if x and x.strip()
+                english(leg.bol_instructions if leg else "", drop_lines=True),
+                english(project.bol_instructions if project else "", drop_lines=True),
+            ] if x
         ),
         "emergency": (project.emergency_contact if project else ""),
+        "company": company_info(project),
     }
 
 
@@ -135,8 +180,9 @@ def build_page(ctx):
     story = []
 
     # --- Header ------------------------------------------------------------
-    logo = Image(str(LOGO), width=1.7 * inch, height=0.43 * inch) if LOGO.exists() else P(settings.TMS_COMPANY_NAME, s_value_b)
-    company = " · ".join(x for x in [settings.TMS_COMPANY_NAME, settings.TMS_COMPANY_ADDRESS, settings.TMS_COMPANY_PHONE] if x)
+    co = ctx["company"]
+    logo = Image(str(co["logo_path"]), width=1.7 * inch, height=0.43 * inch) if co["logo_path"] else P(co["name"], s_title)
+    company = " · ".join(x for x in [co["name"], co["address"], co["phone"]] if x)
     head = Table(
         [[
             logo,
@@ -176,7 +222,7 @@ def build_page(ctx):
     ref2 = [
         kv("Shipment ID", sh.number),
         kv("Customer Ref / PO", sh.customer_ref),
-        kv("Project", project.name if project else ""),
+        kv("Project", " · ".join(x for x in [project.number, english(project.name)] if x) if project else ""),
     ]
     if sh.units.exists():
         serials = ", ".join(u.serial_number for u in sh.units.all())
@@ -196,9 +242,9 @@ def build_page(ctx):
     if appt:
         ship_to.append(P(" · ".join(appt), s_cell))
 
-    bill_to = [P("THIRD PARTY FREIGHT CHARGES BILL TO", s_label), P(settings.TMS_COMPANY_NAME, s_value_b)]
-    if settings.TMS_COMPANY_ADDRESS:
-        bill_to.append(P(settings.TMS_COMPANY_ADDRESS, s_cell))
+    bill_to = [P("THIRD PARTY FREIGHT CHARGES BILL TO", s_label), P(co["name"], s_value_b)]
+    if co["address"]:
+        bill_to.append(P(co["address"], s_cell))
     bill_to.append(P("Freight charge terms:  [ ] Prepaid   [ ] Collect   [X] 3rd Party", s_cell))
 
     parties = Table(
@@ -302,7 +348,7 @@ def render_bols(contexts):
     buf = BytesIO()
     doc = SimpleDocTemplate(
         buf, pagesize=LETTER, leftMargin=0.4 * inch, rightMargin=0.4 * inch, topMargin=0.4 * inch, bottomMargin=0.4 * inch,
-        title="Bill of Lading", author=settings.TMS_COMPANY_NAME,
+        title="Bill of Lading", author=(contexts[0]["company"]["name"] if contexts else settings.TMS_COMPANY_NAME),
     )
     story = []
     for i, ctx in enumerate(contexts):
