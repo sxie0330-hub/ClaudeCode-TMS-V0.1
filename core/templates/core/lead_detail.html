@@ -1,0 +1,104 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}{{ lead.number }} {{ lead.title }}{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'lead_list' %}">询报价</a> / {{ lead.number }}</div>
+<div class="head"><h1>{{ lead.title }}</h1><span class="b b-L-{{ lead.status }}">{{ lead.get_status_display }}</span>
+  <span class="muted">{{ lead.number }} · {{ lead.company }}</span>
+  <div class="actions">
+    <a class="btn" href="{% url 'lead_edit' lead.pk %}">编辑</a>
+    {% if lead.project %}<a class="btn primary" href="{{ lead.project.get_absolute_url }}">已成单：{{ lead.project.number }}</a>
+    {% elif lead.is_open %}<a class="btn primary" href="{% url 'lead_convert' lead.pk %}">成单 → 转项目</a>{% endif %}
+  </div>
+</div>
+
+<div class="grid2">
+  <div class="panel"><header><h2>客户与需求</h2></header><div class="body">
+    <dl class="kv">
+      <dt>客户</dt><dd>{% if lead.customer %}<a href="{{ lead.customer.get_absolute_url }}">{{ lead.customer.name }}</a>{% else %}{{ lead.prospect_name|default:"—" }} {% if lead.prospect_name %}<small class="lfd-warn">新客户，成单时自动建</small>{% endif %}{% endif %}</dd>
+      <dt>联系人</dt><dd>{{ lead.contact_name|default:"—" }} {{ lead.contact_email }} {{ lead.contact_phone }}</dd>
+      <dt>客户参考号</dt><dd>{{ lead.customer_ref|default:"—" }}</dd>
+      <dt>负责人</dt><dd>{{ lead.owner.get_full_name|default:lead.owner.email|default:"—" }}</dd>
+      <dt>报价截止</dt><dd>{{ lead.quote_due|default:"—" }}</dd>
+      <dt>来源</dt><dd>{{ lead.get_source_display }} · {{ lead.created_at|date:"Y-m-d H:i" }}</dd>
+      {% if lead.lost_reason %}<dt>未成单原因</dt><dd>{{ lead.lost_reason }}</dd>{% endif %}
+    </dl>
+    {% if lead.summary %}<p style="margin:10px 0 0;white-space:pre-wrap">{{ lead.summary }}</p>{% endif %}
+    {% if lead.notes %}<p class="muted" style="white-space:pre-wrap">{{ lead.notes }}</p>{% endif %}
+  </div></div>
+  <div class="panel"><header><h2>待向客户确认</h2></header><div class="body">
+    {% for q in questions %}<p style="margin:0 0 4px">□ {{ q }}</p>{% empty %}<p class="muted">没有待确认的问题。</p>{% endfor %}
+    <p class="muted" style="font-size:12.5px">在“编辑”里可以增删，一行一条。</p>
+    {% if lead.source_text %}<details><summary>询价原文</summary><pre class="draft">{{ lead.source_text }}</pre></details>{% endif %}
+  </div></div>
+</div>
+
+<div class="panel"><header><h2>需求 Scope of Work</h2>
+  <div class="actions"><a class="btn sm" href="{% url 'lead_lane_new' lead.pk %}">+ 运输段</a><a class="btn sm" href="{% url 'lead_cargo_new' lead.pk %}">+ 货物</a></div></header>
+  <div class="tablewrap"><table class="t">
+    <thead><tr><th>#</th><th>起点 → 终点</th><th>服务 / 车型</th><th>车次</th><th>可提货 → 最晚送达</th><th>要求</th><th></th></tr></thead>
+    <tbody>{% for ln in lanes %}<tr><td>{{ forloop.counter }}</td>
+      <td class="wrap">{{ ln.origin }} {{ ln.origin_zip }}<br>→ {{ ln.destination }} {{ ln.destination_zip }}</td>
+      <td>{{ ln.get_service_display }}<br><b>{{ ln.equipment|default:"—" }}</b></td><td>{{ ln.trucks }}</td>
+      <td>{{ ln.ready_date|default:"—" }} → {{ ln.deliver_by|default:"—" }}</td><td class="wrap" style="max-width:280px">{{ ln.notes|default:"—" }}</td>
+      <td><a href="{% url 'lead_lane_edit' lead.pk ln.pk %}">改</a> · <a href="{% url 'lead_row_delete' lead.pk 'lane' ln.pk %}">删</a></td></tr>
+    {% empty %}<tr><td colspan="7" class="muted">还没有运输段</td></tr>{% endfor %}</tbody>
+  </table>
+  <table class="t" style="margin-top:6px">
+    <thead><tr><th>货物</th><th>件数</th><th>L × W × H</th><th class="num">每件 lbs</th><th>段</th><th>OOG 初筛 / 建议车型</th><th></th></tr></thead>
+    <tbody>{% for c, flags, suggestion in screen %}<tr><td><b>{{ c.description }}</b>{% if c.hazmat %} <span class="b b-HOLD">HM</span>{% endif %}{% if c.notes %}<br><small class="muted">{{ c.notes }}</small>{% endif %}</td>
+      <td>{{ c.qty }} {{ c.get_handling_type_display }}</td>
+      <td>{{ c.dims_text|default:"—" }}</td>
+      <td class="num">{% if c.weight_lbs %}{{ c.weight_lbs|floatformat:"0g" }}{% else %}—{% endif %}</td><td>{% if c.lane %}{{ c.lane.sequence }}{% else %}—{% endif %}</td>
+      <td class="wrap" style="max-width:360px">{% if suggestion %}建议：<b>{{ suggestion }}</b><br>{% endif %}{% for f in flags %}<span class="flag">{{ f }}</span><br>{% empty %}{% if suggestion %}<span class="muted">尺寸重量在常规范围内</span>{% else %}<span class="muted">缺尺寸 / 重量</span>{% endif %}{% endfor %}</td>
+      <td><a href="{% url 'lead_cargo_edit' lead.pk c.pk %}">改</a> · <a href="{% url 'lead_row_delete' lead.pk 'cargo' c.pk %}">删</a></td></tr>
+    {% empty %}<tr><td colspan="7" class="muted">还没有货物</td></tr>{% endfor %}</tbody>
+  </table></div>
+  <p class="muted" style="font-size:12.5px;margin:6px 12px 10px">OOG 初筛只按常见上限判断（宽 8'6"、总高 13'6"、长 53'、总重 80,000 lbs，平板 / 阶梯板 / 低平板的大致承载），各州规定和路线不同，以许可证办理结果为准。</p>
+</div>
+
+<div class="panel"><header><h2>找车询价 · 承运商报价</h2>
+  <div class="actions"><a class="btn sm primary" href="{% url 'lead_rfq' lead.pk %}">起草询价邮件</a>
+    <a class="btn sm" href="{% url 'lead_reply' lead.pk %}">贴承运商回复 · AI 整理</a>
+    <a class="btn sm" href="{% url 'carrier_quote_new' lead.pk %}">手动录入报价</a></div></header>
+  <div class="tablewrap">
+  {% for lane, rows in by_lane %}
+    <h3 style="font-size:.9rem;margin:10px 12px 4px">{% if lane %}第 {{ lane.sequence }} 段：{{ lane.origin }} → {{ lane.destination }}（{{ lane.trucks }} 车）{% else %}整个项目 / 未分段{% endif %}</h3>
+    <table class="t"><thead><tr><th>承运商</th><th>状态</th><th>车型</th><th class="num">合计</th><th>明细</th><th>有效期 / 时效</th><th></th></tr></thead><tbody>
+    {% for q in rows %}<tr class="{% if q.pk in chosen %}chosen{% endif %}"><td><b>{{ q.carrier_label }}</b>{% if q.contact_email %}<br><small class="muted">{{ q.contact_email }}</small>{% endif %}</td>
+      <td>{{ q.get_status_display }}{% if q.pk in chosen %}<br><small>报价按这家算</small>{% endif %}</td><td>{{ q.equipment|default:"—" }}</td>
+      <td class="num">{% if q.total %}{{ q.total|money }}<br><small class="muted">{% if q.per_truck %}每车{% else %}总价{% endif %}</small>{% else %}—{% endif %}</td>
+      <td class="wrap" style="font-size:12.5px">{% for l in q.lines.all %}{{ l.get_charge_type_display }} {{ l.unit_price|money }}{% if l.quantity != 1 %} × {{ l.quantity|floatformat:"-2" }}{% endif %}{% if l.is_estimate %}（视情况）{% endif %}<br>{% endfor %}{% if q.conditions %}<span class="muted">{{ q.conditions|truncatechars:160 }}</span>{% endif %}</td>
+      <td>{{ q.valid_until|default:"—" }}<br>{{ q.transit }}</td>
+      <td style="white-space:nowrap">{% if q.status != 'SELECTED' and q.status != 'DECLINED' and q.total %}<form method="post" action="{% url 'carrier_quote_select' lead.pk q.pk %}" style="display:inline">{% csrf_token %}<button class="sm" type="submit">选用</button></form>{% endif %}
+        <a href="{% url 'carrier_quote_edit' lead.pk q.pk %}">改</a> · <a href="{% url 'lead_row_delete' lead.pk 'carrier' q.pk %}">删</a></td></tr>
+    {% empty %}<tr><td colspan="7" class="muted">还没有询价或报价</td></tr>{% endfor %}
+    </tbody></table>
+  {% endfor %}
+  </div>
+</div>
+
+<div class="panel"><header><h2>给客户报价</h2>
+  <div class="actions"><form method="post" action="{% url 'customer_quote_build' lead.pk %}" style="display:flex;gap:6px;align-items:center">{% csrf_token %}
+    <label style="margin:0;font-size:13px">按成本加价 <input name="markup" value="15" size="3" style="width:52px"> %</label>
+    <button class="sm primary" type="submit">生成新版本报价</button></form></div></header>
+  <div class="tablewrap"><table class="t"><thead><tr><th>报价</th><th>状态</th><th>样式</th><th class="num">售价</th><th class="num">成本</th><th class="num">毛利</th><th>有效期</th><th></th></tr></thead><tbody>
+  {% for q in customer_quotes %}<tr><td><a href="{% url 'customer_quote_edit' lead.pk q.pk %}"><b>{{ q.number }}</b></a></td><td>{{ q.get_status_display }}</td>
+    <td>{{ q.get_style_display|truncatechars:12 }}</td><td class="num">{{ q.m.0|money }}</td><td class="num">{{ q.m.1|money }}</td>
+    <td class="num">{{ q.m.2|money }} <small>{{ q.m.3 }}%</small></td><td>{{ q.valid_until|default:"—" }}</td>
+    <td><a href="{% url 'customer_quote_edit' lead.pk q.pk %}">编辑 / 邮件</a> · <a href="{% url 'customer_quote_pdf' lead.pk q.pk %}" target="_blank">PDF</a></td></tr>
+  {% empty %}<tr><td colspan="8" class="muted">还没有报价。有了承运商报价后，点“生成新版本报价”，按成本加价自动算出售价，可以逐行改。</td></tr>{% endfor %}
+  </tbody></table></div>
+</div>
+
+{% if lead.is_open %}
+<div class="panel"><header><h2>结果</h2></header><div class="body" style="display:flex;gap:10px;flex-wrap:wrap;align-items:center">
+  <a class="btn primary" href="{% url 'lead_convert' lead.pk %}">成单 → 转项目并指派操作</a>
+  <form method="post" action="{% url 'lead_status' lead.pk %}" style="display:flex;gap:6px">{% csrf_token %}<input type="hidden" name="action" value="lost">
+    <input name="reason" placeholder="未成单原因（价格、时效、客户取消…）" size="34"><button type="submit">标记未成单</button></form>
+  <form method="post" action="{% url 'lead_status' lead.pk %}">{% csrf_token %}<input type="hidden" name="action" value="cancel"><button type="submit">取消</button></form>
+</div></div>
+{% elif not lead.project %}
+<form method="post" action="{% url 'lead_status' lead.pk %}" class="card">{% csrf_token %}<input type="hidden" name="action" value="reopen"><button type="submit">重新打开这条询价</button></form>
+{% endif %}
+{% endblock %}

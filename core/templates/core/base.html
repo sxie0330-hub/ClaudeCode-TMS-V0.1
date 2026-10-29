@@ -18,6 +18,7 @@
     <a href="{% url 'master_list' 'customer' %}" class="{% if '/data/customer' in p %}on{% endif %}">客户</a>
     <a href="{% url 'master_list' 'carrier' %}" class="{% if '/data/carrier' in p %}on{% endif %}">承运商</a>
     <a href="{% url 'master_list' 'location' %}" class="{% if '/data/location' in p %}on{% endif %}">地址库</a>
+    {% if perm.quote %}<a href="{% url 'lead_list' %}" class="{% if '/leads/' in p %}on{% endif %}">询报价</a>{% endif %}
     {% if perm.edit_ops %}<a href="{% url 'ai_list' %}" class="{% if '/ai/' in p %}on{% endif %}">AI 识别</a>{% endif %}
     {% if perm.mgmt %}<a href="{% url 'team' %}" class="{% if '/team/' in p or '/tools/' in p %}on{% endif %}">团队</a>{% endif %}
   </nav>

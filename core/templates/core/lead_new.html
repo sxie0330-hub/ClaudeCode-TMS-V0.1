@@ -1,0 +1,22 @@
+{% extends "core/base.html" %}
+{% block title %}新询价{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'lead_list' %}">询报价</a> / 新询价</div>
+<div class="head"><h1>新询价：粘贴客户询价，AI 整理</h1>
+  <div class="actions"><a class="btn" href="{% url 'lead_create' %}">不用 AI，手动新建</a></div></div>
+{% if not enabled %}
+<div class="card"><p class="lfd-warn">AI 识别还没有开启，请先用“手动新建”。</p></div>
+{% else %}
+<form method="post" class="card form" enctype="multipart/form-data">{% csrf_token %}
+  <p class="muted" style="margin-top:0">把客户的询价邮件、微信聊天记录（复制文字或截图）贴进来。AI 会整理出：客户和联系人、每段运输（起点 → 终点、车型、车次、日期）、
+    货物件数和尺寸重量（统一换算成 ft / lbs）、还缺哪些信息要问客户。整理完直接建一条询价，所有内容都可以改。</p>
+  <label for="lead-source">来源</label>
+  <select id="lead-source" name="source" style="max-width:200px">{% for v, l in sources %}<option value="{{ v }}">{{ l }}</option>{% endfor %}</select>
+  <label for="lead-text" style="margin-top:8px">询价内容</label>
+  <textarea id="lead-text" name="text" rows="16" maxlength="{{ max_chars }}" placeholder="例如：Need a quote to move 1 transformer from Port of Houston to Tomball TX, 28' x 12' x 13'9&quot;, 185,000 lbs, ready 11/15…">{{ text }}</textarea>
+  <label for="lead-files" style="margin-top:8px">附件（可多选）：PDF、截图 / 照片、Excel</label>
+  <input id="lead-files" type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.xlsx,.csv,.tsv,.txt">
+  <p style="margin-top:12px"><button class="primary" type="submit">AI 整理并建立询价</button> <span class="muted" style="font-size:13px">约 10–30 秒</span></p>
+</form>
+{% endif %}
+{% endblock %}

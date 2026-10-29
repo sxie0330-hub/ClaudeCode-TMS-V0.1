@@ -64,6 +64,7 @@ class Role(models.TextChoices):
     OP = "OP", "操作 OP"
     AP = "AP", "应付 AP"
     AR = "AR", "应收 AR"
+    RFQ = "RFQ", "询报价 / 销售"
 
 
 class Profile(models.Model):
@@ -1003,3 +1004,273 @@ class ScannedMessage(models.Model):
 
     class Meta:
         unique_together = [("connection", "message_id")]
+
+
+# --------------------------------------------------------------------------
+# Inquiries and quotes (询报价): Lead → scope → carrier RFQ → customer quote → project
+# --------------------------------------------------------------------------
+class Lead(SoftDeleteModel):
+    class Status(models.TextChoices):
+        NEW = "NEW", "新询价"
+        SCOPING = "SCOPING", "梳理需求"
+        SOURCING = "SOURCING", "找车询价中"
+        QUOTED = "QUOTED", "已报价待回复"
+        WON = "WON", "成单"
+        LOST = "LOST", "未成单"
+        CANCELLED = "CANCELLED", "取消"
+
+    class Source(models.TextChoices):
+        EMAIL = "EMAIL", "邮件"
+        WECHAT = "WECHAT", "微信"
+        PHONE = "PHONE", "电话"
+        OTHER = "OTHER", "其他"
+
+    OPEN = (Status.NEW, Status.SCOPING, Status.SOURCING, Status.QUOTED)
+
+    number = models.CharField("询价编号", max_length=20, unique=True, editable=False)
+    title = models.CharField("询价名称", max_length=200)
+    company = models.CharField("公司", max_length=4, choices=Company.choices, default=Company.ATS)
+    customer = models.ForeignKey(Customer, null=True, blank=True, on_delete=models.SET_NULL, related_name="leads",
+                                 verbose_name="客户（已有）")
+    prospect_name = models.CharField("客户名称（新客户）", max_length=120, blank=True, help_text="系统里还没有的客户；成单时自动建客户")
+    contact_name = models.CharField("联系人", max_length=120, blank=True)
+    contact_email = models.CharField("联系人邮箱", max_length=200, blank=True)
+    contact_phone = models.CharField("联系人电话 / 微信", max_length=80, blank=True)
+    source = models.CharField("来源", max_length=8, choices=Source.choices, default=Source.EMAIL)
+    status = models.CharField("状态", max_length=10, choices=Status.choices, default=Status.NEW, db_index=True)
+    owner = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                              related_name="leads", verbose_name="负责人（询报价）")
+    quote_due = models.DateField("报价截止", null=True, blank=True)
+    customer_ref = models.CharField("客户参考号 / 项目号", max_length=80, blank=True)
+    summary = models.TextField("需求概要", blank=True)
+    questions = models.TextField("待向客户确认", blank=True, help_text="缺的信息，一行一条")
+    notes = models.TextField("内部备注", blank=True)
+    lost_reason = models.CharField("未成单原因", max_length=255, blank=True)
+    source_text = models.TextField("询价原文", blank=True)
+    project = models.ForeignKey(Project, null=True, blank=True, on_delete=models.SET_NULL, related_name="leads", verbose_name="成单项目")
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"{self.number} {self.title}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            stamp = timezone.localdate().strftime("%y%m")
+            self.number = f"RFQ-{stamp}-{Sequence.next('RFQ-' + stamp):04d}"
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("lead_detail", args=[self.pk])
+
+    @property
+    def customer_label(self):
+        return self.customer.name if self.customer_id else self.prospect_name
+
+    @property
+    def is_open(self):
+        return self.status in self.OPEN
+
+
+class LeadLane(SoftDeleteModel):
+    """One move in the scope of work: where from, where to, what equipment, how many trucks."""
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="lanes")
+    sequence = models.PositiveSmallIntegerField("顺序", default=1)
+    origin = models.CharField("起点", max_length=255, help_text="名称 + 地址，或港口 / 城市, 州")
+    origin_zip = models.CharField("起点邮编", max_length=12, blank=True)
+    destination = models.CharField("终点", max_length=255)
+    destination_zip = models.CharField("终点邮编", max_length=12, blank=True)
+    service = models.CharField("服务", max_length=20, choices=Shipment.Service.choices, default=Shipment.Service.OTR)
+    equipment = models.CharField("车型 / 柜型", max_length=80, blank=True, help_text="如 Flatbed、Step Deck、RGN 9-axle、40HC")
+    trucks = models.PositiveIntegerField("车次 / 柜数", default=1)
+    ready_date = models.DateField("可提货日", null=True, blank=True)
+    deliver_by = models.DateField("最晚送达", null=True, blank=True)
+    notes = models.TextField("要求 / 备注", blank=True, help_text="许可证、护送、吊装、预约、保险等")
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["lead", "sequence", "id"]
+
+    def __str__(self):
+        return f"第 {self.sequence} 段 {self.origin[:18]} → {self.destination[:18]}"
+
+
+class LeadCargo(SoftDeleteModel):
+    """Cargo in the scope, in ft / lbs (see core/units.py)."""
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="cargo")
+    lane = models.ForeignKey(LeadLane, null=True, blank=True, on_delete=models.SET_NULL, related_name="cargo", verbose_name="属于哪一段")
+    description = models.CharField("品名", max_length=255)
+    qty = models.PositiveIntegerField("件数", default=1)
+    handling_type = models.CharField("单位", max_length=6, choices=CargoLine.HandlingType.choices, default=CargoLine.HandlingType.UNIT)
+    weight_lbs = models.DecimalField("每件重量 (lbs)", max_digits=10, decimal_places=1, null=True, blank=True)
+    length_ft = models.DecimalField("长 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
+    width_ft = models.DecimalField("宽 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
+    height_ft = models.DecimalField("高 (ft)", max_digits=7, decimal_places=2, null=True, blank=True)
+    hazmat = models.BooleanField("危险品", default=False)
+    notes = models.CharField("备注", max_length=255, blank=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["lead", "id"]
+
+    def __str__(self):
+        return f"{self.qty} × {self.description}"
+
+    @property
+    def total_weight(self):
+        return (self.weight_lbs or 0) * self.qty if self.weight_lbs else None
+
+    @property
+    def dims_text(self):
+        from .quotes import ft_in
+
+        vals = (self.length_ft, self.width_ft, self.height_ft)
+        if not any(vals):
+            return ""
+        return " × ".join(ft_in(v) or "?" for v in vals)
+
+
+class CarrierQuote(SoftDeleteModel):
+    class Status(models.TextChoices):
+        REQUESTED = "REQUESTED", "已询价待回复"
+        QUOTED = "QUOTED", "已回价"
+        DECLINED = "DECLINED", "不接 / 无车"
+        SELECTED = "SELECTED", "已选用"
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="carrier_quotes")
+    lane = models.ForeignKey(LeadLane, null=True, blank=True, on_delete=models.SET_NULL, related_name="carrier_quotes",
+                             verbose_name="哪一段（空 = 整个项目）")
+    carrier = models.ForeignKey(Carrier, null=True, blank=True, on_delete=models.SET_NULL, related_name="quotes", verbose_name="承运商（已有）")
+    carrier_name = models.CharField("承运商名称（新）", max_length=120, blank=True)
+    contact_email = models.CharField("询价邮箱", max_length=200, blank=True)
+    status = models.CharField("状态", max_length=10, choices=Status.choices, default=Status.REQUESTED)
+    equipment = models.CharField("车型", max_length=80, blank=True)
+    per_truck = models.BooleanField("按车次计价", default=True, help_text="勾选：下面的价格是每车；不勾：是这一段/整个项目的总价")
+    valid_until = models.DateField("报价有效期", null=True, blank=True)
+    transit = models.CharField("时效", max_length=80, blank=True)
+    conditions = models.TextField("条件 / 不含项", blank=True)
+    reply_text = models.TextField("承运商回复原文", blank=True)
+    requested_at = models.DateTimeField("询价时间", null=True, blank=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["lead", "lane", "id"]
+
+    def __str__(self):
+        return self.carrier_label
+
+    @property
+    def carrier_label(self):
+        return self.carrier.name if self.carrier_id else (self.carrier_name or "（未填承运商）")
+
+    @property
+    def total(self):
+        return sum((l.amount for l in self.lines.all()), Decimal(0))
+
+
+class CarrierQuoteLine(models.Model):
+    quote = models.ForeignKey(CarrierQuote, on_delete=models.CASCADE, related_name="lines")
+    charge_type = models.CharField("费用类型", max_length=12, choices=Charge.Type.choices, default=Charge.Type.LINEHAUL)
+    description = models.CharField("说明", max_length=255, blank=True)
+    quantity = models.DecimalField("数量", max_digits=10, decimal_places=2, default=Decimal("1"))
+    unit_price = models.DecimalField("单价 (USD)", max_digits=12, decimal_places=2, default=Decimal("0"))
+    is_estimate = models.BooleanField("视情况发生", default=False, help_text="如 Detention、Layover：报价里写了单价，但不一定发生")
+
+    class Meta:
+        ordering = ["id"]
+
+    @property
+    def amount(self):
+        return (self.quantity or 0) * (self.unit_price or 0) if not self.is_estimate else Decimal(0)
+
+
+class CustomerQuote(SoftDeleteModel):
+    class Status(models.TextChoices):
+        DRAFT = "DRAFT", "草稿"
+        SENT = "SENT", "已发客户"
+        ACCEPTED = "ACCEPTED", "客户接受"
+        REJECTED = "REJECTED", "客户拒绝"
+        SUPERSEDED = "SUPERSEDED", "已被新版本取代"
+
+    class Style(models.TextChoices):
+        SIMPLE = "SIMPLE", "简式：一张价格表"
+        FORMAL = "FORMAL", "正式：范围、分段价格、假设与条款、签字确认"
+
+    lead = models.ForeignKey(Lead, on_delete=models.CASCADE, related_name="customer_quotes")
+    version = models.PositiveSmallIntegerField("版本", default=1)
+    status = models.CharField("状态", max_length=10, choices=Status.choices, default=Status.DRAFT)
+    style = models.CharField("PDF 样式", max_length=6, choices=Style.choices, default=Style.SIMPLE)
+    valid_until = models.DateField("报价有效期", null=True, blank=True)
+    intro = models.TextField("开头说明", blank=True, help_text="英文，印在报价单和邮件开头")
+    scope_text = models.TextField("服务范围 Scope of Work", blank=True, help_text="英文，正式报价单用；留空则按需求自动生成")
+    assumptions = models.TextField("前提假设 / 不含项", blank=True, help_text="英文，一行一条")
+    terms = models.TextField("付款与条款", blank=True, help_text="英文，一行一条")
+    show_pdf_totals = models.BooleanField("显示合计", default=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["lead", "-version"]
+
+    def __str__(self):
+        return f"{self.lead.number} Quote v{self.version}"
+
+    @property
+    def number(self):
+        return f"{self.lead.number}-Q{self.version}"
+
+    @property
+    def lines_list(self):
+        return list(self.lines.all())
+
+    @property
+    def total(self):
+        return sum((l.amount for l in self.lines.all()), Decimal(0))
+
+    @property
+    def cost_total(self):
+        return sum((l.cost_amount for l in self.lines.all()), Decimal(0))
+
+
+class CustomerQuoteLine(models.Model):
+    class Unit(models.TextChoices):
+        LOAD = "LOAD", "per load"
+        TRUCK = "TRUCK", "per truck"
+        CNTR = "CNTR", "per container"
+        DAY = "DAY", "per day"
+        HOUR = "HOUR", "per hour"
+        MILE = "MILE", "per mile"
+        LUMP = "LUMP", "lump sum"
+        EACH = "EACH", "each"
+
+    quote = models.ForeignKey(CustomerQuote, on_delete=models.CASCADE, related_name="lines")
+    section = models.CharField("分段标题", max_length=120, blank=True, help_text="大项目可按阶段 / 线路分段，如 Phase 1 – Port Drayage")
+    lane = models.ForeignKey(LeadLane, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", verbose_name="对应哪一段")
+    charge_type = models.CharField("费用类型", max_length=12, choices=Charge.Type.choices, default=Charge.Type.LINEHAUL)
+    description = models.CharField("说明（英文，客户可见）", max_length=255)
+    quantity = models.DecimalField("数量", max_digits=10, decimal_places=2, default=Decimal("1"))
+    unit = models.CharField("计价单位", max_length=5, choices=Unit.choices, default=Unit.LOAD)
+    unit_price = models.DecimalField("售价单价 (USD)", max_digits=12, decimal_places=2, default=Decimal("0"))
+    unit_cost = models.DecimalField("成本单价 (USD)", max_digits=12, decimal_places=2, default=Decimal("0"))
+    is_optional = models.BooleanField("视情况发生", default=False, help_text="如 Detention、Storage：列出单价，不计入合计")
+    position = models.PositiveSmallIntegerField(default=0)
+
+    class Meta:
+        ordering = ["position", "id"]
+
+    @property
+    def amount(self):
+        return Decimal(0) if self.is_optional else (self.quantity or 0) * (self.unit_price or 0)
+
+    @property
+    def cost_amount(self):
+        return Decimal(0) if self.is_optional else (self.quantity or 0) * (self.unit_cost or 0)

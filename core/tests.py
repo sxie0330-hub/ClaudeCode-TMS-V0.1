@@ -1636,3 +1636,235 @@ class AiDocumentTests(Base):
         parts = sent["body"]["contents"][0]["parts"]
         self.assertEqual(parts[1], {"text": "=== 附件：POD.pdf ==="})
         self.assertEqual(parts[2], {"inlineData": {"mimeType": "application/pdf", "data": "JVBERg=="}})
+
+
+LEAD_RESULT = {
+    "title": "Transformer Houston -> Tomball", "company": "", "customer": "Gulf Power Systems", "customer_ref": "GPS-77",
+    "contact_name": "Ana Ruiz", "contact_email": "ana@gps.com", "contact_phone": "", "quote_due": "2026-11-05",
+    "summary": "客户要把一台变压器从休斯顿港运到 Tomball 工地，两台散热器随行。", "questions": ["卸货是否有吊车？", "具体提货码头？"],
+    "lanes": [{"origin": "Port of Houston, Barbours Cut", "origin_zip": "77571", "destination": "SEG Tomball site, 20103 Pusok Rd",
+               "destination_zip": "77377", "service": "OTR", "equipment": "RGN", "trucks": "2", "ready_date": "2026-11-15",
+               "deliver_by": "2026-11-20", "notes": "Crane at site TBD"}],
+    "cargo": [{"lane": "1", "description": "Power transformer", "qty": "1", "handling_type": "UNIT", "weight": "84 t",
+               "weight_is_each": "true", "length": "8.69 m", "width": "3.66 m", "height": "4.19 m", "hazmat": "false", "notes": ""},
+              {"lane": "1", "description": "Radiator", "qty": "2", "handling_type": "CRATE", "weight": "8,000 lbs",
+               "weight_is_each": "false", "length": "20'", "width": "8'", "height": "9'6\"", "hazmat": "false", "notes": ""}],
+}
+
+REPLY_RESULT = {"summary": "Heavy Haul Co 报价", "quotes": [
+    {"carrier": "Heavy Haul Co", "contact_email": "dispatch@hh.com", "lane": "1", "declined": "false", "equipment": "13-axle",
+     "per_truck": "true", "valid_until": "2026-11-30", "transit": "1 day", "conditions": "Permits included",
+     "lines": [{"charge_type": "LINEHAUL", "description": "Linehaul all-in", "quantity": "1", "unit_price": "18,500.00", "is_estimate": "false"},
+               {"charge_type": "ESCORT", "description": "2 escorts", "quantity": "1", "unit_price": "1200", "is_estimate": "false"},
+               {"charge_type": "DETENTION", "description": "Detention per hour after 2 free", "quantity": "1", "unit_price": "150", "is_estimate": "true"}]},
+    {"carrier": "KD Trucking", "contact_email": "", "lane": "1", "declined": "true", "equipment": "", "per_truck": "true",
+     "valid_until": "", "transit": "", "conditions": "No RGN available", "lines": []}]}
+
+
+def lead_caller(result):
+    seen = {}
+
+    def caller(text, context, today, attachments=None, prompt=None, schema=None):
+        seen.update(text=text, context=context, prompt=prompt, schema=schema, attachments=attachments)
+        return result, {}
+
+    caller.seen = seen
+    return caller
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class LeadFlowTests(Base):
+    def make_lead(self):
+        from . import ai_leads
+
+        caller = lead_caller(LEAD_RESULT)
+        lead, problems = ai_leads.create_lead("Need a quote…", self.op, caller=caller)
+        return lead, problems, caller
+
+    def test_ai_intake_builds_scope_in_ft_lbs(self):
+        from .models import Lead
+
+        lead, problems, caller = self.make_lead()
+        self.assertEqual(problems, [])
+        self.assertIn("询报价助手", caller.seen["prompt"])
+        self.assertRegex(lead.number, r"^RFQ-\d{4}-\d{4}$")
+        self.assertEqual((lead.prospect_name, lead.customer, lead.status), ("Gulf Power Systems", None, Lead.Status.SCOPING))
+        self.assertEqual(lead.quote_due, date(2026, 11, 5))
+        lane = lead.lanes.get()
+        self.assertEqual((lane.trucks, lane.equipment, lane.ready_date), (2, "RGN", date(2026, 11, 15)))
+        tx = lead.cargo.get(description="Power transformer")
+        self.assertEqual((tx.weight_lbs, tx.length_ft, tx.width_ft, tx.height_ft),
+                         (Decimal("185188.3"), Decimal("28.51"), Decimal("12.01"), Decimal("13.75")))
+        rad = lead.cargo.get(description="Radiator")
+        self.assertEqual(rad.weight_lbs, Decimal("4000.0"))  # 8,000 total for 2 -> per piece
+        self.assertEqual(rad.lane, lane)
+
+    def test_oog_screen(self):
+        from . import quotes
+
+        lead, _, _ = self.make_lead()
+        flags, suggestion = quotes.screen_cargo(lead.cargo.get(description="Power transformer"))
+        text = " ".join(flags)
+        self.assertIn("超宽", text)
+        self.assertIn("超高", text)
+        self.assertIn("超重", text)
+        self.assertEqual(suggestion, "多轴 RGN / 特种车")
+        flags, suggestion = quotes.screen_cargo(lead.cargo.get(description="Radiator"))
+        self.assertEqual((flags, suggestion), ([], "Step Deck"))  # 9'6" + 5' deck > 13'6" on a flatbed
+
+    def test_rfq_email_has_no_customer_and_uses_ft_in(self):
+        from . import quotes
+
+        lead, _, _ = self.make_lead()
+        subject, body = quotes.rfq_email(lead, self.op)
+        self.assertIn(lead.number, subject)
+        self.assertNotIn("Gulf Power", subject + body)
+        self.assertIn("28'6\" x 12' x 13'9\" (L x W x H)", body)
+        self.assertIn("185,188 lbs", body)
+        self.login(self.op)
+        r = self.client.get(reverse("lead_rfq", args=[lead.pk]))
+        self.assertContains(r, "TMS 不会替你发邮件")
+        self.assertContains(r, "mail.google.com/mail/?view=cm")
+        self.client.post(reverse("lead_rfq", args=[lead.pk]), {"carriers": [self.carrier.pk], "extra": "rates@hh.com"})
+        self.assertEqual(lead.carrier_quotes.filter(status="REQUESTED").count(), 2)
+        lead.refresh_from_db()
+        self.assertEqual(lead.status, "SOURCING")
+
+    def test_carrier_reply_review_save_quote_and_convert(self):
+        from unittest import mock as _mock
+
+        from . import ai, ai_leads, quotes
+        from .models import CarrierQuote, CustomerQuote, Lead
+
+        lead, _, _ = self.make_lead()
+        lane = lead.lanes.get()
+        CarrierQuote.objects.create(lead=lead, carrier=self.carrier, lane=lane, status="REQUESTED")
+        self.login(self.op)
+        with _mock.patch.object(ai, "call_gemini", side_effect=lead_caller(REPLY_RESULT)):
+            r = self.client.post(reverse("lead_reply", args=[lead.pk]), {"text": "Rate is $18,500 all in…"})
+        self.assertContains(r, "18500.00")
+        self.assertContains(r, "Heavy Haul Co")
+        draft = ai_leads.read_reply(lead, "x", caller=lead_caller(REPLY_RESULT))
+        form = {"action": "save", "count": "2", "reply_text": "Rate is…"}
+        for i, q in enumerate(draft["quotes"]):
+            p = f"q{i}_"
+            form.update({p + "include": "1", p + "carrier_id": q["carrier_id"], p + "carrier_name": q["carrier_name"],
+                         p + "lane_id": q["lane_id"], p + "status": q["status"], p + "equipment": q["equipment"],
+                         p + "valid_until": q["valid_until"], p + "transit": q["transit"], p + "conditions": q["conditions"],
+                         p + "lines": str(q["line_count"])})
+            if q["per_truck"]:
+                form[p + "per_truck"] = "1"
+            for j, ln in enumerate(q["lines"]):
+                form.update({f"{p}l{j}_charge_type": ln["charge_type"], f"{p}l{j}_description": ln["description"],
+                             f"{p}l{j}_quantity": ln["quantity"], f"{p}l{j}_unit_price": ln["unit_price"]})
+                if ln["is_estimate"]:
+                    form[f"{p}l{j}_is_estimate"] = "1"
+        self.client.post(reverse("lead_reply", args=[lead.pk]), form)
+        hh = lead.carrier_quotes.get(carrier_name="Heavy Haul Co")
+        self.assertEqual((hh.status, hh.total, hh.valid_until), ("QUOTED", Decimal("19700.00"), date(2026, 11, 30)))
+        kd = lead.carrier_quotes.get(carrier=self.carrier)  # the 已询价 row was updated, not duplicated
+        self.assertEqual(kd.status, "DECLINED")
+        self.assertEqual(lead.carrier_quotes.count(), 2)
+
+        q = quotes.build_customer_quote(lead, Decimal("15"))
+        lines = {ln.charge_type: ln for ln in q.lines.all()}
+        self.assertEqual((lines["LINEHAUL"].quantity, lines["LINEHAUL"].unit_cost, lines["LINEHAUL"].unit_price),
+                         (Decimal("2"), Decimal("18500.00"), Decimal("21275")))
+        self.assertTrue(lines["DETENTION"].is_optional)
+        self.assertEqual(q.total, Decimal("2") * 21275 + Decimal("2") * 1380)
+        sell, cost, m, pct = quotes.margin(q)
+        self.assertEqual(cost, Decimal("39400.00"))
+        subject, body = quotes.customer_email(q, self.op)
+        self.assertIn("Dear Ana Ruiz", body)
+        self.assertIn("(if applicable)", body)
+        r = self.client.get(reverse("customer_quote_edit", args=[lead.pk, q.pk]))
+        self.assertContains(r, "TMS 不会替你发邮件")
+        for style in ("SIMPLE", "FORMAL"):
+            q.style = style
+            q.save()
+            pdf = self.client.get(reverse("customer_quote_pdf", args=[lead.pk, q.pk]))
+            self.assertTrue(pdf.content.startswith(b"%PDF"))
+
+        r = self.client.get(reverse("lead_convert", args=[lead.pk]))
+        self.assertContains(r, "Heavy Haul Co")
+        r = self.client.post(reverse("lead_convert", args=[lead.pk]), {
+            "name": "GPS Transformer", "owner": self.op.pk, "customer_quote": q.pk, f"lane_{lane.pk}": hh.pk})
+        lead.refresh_from_db()
+        p = lead.project
+        self.assertRedirects(r, p.get_absolute_url(), fetch_redirect_response=False)
+        self.assertEqual((lead.status, p.customer.name, list(p.owners.all())), (Lead.Status.WON, "Gulf Power Systems", [self.op]))
+        loads = list(p.shipments.order_by("id"))
+        self.assertEqual(len(loads), 2)  # one per truck
+        leg = loads[0].legs.get()
+        self.assertEqual((leg.carrier.name, leg.scheduled_pickup, leg.permits_required), ("Heavy Haul Co", date(2026, 11, 15), True))
+        tx_lines = [c for s in loads for c in s.cargo_lines.filter(description="Power transformer")]
+        self.assertEqual(len(tx_lines), 1)  # 1 transformer, 2 trucks: it rides on the first
+        self.assertEqual(sum(c.handling_qty for s in loads for c in s.cargo_lines.filter(description="Radiator")), 2)
+        ap = Charge.objects.filter(shipment__project=p, side="AP")
+        self.assertEqual(sum(c.amount for c in ap), Decimal("39400.00"))  # 2 trucks x (18,500 + 1,200); detention not booked
+        ar = Charge.objects.filter(shipment__project=p, side="AR")
+        self.assertEqual(sum(c.amount for c in ar), q.total)
+        q.refresh_from_db()
+        self.assertEqual(q.status, CustomerQuote.Status.ACCEPTED)
+        hh.refresh_from_db()
+        self.assertEqual(hh.status, "SELECTED")
+        with self.assertRaises(ValueError):
+            quotes.convert(lead, self.op)
+
+    def test_pages_and_permissions(self):
+        from .models import Lead
+
+        lead, _, _ = self.make_lead()
+        self.login(self.ar)
+        self.assertEqual(self.client.get(reverse("lead_list")).status_code, 403)
+        rfq = make_user("rfq", Role.RFQ)
+        self.login(rfq)
+        self.assertContains(self.client.get(reverse("lead_list")), "Transformer Houston")
+        r = self.client.get(lead.get_absolute_url())
+        self.assertContains(r, "卸货是否有吊车")
+        self.assertContains(r, "超宽")
+        self.assertContains(self.client.get(reverse("lead_new")), "AI 整理并建立询价")
+        r = self.client.post(reverse("lead_cargo_new", args=[lead.pk]), {"description": "Spare parts", "qty": "3", "handling_type": "PLT",
+                                                                            "weight_lbs": "500 kg", "length_ft": "48 in", "width_ft": "40 in", "height_ft": "1.2 m"})
+        self.assertEqual(r.status_code, 302)
+        self.assertEqual(lead.cargo.get(description="Spare parts").weight_lbs, Decimal("1102.3"))
+        self.client.post(reverse("lead_status", args=[lead.pk]), {"action": "lost", "reason": "Price"})
+        lead.refresh_from_db()
+        self.assertEqual((lead.status, lead.lost_reason), (Lead.Status.LOST, "Price"))
+
+    def test_upload_page_creates_lead_from_screenshot(self):
+        from unittest import mock as _mock
+
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from . import ai
+        from .models import Lead
+
+        caller = lead_caller(LEAD_RESULT)
+        self.login(self.op)
+        with _mock.patch.object(ai, "call_gemini", side_effect=caller):
+            r = self.client.post(reverse("lead_new"), {"text": "", "source": "WECHAT",
+                                                       "files": [SimpleUploadedFile("wechat.png", b"\x89PNG", content_type="image/png")]})
+        lead = Lead.objects.latest("pk")
+        self.assertRedirects(r, lead.get_absolute_url(), fetch_redirect_response=False)
+        self.assertEqual(lead.source, "WECHAT")
+        self.assertEqual(caller.seen["attachments"][0]["name"], "wechat.png")
+
+
+class LeadAlertTests(Base):
+    def test_quote_due_and_silent_carriers_show_on_todo(self):
+        from datetime import timedelta as td
+
+        from django.utils import timezone
+
+        from .models import CarrierQuote, Lead
+
+        today = timezone.localdate()
+        lead = Lead.objects.create(title="Coil move", prospect_name="Acme", owner=self.op, quote_due=today, status=Lead.Status.SOURCING)
+        CarrierQuote.objects.create(lead=lead, carrier=self.carrier, status="REQUESTED", requested_at=timezone.now() - td(days=3))
+        Lead.objects.create(title="Not mine", prospect_name="X", owner=self.mgmt, quote_due=today)
+        self.login(self.op)
+        r = self.client.get(reverse("todo"))
+        self.assertContains(r, "报价截止今天")
+        self.assertContains(r, "1 家承运商超过 2 天没回价")
+        self.assertNotContains(r, "Not mine")

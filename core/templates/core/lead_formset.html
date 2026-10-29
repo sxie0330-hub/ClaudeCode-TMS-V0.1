@@ -1,0 +1,45 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}{{ title }}{% endblock %}
+{% block content %}
+<div class="head"><h1>{{ title }}</h1>
+  {% if kind == "customer" %}<div class="actions"><a class="btn" href="{% url 'customer_quote_pdf' lead.pk quote.pk %}" target="_blank">预览 PDF</a></div>{% endif %}</div>
+{% if kind == "customer" %}
+<div class="card" style="display:flex;gap:24px;flex-wrap:wrap">
+  <div>售价 <b>{{ m.0|money }}</b></div><div>成本 <b>{{ m.1|money }}</b></div><div>毛利 <b style="color:var(--ok)">{{ m.2|money }}（{{ m.3 }}%）</b></div>
+  <div class="muted" style="font-size:12.5px">合计不含“视情况发生”的项目。改完点保存，数字和邮件草稿会更新。</div>
+</div>
+{% endif %}
+<form method="post" id="editform" class="lines-form" novalidate>{% csrf_token %}
+  <div class="panel"><div class="body form">
+    {% if form.non_field_errors %}<div class="nonfield">{% for e in form.non_field_errors %}{{ e }}{% endfor %}</div>{% endif %}
+    {% for h in form.hidden_fields %}{{ h }}{% endfor %}
+    <div class="fields">{% for f in form.visible_fields %}
+      <div class="f{% if f.widget_type == 'textarea' %} full{% endif %}"><label for="{{ f.id_for_label }}">{{ f.label }}</label>{{ f }}
+        {% if f.help_text %}<span class="help">{{ f.help_text }}</span>{% endif %}{% for e in f.errors %}<span class="err">{{ e }}</span>{% endfor %}</div>
+    {% endfor %}</div>
+  </div></div>
+  <div class="panel"><header><h2>{% if kind == "customer" %}报价明细（description 用英文，客户可见）{% else %}报价明细（USD）{% endif %}</h2></header>
+    <div class="tablewrap">{{ fs.management_form }}
+    {% if fs.non_form_errors %}<div class="nonfield">{{ fs.non_form_errors }}</div>{% endif %}
+    <table class="t"><thead><tr>{% for f in fs.forms.0.visible_fields %}<th>{{ f.label }}</th>{% endfor %}</tr></thead><tbody>
+    {% for row in fs.forms %}<tr>{% for h in row.hidden_fields %}{{ h }}{% endfor %}
+      {% for f in row.visible_fields %}<td>{{ f }}{% for e in f.errors %}<br><span class="err">{{ e }}</span>{% endfor %}</td>{% endfor %}</tr>{% endfor %}
+    </tbody></table></div>
+    <p class="muted" style="font-size:12.5px;margin:6px 12px">空行不用填；要加更多行，先保存，会再出现两行空的。勾选最后一列的 Delete 删除这一行。{% if kind == "customer" %} 大项目可以用“分段标题”分组（如 Phase 1 – Port Drayage），正式 PDF 会按分段列出小计。{% endif %}</p>
+  </div>
+  <p><button type="submit" class="primary">保存</button> <a class="btn" href="{{ cancel_url }}">返回询价</a></p>
+</form>
+{% if kind == "customer" %}
+<div class="panel"><header><h2>给客户的邮件草稿</h2><div class="actions"><button class="sm" type="button" data-copy="cq-all">复制主题 + 正文</button>
+  <a class="btn sm" href="{{ gmail }}" target="_blank" rel="noopener">在 Gmail 打开</a></div></header>
+  <div class="body"><div class="card" style="background:#fffbf3;margin-top:0">TMS 不会替你发邮件。核对后由你自己发送；正式报价可以把 PDF 下载后作为附件。发出后把上面的状态改成“已发客户”。</div>
+    <p><b>主题：</b>{{ subject }}</p><pre class="draft">{{ body }}</pre><textarea id="cq-all" hidden>{{ subject }}
+
+{{ body }}</textarea></div></div>
+{% endif %}
+{% endblock %}
+{% block scripts %}<script>
+document.querySelectorAll("[data-copy]").forEach(function (b) { b.addEventListener("click", function () {
+  navigator.clipboard.writeText(document.getElementById(b.dataset.copy).value).then(function () { b.textContent = "已复制"; }); }); });
+</script>{% endblock %}

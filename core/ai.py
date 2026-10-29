@@ -550,7 +550,7 @@ def _context_block(cands, single, scope_project=None):
     return text
 
 
-def call_gemini(email_text, context, today, attachments=None):
+def call_gemini(email_text, context, today, attachments=None, prompt=None, schema=None):
     """Return the parsed JSON dict from Gemini on Vertex AI. attachments: PDFs / images sent inline."""
     import google.auth
     import google.auth.transport.requests
@@ -567,12 +567,12 @@ def call_gemini(email_text, context, today, attachments=None):
     url = (f"https://{host}/v1/projects/{project}/locations/{loc}/publishers/google/models/"
            f"{settings.TMS_AI_MODEL}:generateContent")
     body = {
-        "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
+        "systemInstruction": {"parts": [{"text": prompt or SYSTEM_PROMPT}]},
         "contents": [{"role": "user", "parts": [{"text": f"今天是 {today.isoformat()}。\n\n{context}\n\n=== 邮件开始 ===\n{email_text}\n=== 邮件结束 ==="}]
                       + [part for d in (attachments or []) for part in (
                           {"text": f"=== 附件：{d['name']} ==="},
                           {"inlineData": {"mimeType": d["mime"], "data": base64.b64encode(d["data"]).decode()}})]}],
-        "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA},
+        "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": schema or RESPONSE_SCHEMA},
     }
     try:
         r = requests.post(url, json=body, headers={"Authorization": f"Bearer {creds.token}"}, timeout=200)

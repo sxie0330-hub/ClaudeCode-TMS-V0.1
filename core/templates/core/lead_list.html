@@ -1,0 +1,29 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}询报价{% endblock %}
+{% block content %}
+<div class="head"><h1>询报价</h1><span class="muted">{{ leads|length }} 条</span>
+  <div class="actions"><a class="btn" href="{% url 'lead_create' %}">手动新建</a>
+    <a class="btn primary" href="{% url 'lead_new' %}">+ 新询价（AI 识别）</a></div>
+</div>
+<form class="filters" method="get">
+  <input type="search" name="q" value="{{ q }}" placeholder="询价编号 / 名称 / 客户 / 参考号">
+  <select name="status" aria-label="状态"><option value="open" {% if status == 'open' %}selected{% endif %}>进行中</option>
+    <option value="all" {% if status == 'all' %}selected{% endif %}>全部</option>
+    {% for v, l in statuses %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select>
+  <label><input type="checkbox" name="mine" value="1" {% if mine %}checked{% endif %}> 只看我负责的</label>
+  <button type="submit">筛选</button>
+</form>
+<div class="panel"><div class="tablewrap"><table class="t">
+  <thead><tr><th>询价</th><th>编号</th><th>公司</th><th>客户</th><th>状态</th><th>负责人</th><th>报价截止</th><th>来源</th><th>建立</th></tr></thead>
+  <tbody>
+  {% for l in leads %}<tr><td><a href="{{ l.get_absolute_url }}"><b>{{ l.title }}</b></a></td><td>{{ l.number }}</td><td>{{ l.company }}</td>
+    <td>{{ l.customer_label|default:"—" }}</td><td><span class="b b-L-{{ l.status }}">{{ l.get_status_display }}</span>
+      {% if l.project %}<br><a href="{{ l.project.get_absolute_url }}" style="font-size:12px">{{ l.project.number }}</a>{% endif %}</td>
+    <td>{{ l.owner.get_full_name|default:l.owner.email|default:"—" }}</td>
+    <td>{% if l.quote_due %}<span class="{% if l.is_open and l.quote_due <= today %}lfd-warn{% endif %}">{{ l.quote_due|date:"m/d" }}</span>{% else %}—{% endif %}</td>
+    <td>{{ l.get_source_display }}</td><td class="muted">{{ l.created_at|date:"m/d" }}</td></tr>
+  {% empty %}<tr><td colspan="9" class="muted">没有询价。点右上角“新询价”，把客户的邮件或微信内容贴进来。</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

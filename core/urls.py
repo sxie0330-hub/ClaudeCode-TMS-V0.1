@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_ai, views_mail, views_workspace as ws
+from . import views, views_ai, views_leads as vl, views_mail, views_workspace as ws
 
 urlpatterns = [
     path("", ws.home, name="home"),
@@ -57,6 +57,26 @@ urlpatterns = [
     path("ai/<int:pk>/", views_ai.ai_review, name="ai_review"),
     path("ai/<int:pk>/apply/", views_ai.ai_apply, name="ai_apply"),
     path("ai/<int:pk>/create-project/", views_ai.ai_create_project, name="ai_create_project"),
+    path("leads/", vl.lead_list, name="lead_list"),
+    path("leads/new/", vl.lead_new, name="lead_new"),
+    path("leads/new/manual/", vl.lead_create, name="lead_create"),
+    path("leads/<int:pk>/", vl.lead_detail, name="lead_detail"),
+    path("leads/<int:pk>/edit/", vl.lead_edit, name="lead_edit"),
+    path("leads/<int:pk>/status/", vl.lead_status, name="lead_status"),
+    path("leads/<int:pk>/lanes/new/", vl.lane_edit, name="lead_lane_new"),
+    path("leads/<int:pk>/lanes/<int:lid>/", vl.lane_edit, name="lead_lane_edit"),
+    path("leads/<int:pk>/cargo/new/", vl.cargo_edit, name="lead_cargo_new"),
+    path("leads/<int:pk>/cargo/<int:cid>/", vl.cargo_edit, name="lead_cargo_edit"),
+    path("leads/<int:pk>/<str:kind>/<int:rid>/delete/", vl.row_delete, name="lead_row_delete"),
+    path("leads/<int:pk>/rfq/", vl.lead_rfq, name="lead_rfq"),
+    path("leads/<int:pk>/reply/", vl.lead_reply, name="lead_reply"),
+    path("leads/<int:pk>/carrier-quotes/new/", vl.carrier_quote_edit, name="carrier_quote_new"),
+    path("leads/<int:pk>/carrier-quotes/<int:qid>/", vl.carrier_quote_edit, name="carrier_quote_edit"),
+    path("leads/<int:pk>/carrier-quotes/<int:qid>/select/", vl.carrier_quote_select, name="carrier_quote_select"),
+    path("leads/<int:pk>/quotes/build/", vl.customer_quote_build, name="customer_quote_build"),
+    path("leads/<int:pk>/quotes/<int:qid>/", vl.customer_quote_edit, name="customer_quote_edit"),
+    path("leads/<int:pk>/quotes/<int:qid>/pdf/", vl.customer_quote_pdf, name="customer_quote_pdf"),
+    path("leads/<int:pk>/convert/", vl.lead_convert, name="lead_convert"),
     path("mail/", views_mail.mail_settings, name="mail_settings"),
     path("mail/connect/", views_mail.mail_connect, name="mail_connect"),
     path("mail/callback/", views_mail.mail_callback, name="mail_callback"),

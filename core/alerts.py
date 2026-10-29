@@ -302,6 +302,26 @@ def r_ai_pending(ctx):
                         e.project, e.created_at.date())
 
 
+@rule(key="lead_due", category="在途 · 等待与异常", label="询价快到报价截止日 / 承运商超过 2 天没回价", why="报价晚了就丢单",
+      level="today")
+def r_lead_due(ctx):
+    from .models import CarrierQuote, Lead
+
+    leads = Lead.objects.filter(owner=ctx.user, status__in=Lead.OPEN)
+    for lead in leads.filter(quote_due__lte=ctx.today + timedelta(days=1)).exclude(status=Lead.Status.QUOTED):
+        word = "已过" if lead.quote_due < ctx.today else ("今天" if lead.quote_due == ctx.today else "明天")
+        yield ctx.alert("lead_due", lead.pk, "询价", f"{lead.number} {lead.title}：报价截止{word}（{lead.quote_due:%m/%d}）",
+                        lead.customer_label, lead.get_absolute_url(), None, lead.quote_due)
+    stale = CarrierQuote.objects.filter(lead__in=leads, status=CarrierQuote.Status.REQUESTED,
+                                        requested_at__date__lte=ctx.today - timedelta(days=2)).select_related("lead", "carrier")
+    by_lead = defaultdict(list)
+    for q in stale:
+        by_lead[q.lead].append(q.carrier_label)
+    for lead, names in by_lead.items():
+        yield ctx.alert("lead_due", f"cq{lead.pk}", "询价", f"{lead.number}：{len(names)} 家承运商超过 2 天没回价",
+                        "、".join(names[:5]), lead.get_absolute_url(), None, ctx.today)
+
+
 @rule(key="appts_today", category="在途 · 等待与异常", label="今天 / 明天的提货和送货", why="每日确认", level="today")
 def r_today(ctx):
     days = [ctx.today, ctx.today + timedelta(days=1)]
