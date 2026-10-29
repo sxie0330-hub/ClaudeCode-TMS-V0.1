@@ -47,8 +47,8 @@ Load 明细（每个柜子 / 每车货一行；不知道写"待定"）：
 </template>
   <textarea id="ai-text" name="text" rows="16" maxlength="{{ max_chars }}"
     placeholder="例如：SHPU2204302 picked up 10/9, arrived at site 10/13 09:20 ET, unloaded…">{{ text }}</textarea>
-  <label for="ai-sheet" style="margin-top:8px">或 / 同时上传表格（.xlsx、.csv；Google Sheets 用 文件 → 下载 → .xlsx）</label>
-  <input id="ai-sheet" type="file" name="sheet" accept=".xlsx,.csv,.tsv,.txt">
+  <label for="ai-files" style="margin-top:8px">或 / 同时上传文件，可多选：PDF（POD、BOL、Rate Con、到港通知、DO…，扫描件也行）、照片（.jpg、.png、.heic）、表格（.xlsx、.csv）</label>
+  <input id="ai-files" type="file" name="files" multiple accept=".pdf,.jpg,.jpeg,.png,.webp,.heic,.heif,.xlsx,.csv,.tsv,.txt">
   <p class="muted" style="font-size:13px">柜号多的时候：直接从表格里选中整块复制粘贴也可以；超过约 300 行请分批。</p>
   <p class="muted" style="font-size:13px">AI 只会提出修改建议，<b>确认之前不会写入任何数据</b>；费用金额不会被识别或修改。识别大约需要 5–30 秒，内容多时会更久。</p>
   <button class="primary" type="submit" onclick="this.disabled=true;this.textContent='识别中…';this.form.submit()">开始识别</button>

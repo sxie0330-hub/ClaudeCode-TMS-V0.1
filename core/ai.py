@@ -10,6 +10,7 @@ Flow:
 
 Only the fields in FIELDS can ever be written. Money (charges) is never touched.
 """
+import base64
 import json
 import logging
 import re
@@ -100,6 +101,33 @@ NOTE_FIELD = "note"  # a timeline note, not a field
 
 MAX_EMAIL_CHARS = 60000
 MAX_CANDIDATES = 300
+
+# Documents Gemini reads directly (scanned or not): PDFs and photos.
+# Sent inline; Vertex AI caps a whole request at 20 MB and base64 adds a third.
+DOC_TYPES = {".pdf": "application/pdf", ".jpg": "image/jpeg", ".jpeg": "image/jpeg", ".png": "image/png",
+             ".webp": "image/webp", ".heic": "image/heic", ".heif": "image/heif"}
+MAX_DOC_BYTES = 8 * 1024 * 1024
+MAX_DOCS_BYTES = 12 * 1024 * 1024
+MAX_DOCS = 10
+
+
+def doc_mime(name):
+    """MIME type if Gemini can read this file as a document, else ''."""
+    name = (name or "").lower()
+    return next((m for ext, m in DOC_TYPES.items() if name.endswith(ext)), "")
+
+
+def limit_docs(docs):
+    """Keep what fits in one request, in order. Returns (kept, skipped names)."""
+    kept, skipped, total = [], [], 0
+    for d in docs:
+        size = len(d["data"])
+        if len(kept) >= MAX_DOCS or size > MAX_DOC_BYTES or total + size > MAX_DOCS_BYTES:
+            skipped.append(d["name"])
+            continue
+        kept.append(d)
+        total += size
+    return kept, skipped
 
 
 def sheet_to_text(upload):
@@ -469,7 +497,12 @@ SYSTEM_PROMPT = """你是一家美国物流公司 TMS 系统的数据录入助�
    - 不要编造：邮件没写的就留空。
    此时 loads（更新已有 Load）通常为空。
 13. 内容也可能是从表格复制或上传的数据（制表符分隔，可能带“工作表”标题）：按表头理解各列，通常每行是一个柜子 / 一车货。表里已有的柜号按规则 1–11 更新，系统里没有的柜号按规则 12 放进对应项目的 loads。
-14. 货物重量和尺寸（cargo）：照原文抄数字和单位（如 13'6"、4.1 m、480 in、35,000 kg、20 t、77,161 lbs），**不要自己换算单位**，系统会统一换成 ft 和 lbs。原文没写的留空。原文一行写“L×W×H”时拆成 length / width / height，各自带上单位（如 "12.19 x 2.44 x 2.59 m" 拆成 12.19 m、2.44 m、2.59 m）。"""
+14. 货物重量和尺寸（cargo）：照原文抄数字和单位（如 13'6"、4.1 m、480 in、35,000 kg、20 t、77,161 lbs），**不要自己换算单位**，系统会统一换成 ft 和 lbs。原文没写的留空。原文一行写“L×W×H”时拆成 length / width / height，各自带上单位（如 "12.19 x 2.44 x 2.59 m" 拆成 12.19 m、2.44 m、2.59 m）。
+15. 内容后面可能附有 PDF 或图片（POD 签收单、BOL、Rate Confirmation、Delivery Receipt、到港通知、DO、提货单、照片等），和邮件正文同等对待，规则 1–14 同样适用：
+   - 先看单据上的柜号、BOL 号、PRO#、承运商单号，对应到 Load；对不上的不要猜。
+   - 签字的 POD / Delivery Receipt：签收日期写 pod_received（同时可以作为 actual_delivery 的依据），签收人、件数异常、货损备注写进 note。
+   - evidence 写“附件 文件名：单据上的原文”。
+   - 单据上的金额、运费、费率一律忽略（规则 10）。"""
 
 
 def _context_block(cands, single, scope_project=None):
@@ -517,8 +550,8 @@ def _context_block(cands, single, scope_project=None):
     return text
 
 
-def call_gemini(email_text, context, today):
-    """Return the parsed JSON dict from Gemini on Vertex AI."""
+def call_gemini(email_text, context, today, attachments=None):
+    """Return the parsed JSON dict from Gemini on Vertex AI. attachments: PDFs / images sent inline."""
     import google.auth
     import google.auth.transport.requests
     import requests
@@ -535,11 +568,14 @@ def call_gemini(email_text, context, today):
            f"{settings.TMS_AI_MODEL}:generateContent")
     body = {
         "systemInstruction": {"parts": [{"text": SYSTEM_PROMPT}]},
-        "contents": [{"role": "user", "parts": [{"text": f"今天是 {today.isoformat()}。\n\n{context}\n\n=== 邮件开始 ===\n{email_text}\n=== 邮件结束 ==="}]}],
+        "contents": [{"role": "user", "parts": [{"text": f"今天是 {today.isoformat()}。\n\n{context}\n\n=== 邮件开始 ===\n{email_text}\n=== 邮件结束 ==="}]
+                      + [part for d in (attachments or []) for part in (
+                          {"text": f"=== 附件：{d['name']} ==="},
+                          {"inlineData": {"mimeType": d["mime"], "data": base64.b64encode(d["data"]).decode()}})]}],
         "generationConfig": {"temperature": 0, "responseMimeType": "application/json", "responseSchema": RESPONSE_SCHEMA},
     }
     try:
-        r = requests.post(url, json=body, headers={"Authorization": f"Bearer {creds.token}"}, timeout=170)
+        r = requests.post(url, json=body, headers={"Authorization": f"Bearer {creds.token}"}, timeout=200)
     except requests.RequestException as e:
         raise AiError(f"连接 Gemini 失败：{e}") from e
     if r.status_code != 200:
@@ -557,13 +593,17 @@ def call_gemini(email_text, context, today):
 # ---------------------------------------------------------------------------
 # Extraction
 # ---------------------------------------------------------------------------
-def extract(email_text, user, project=None, shipment=None, caller=None, source=AiExtraction.Source.PASTE):
-    """Run Gemini on an email and store the proposed changes. Returns AiExtraction."""
+def extract(email_text, user, project=None, shipment=None, caller=None, source=AiExtraction.Source.PASTE, attachments=None):
+    """Run Gemini on an email (plus PDF / image attachments) and store the proposed changes. Returns AiExtraction.
+
+    attachments: [{"name", "mime", "data": bytes}]; what does not fit in one request is skipped and listed."""
     if not can_edit_ops(user):
         raise AiError("只有操作和管理层可以使用 AI 识别")
     email_text = (email_text or "").strip()
-    if not email_text:
-        raise AiError("请先粘贴邮件内容")
+    docs, skipped_docs = limit_docs([d for d in (attachments or []) if d.get("data") and d.get("mime")])
+    skipped_docs = [d["name"] for d in (attachments or []) if not d.get("data")] + skipped_docs
+    if not email_text and not docs:
+        raise AiError("请先粘贴邮件内容或上传文件")
     if len(email_text) > MAX_EMAIL_CHARS:
         raise AiError(f"内容太长（{len(email_text)} 字），请只粘贴相关的邮件正文，{MAX_EMAIL_CHARS} 字以内")
     since = timezone.now() - timedelta(days=1)
@@ -574,7 +614,14 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
     if not cands and shipment is not None:
         raise AiError("范围内没有 Load 可以对应")
     context = _context_block(cands, shipment is not None, project)
-    result, usage = (caller or call_gemini)(email_text, context, timezone.localdate())
+    names = [d["name"] for d in docs]
+    prompt_text = email_text or "（只有附件，没有正文）"
+    if names:
+        prompt_text += "\n\n（附上的文件：" + "、".join(names) + "）"
+    kwargs = {"attachments": docs} if docs else {}
+    result, usage = (caller or call_gemini)(prompt_text, context, timezone.localdate(), **kwargs)
+    if names or skipped_docs:
+        result = {**result, "read_attachments": names, "skipped_attachments": skipped_docs}
 
     ext = AiExtraction.objects.create(
         created_by=user, source=source, project=project, shipment=shipment, source_text=email_text,
@@ -582,6 +629,8 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
         raw_result=result, usage=usage or {},
     )
     unmatched = [str(result.get("unmatched") or "").strip()]
+    if skipped_docs:
+        unmatched.append("附件太大或太多，没有读取：" + "、".join(skipped_docs))
     for item in result.get("loads") or []:
         s = match(item, cands, shipment)
         label = item.get("container_number") or item.get("carrier_load_number") or "?"

@@ -1,4 +1,5 @@
 from datetime import date, timedelta
+from unittest import mock
 from decimal import Decimal
 
 from django.conf import settings
@@ -1405,7 +1406,9 @@ class MailFindTests(Base):
             "parts": [{"mimeType": "text/plain", "body": {"data": body}},
                       {"mimeType": "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "filename": "柜号.xlsx",
                        "body": {"attachmentId": "att1", "size": 5000}},
-                      {"mimeType": "application/pdf", "filename": "BOL.pdf", "body": {"attachmentId": "att2", "size": 9000}}]}}
+                      {"mimeType": "application/pdf", "filename": "BOL.pdf", "body": {"attachmentId": "att2", "size": 9000}},
+                      {"mimeType": "application/zip", "filename": "photos.zip", "body": {"attachmentId": "att3", "size": 9000}}]}}
+        self.pdf = b"%PDF-1.4 fake POD signed 10/21 by J. Smith"
         self.queries = []
 
     def fake_get(self, token, path, params=None):
@@ -1416,6 +1419,9 @@ class MailFindTests(Base):
             return self.msg
         if path == "/messages/m9/attachments/att1":
             return {"data": self.xlsx}
+        if path == "/messages/m9/attachments/att2":
+            import base64 as b64
+            return {"data": b64.urlsafe_b64encode(self.pdf).decode()}
         raise AssertionError(path)
 
     def test_query_building(self):
@@ -1434,8 +1440,8 @@ class MailFindTests(Base):
 
         seen = {}
 
-        def caller(text, context, today):
-            seen["text"] = text
+        def caller(text, context, today, attachments=None):
+            seen["text"], seen["docs"] = text, attachments
             return {"summary": "新项目 #4915", "loads": [], "unmatched": "", "project_updates": [], "new_projects": [NEW_PROJECT_RESULT["new_project"]]}, {}
 
         with mock.patch.object(mailscan, "_access_token", return_value="t"), mock.patch.object(mailscan, "_get", side_effect=self.fake_get):
@@ -1444,7 +1450,10 @@ class MailFindTests(Base):
         self.assertIn('subject:"项目开始 #4915"', self.queries[0])
         self.assertIn("--- 附件：柜号.xlsx ---", seen["text"])
         self.assertIn("TGHU7777777\tSHZ555", seen["text"])
-        self.assertIn("未读取的附件：BOL.pdf", seen["text"])
+        self.assertIn("未读取的附件：photos.zip", seen["text"])
+        self.assertIn("AI 直接阅读：BOL.pdf", seen["text"])
+        self.assertEqual(seen["docs"], [{"name": "BOL.pdf", "mime": "application/pdf", "data": self.pdf}])
+        self.assertEqual(ext.raw_result["read_attachments"], ["BOL.pdf"])
         self.assertEqual(ext.source, AiExtraction.Source.GMAIL)
         self.assertEqual(len(ext.raw_result["new_projects"]), 1)
         self.assertTrue(ScannedMessage.objects.filter(message_id="m9", extraction=ext).exists())
@@ -1557,3 +1566,73 @@ class AiCargoTests(Base):
         ext2 = ai.extract("dims", self.op, project=self.project, caller=fake_gemini(res))
         self.assertFalse(ext2.changes.filter(field="cargo_line").exists())
         self.assertIn("已有货物明细", ext2.unmatched)
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiDocumentTests(Base):
+    def test_upload_pdf_and_photo_on_paste_page(self):
+        from django.core.files.uploadedfile import SimpleUploadedFile
+
+        from . import ai
+        from .models import AiExtraction
+
+        seen = {}
+
+        def caller(text, context, today, attachments=None):
+            seen["text"], seen["docs"] = text, attachments
+            return {"summary": "POD", "unmatched": "", "loads": [{"container_number": "CYMU2523606", "carrier_load_number": "",
+                    "note": "签收人 J. Smith", "updates": [{"field": "pod_received", "value": "2026-10-21",
+                                                         "evidence": "附件 POD.pdf：Received 10/21"}]}]}, {}
+
+        self.login(self.op)
+        with mock.patch.object(ai, "call_gemini", side_effect=caller):
+            r = self.client.post(reverse("ai_new") + f"?project={self.project.pk}", {
+                "text": "", "project": self.project.pk,
+                "files": [SimpleUploadedFile("POD.pdf", b"%PDF-1.4 x", content_type="application/pdf"),
+                          SimpleUploadedFile("site.jpg", b"\xff\xd8jpeg", content_type="image/jpeg")]})
+        ext = AiExtraction.objects.latest("pk")
+        self.assertRedirects(r, ext.get_absolute_url(), fetch_redirect_response=False)
+        self.assertEqual([d["name"] for d in seen["docs"]], ["POD.pdf", "site.jpg"])
+        self.assertEqual(seen["docs"][1]["mime"], "image/jpeg")
+        self.assertIn("只有附件", seen["text"])
+        self.assertEqual(ext.changes.get(field="pod_received").new_value, "2026-10-21")
+        page = self.client.get(ext.get_absolute_url())
+        self.assertContains(page, "AI 读取的附件")
+        self.assertContains(page, "POD.pdf、site.jpg")
+
+    def test_too_many_or_too_big_docs_are_listed_not_sent(self):
+        from . import ai
+
+        big = {"name": "huge.pdf", "mime": "application/pdf", "data": b"x" * (ai.MAX_DOC_BYTES + 1)}
+        small = [{"name": f"p{i}.pdf", "mime": "application/pdf", "data": b"x"} for i in range(ai.MAX_DOCS + 1)]
+        kept, skipped = ai.limit_docs([big] + small)
+        self.assertEqual(len(kept), ai.MAX_DOCS)
+        self.assertEqual(skipped, ["huge.pdf", f"p{ai.MAX_DOCS}.pdf"])
+        seen = {}
+
+        def caller(text, context, today, attachments=None):
+            seen["n"] = len(attachments)
+            return {"summary": "", "loads": [], "unmatched": ""}, {}
+
+        ext = ai.extract("", self.op, caller=caller, attachments=[big] + small)
+        self.assertEqual(seen["n"], ai.MAX_DOCS)
+        self.assertIn("huge.pdf", ext.unmatched)
+
+    def test_gemini_request_carries_inline_documents(self):
+        from . import ai
+
+        sent = {}
+
+        class Resp:
+            status_code = 200
+
+            def json(self):
+                return {"candidates": [{"content": {"parts": [{"text": '{"summary": "", "loads": [], "unmatched": ""}'}]}}]}
+
+        creds = mock.Mock(token="tok")
+        with mock.patch("google.auth.default", return_value=(creds, "atsstms")), \
+             mock.patch("requests.post", side_effect=lambda url, json, headers, timeout: sent.update(body=json) or Resp()):
+            ai.call_gemini("email", "ctx", date(2026, 10, 29), attachments=[{"name": "POD.pdf", "mime": "application/pdf", "data": b"%PDF"}])
+        parts = sent["body"]["contents"][0]["parts"]
+        self.assertEqual(parts[1], {"text": "=== 附件：POD.pdf ==="})
+        self.assertEqual(parts[2], {"inlineData": {"mimeType": "application/pdf", "data": "JVBERg=="}})
