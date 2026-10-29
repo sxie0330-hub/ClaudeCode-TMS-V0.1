@@ -199,7 +199,7 @@ gcloud run deploy tms --source . --region $REGION \
 
 ## 以后更新代码
 
-代码合并到 GitHub 的 main 分支后，在 Cloud Shell 里运行：
+开通自动部署后（见 [auto-deploy.md](auto-deploy.md)），合并到 main 会自动测试并部署，不用做任何事。没开通时，在 Cloud Shell 里运行：
 
 ```bash
 cd ~/tms && git pull && gcloud run deploy tms --source . --region us-central1

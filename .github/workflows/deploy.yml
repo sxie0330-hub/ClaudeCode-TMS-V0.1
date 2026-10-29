@@ -1,0 +1,52 @@
+# Every merge to main: run the tests, then deploy to Cloud Run.
+# One-time setup in Cloud Shell: bash scripts/enable_auto_deploy.sh (see docs/auto-deploy.md).
+name: Test and deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: deploy-main
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - run: pip install -r requirements.txt
+      - run: python manage.py test core
+        env:
+          DJANGO_DEBUG: "1"
+
+  deploy:
+    needs: test
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/668605433770/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deployer@atsstms.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Deploy (env vars, secrets and database settings are kept)
+        run: gcloud run deploy tms --source . --region us-central1 --project atsstms --quiet
+      - name: Health check
+        run: |
+          for i in 1 2 3 4 5 6; do
+            curl -fsS https://tms-668605433770.us-central1.run.app/health/ && exit 0
+            sleep 10
+          done
+          exit 1
