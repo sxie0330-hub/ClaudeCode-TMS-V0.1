@@ -1,6 +1,7 @@
 from datetime import date, timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
@@ -225,6 +226,32 @@ class BolTests(Base):
         r = self.client.post(reverse("bulk_bol"), {"ids": [self.s.pk, other.pk]})
         self.assertTrue(r.content.startswith(b"%PDF"))
         self.assertTrue(self.s.timeline_notes.filter(kind="BOL").exists())
+
+    def test_bol_is_english_only(self):
+        from core.bol import bol_context, english
+        self.assertEqual(english("ATS#5202 SEG Bayport TX → Tomball TX"), "ATS#5202 SEG Bayport TX -> Tomball TX")
+        self.assertEqual(english("测试项目 Demo（20FR）"), "Demo(20FR)")
+        self.assertEqual(english("Call before arrival\n到场前一小时电话通知\nNo forklift", drop_lines=True),
+                         "Call before arrival\nNo forklift")
+        self.assertEqual(english("纯中文"), "")
+        self.s.project.bol_instructions = "司机须带 PPE\nPPE required on site"
+        self.s.project.save()
+        ctx = bol_context(self.s, self.leg)
+        self.assertEqual(ctx["instructions"], "PPE required on site")
+        self.assertEqual(ctx["company"]["name"], settings.TMS_COMPANY_NAME)
+
+    def test_bol_header_follows_project_company(self):
+        from core.bol import bol_context
+        self.s.project.company = "PTT"
+        self.s.project.save()
+        with self.settings(TMS_DOC_COMPANIES={**settings.TMS_DOC_COMPANIES,
+                                              "PTT": {"name": "PTT Test Co", "address": "1 Main St", "phone": "", "logo": "logo-ptt"}}):
+            ctx = bol_context(self.s, self.leg)
+            self.assertEqual(ctx["company"]["name"], "PTT Test Co")
+            self.assertIsNone(ctx["company"]["logo_path"])
+            self.login(self.ap)
+            r = self.client.get(reverse("shipment_bol", args=[self.s.pk]))
+            self.assertTrue(r.content.startswith(b"%PDF"))
 
     def test_bol_number(self):
         self.assertEqual(self.leg.effective_bol_number, f"{self.s.number}-1")

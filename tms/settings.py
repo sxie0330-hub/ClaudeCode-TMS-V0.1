@@ -143,6 +143,18 @@ TMS_PASSWORD_LOGIN = env_bool("TMS_PASSWORD_LOGIN", DEBUG)
 TMS_COMPANY_NAME = os.environ.get("TMS_COMPANY_NAME", "Advantage Transport Solution Inc")
 TMS_COMPANY_ADDRESS = os.environ.get("TMS_COMPANY_ADDRESS", "")
 TMS_COMPANY_PHONE = os.environ.get("TMS_COMPANY_PHONE", "")
+# Header printed on BOLs, per project company (Project.company). ATS uses the
+# TMS_COMPANY_* values above. Logos: core/static/core/logo.jpg (ATS) and
+# core/static/core/logo-ptt.png or .jpg (PTT, optional; without it the name is printed).
+TMS_DOC_COMPANIES = {
+    "ATS": {"name": TMS_COMPANY_NAME, "address": TMS_COMPANY_ADDRESS, "phone": TMS_COMPANY_PHONE, "logo": "logo.jpg"},
+    "PTT": {
+        "name": os.environ.get("TMS_PTT_NAME", "PTT"),
+        "address": os.environ.get("TMS_PTT_ADDRESS", ""),
+        "phone": os.environ.get("TMS_PTT_PHONE", ""),
+        "logo": "logo-ptt",
+    },
+}
 TMS_LFD_WARNING_DAYS = int(os.environ.get("TMS_LFD_WARNING_DAYS", "3"))
 
 # --- AI email reading (Gemini on Vertex AI, see core/ai.py) ----------------
