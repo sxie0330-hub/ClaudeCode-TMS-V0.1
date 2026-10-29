@@ -37,6 +37,8 @@ s_head = ParagraphStyle("head", parent=s_label, alignment=TA_CENTER)
 s_cell = ParagraphStyle("cell", parent=s_base, fontSize=8.5, leading=10.5)
 s_cell_c = ParagraphStyle("cellc", parent=s_cell, alignment=TA_CENTER)
 s_cell_r = ParagraphStyle("cellr", parent=s_cell, alignment=TA_RIGHT)
+s_cell_b = ParagraphStyle("cellb", parent=s_cell, fontName="Helvetica-Bold")
+s_instr = ParagraphStyle("instr", parent=s_base, fontSize=9.5, leading=12.5)
 
 LIABILITY_NOTE = (
     "NOTE: Liability limitation for loss or damage in this shipment may be applicable. "
@@ -126,9 +128,12 @@ def box_style(extra=None):
     return TableStyle(cmds + (extra or []))
 
 
-def party_block(title, loc):
+def party_block(title, loc, appt=""):
     if loc is None:
-        return [P(title, s_label), P("—")]
+        lines = [P(title, s_label), P("—")]
+        if appt:
+            lines.append(P(appt, s_cell_b))
+        return lines
     lines = [P(title, s_label)]
     name = english(loc.name)
     if name:
@@ -140,7 +145,23 @@ def party_block(title, loc):
     hours = english(loc.hours, drop_lines=True)
     if hours:
         lines.append(P(f"Hours: {hours}", s_cell))
+    if appt:
+        lines.append(P(appt, s_cell_b))
     return lines
+
+
+def lined_box(title, body):
+    """Boxed section with one table row per line, so a long one can split across pages."""
+    t = Table([[P(title, s_label)]] + [[b] for b in body], colWidths=[W], repeatRows=1)
+    t.setStyle(TableStyle([
+        ("BOX", (0, 0), (-1, -1), 0.8, LINE),
+        ("LINEBELOW", (0, 0), (-1, 0), 0.5, LINE),
+        ("BACKGROUND", (0, 0), (-1, 0), GREY),
+        ("LEFTPADDING", (0, 0), (-1, -1), 4), ("RIGHTPADDING", (0, 0), (-1, -1), 4),
+        ("TOPPADDING", (0, 0), (-1, -1), 1.5), ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5),
+        ("TOPPADDING", (0, 0), (-1, 0), 2.5), ("BOTTOMPADDING", (0, 0), (-1, 0), 3),
+    ]))
+    return t
 
 
 def kv(label, value):
@@ -161,29 +182,21 @@ def _appt(day, at, confirmed):
     return text
 
 
-def delivery_notes(leg, shipment):
-    """Lines for the pickup & delivery box, from what the TMS already knows."""
-    out = []
-    if leg:
-        p = _appt(leg.scheduled_pickup, leg.pickup_appt, leg.pickup_appt_confirmed)
-        if p:
-            out.append(f"Pickup appt: {p}")
-        d = _appt(leg.scheduled_delivery, leg.delivery_appt, leg.delivery_appt_confirmed)
-        if d:
-            out.append(f"Delivery appt: {d}")
-    dest = (leg.destination if leg and leg.destination else None) or shipment.consignee
-    if dest:
-        contact = " ".join(x for x in [english(dest.contact_name), english(dest.contact_phone)] if x)
-        if contact:
-            out.append(f"Call consignee before arrival: {contact}")
-        hours = english(dest.hours, drop_lines=True)
-        if hours:
-            out.append(f"Receiving hours: {hours}")
-    if shipment.container_number and shipment.empty_return_location:
-        ret = english(shipment.empty_return_location.name) or shipment.empty_return_location.code
-        due = f" by {shipment.empty_return_due.strftime('%m/%d/%Y')}" if shipment.empty_return_due else ""
-        out.append(f"Return empty to: {ret}{due}")
-    return out
+def appointments(leg):
+    """("Pickup appt: …", "Delivery appt: …") for the ship from / ship to blocks."""
+    if not leg:
+        return "", ""
+    p = _appt(leg.scheduled_pickup, leg.pickup_appt, leg.pickup_appt_confirmed)
+    d = _appt(leg.scheduled_delivery, leg.delivery_appt, leg.delivery_appt_confirmed)
+    return (f"Pickup appt: {p}" if p else ""), (f"Delivery appt: {d}" if d else "")
+
+
+def empty_return(shipment):
+    if not (shipment.container_number and shipment.empty_return_location):
+        return ""
+    loc = shipment.empty_return_location
+    due = f" by {shipment.empty_return_due.strftime('%m/%d/%Y')}" if shipment.empty_return_due else ""
+    return f"{english(loc.name) or loc.code}{due}"
 
 
 def bol_context(shipment, leg=None):
@@ -207,11 +220,12 @@ def bol_context(shipment, leg=None):
         ),
         "emergency": (project.emergency_contact if project else ""),
         "company": company_info(project),
-        "delivery_notes": delivery_notes(leg, shipment),
+        "appointments": appointments(leg),
+        "empty_return": empty_return(shipment),
     }
 
 
-def build_page(ctx, blank_rows=3):
+def build_page(ctx, blank_rows=3, blank_lines=2, attached=False):
     sh = ctx["shipment"]
     leg = ctx["leg"]
     carrier = ctx["carrier"]
@@ -264,13 +278,17 @@ def build_page(ctx, blank_rows=3):
         kv("Customer Ref / PO", sh.customer_ref),
         kv("Project", " · ".join(x for x in [project.number, english(project.name)] if x) if project else ""),
     ]
+    if ctx["empty_return"]:
+        ref2.append(kv("Return Empty To", ctx["empty_return"]))
+    ref2 += [
+    ]
     if sh.units.exists():
         serials = ", ".join(u.serial_number for u in sh.units.all())
         ref2.append(kv("Serial No.", serials))
     ref2_tbl = Table(ref2, colWidths=[1.25 * inch, right_w - 1.25 * inch])
     ref2_tbl.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]))
 
-    ship_to = party_block("SHIP TO (CONSIGNEE)", ctx["ship_to"])
+    ship_to = party_block("SHIP TO (CONSIGNEE)", ctx["ship_to"], ctx["appointments"][1])
 
     bill_to = [P("THIRD PARTY FREIGHT CHARGES BILL TO", s_label), P(co["name"], s_value_b)]
     if co["address"]:
@@ -279,7 +297,7 @@ def build_page(ctx, blank_rows=3):
 
     parties = Table(
         [
-            [party_block("SHIP FROM", ctx["ship_from"]), refs_tbl],
+            [party_block("SHIP FROM", ctx["ship_from"], ctx["appointments"][0]), refs_tbl],
             [ship_to, ref2_tbl],
             [bill_to, [P("Emergency Response Phone (24 hr)", s_label), P(ctx["emergency"] or "—", s_value_b)]],
         ],
@@ -288,17 +306,17 @@ def build_page(ctx, blank_rows=3):
     parties.setStyle(box_style())
     story += [parties, Spacer(1, 5)]
 
-    # --- Driver / delivery instructions (always printed; blank lines to write on)
-    blank = "_" * 52
-    driver = [P(x, s_cell) for x in (ctx["instructions"] or "").split("\n") if x.strip()]
-    delivery = [P(x, s_cell) for x in ctx["delivery_notes"]]
-    rows_n = max(3, len(driver), len(delivery))
-    driver += [P(blank, s_cell)] * (rows_n - len(driver))
-    delivery += [P(blank, s_cell)] * (rows_n - len(delivery))
-    t = Table([[P("DRIVER / SPECIAL INSTRUCTIONS", s_label), P("PICKUP & DELIVERY INSTRUCTIONS", s_label)], [driver, delivery]],
-              colWidths=[W / 2, W / 2])
-    t.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
-    story += [t, Spacer(1, 5)]
+    # --- Driver instructions: full width, grows with the text -----------------
+    # (staging area, escorts, POC to call, site hazards …). When the text is too
+    # long for the BOL page it moves to an attached sheet; see fit_page().
+    if attached:
+        body = [P("SEE ATTACHED DRIVER INSTRUCTIONS SHEET. Driver must read and sign it before pickup.", s_cell_b)]
+    else:
+        body = [P(x, s_instr) for x in (ctx["instructions"] or "").split("\n") if x.strip()]
+    body += [P("_" * 108, s_cell)] * blank_lines
+    if not body:
+        body = [P("", s_cell)]
+    story += [lined_box("DRIVER / SPECIAL INSTRUCTIONS", body), Spacer(1, 5)]
 
     # --- Commodity table ----------------------------------------------------
     cols = [0.55, 0.7, 0.42, 0.33, 2.62, 1.2, 0.85, 0.55, 0.45]
@@ -344,18 +362,6 @@ def build_page(ctx, blank_rows=3):
         ("ROWBACKGROUNDS", (0, 1), (-1, -2), [colors.white]),
     ]))
     story += [t, Spacer(1, 5)]
-
-    # --- Loading & securement checkboxes -------------------------------------
-    permits = "[X] Required" if leg and leg.permits_required else "[ ] Required"
-    checks = Table([
-        [P("TRAILER LOADED", s_label), P("FREIGHT COUNTED", s_label), P("SECUREMENT", s_label), P("PERMITS / ESCORTS", s_label)],
-        [P("[ ] By shipper\n[ ] By driver", s_cell),
-         P("[ ] By shipper\n[ ] By driver / pallets said to contain\n[ ] By driver / pieces", s_cell),
-         P("[ ] Chains  [ ] Straps  [ ] Tarped\nTie-down points: ______", s_cell),
-         P(f"{permits}\nPermit #: ____________", s_cell)],
-    ], colWidths=[W * 0.2, W * 0.32, W * 0.26, W * 0.22])
-    checks.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
-    story += [checks, Spacer(1, 5)]
 
     # --- Driver time log (detention record) ----------------------------------
     def tm(dt):
@@ -411,18 +417,62 @@ def _height(flowables, width, height):
 
 
 def fit_page(ctx, width, height):
-    """One BOL that fills a full page: pad the commodity table with blank rows
-    until the next row would no longer fit. Long cargo lists still flow on."""
+    """One BOL that fills a full page. Spare room goes first to writing lines in
+    the driver instructions box (up to 6), then to blank commodity rows.
+    Instructions too long for the page move to an attached sheet; long cargo
+    lists still flow onto more pages."""
     avail = height - 14  # frame padding
-    page = build_page(ctx, 1)
-    if _height(page, width, avail) > avail:
-        return page
-    for rows in range(2, 40):
-        trial = build_page(ctx, rows)
-        if _height(trial, width, avail) > avail:
-            break
-        page = trial
+
+    def fits(page):
+        return _height(page, width, avail) <= avail
+
+    has_text = bool((ctx["instructions"] or "").strip())
+    page = build_page(ctx, 1, 0 if has_text else 2)
+    attached = False
+    if not fits(page) and has_text:
+        trial = build_page(ctx, 1, 0, attached=True)
+        page, attached = trial, True
+    if fits(page):
+        rows, lines = 1, (0 if has_text else 2)
+        max_lines = 2 if has_text else 6
+        while True:
+            if lines < max_lines:
+                nxt = (rows, lines + 1)
+            else:
+                nxt = (rows + 1, lines)
+            trial = build_page(ctx, nxt[0], nxt[1], attached)
+            if not fits(trial) or nxt[0] > 40:
+                break
+            page, (rows, lines) = trial, nxt
+    if attached:
+        page += [PageBreak()] + instructions_sheet(ctx)
     return page
+
+
+def instructions_sheet(ctx):
+    """Second page for long driver instructions, tied to the BOL by number."""
+    sh, leg, co = ctx["shipment"], ctx["leg"], ctx["company"]
+    head = Table([[
+        P(co["name"], s_value_b),
+        P("DRIVER INSTRUCTIONS", ParagraphStyle("dt", parent=s_title, alignment=TA_CENTER)),
+        [P("BOL Number", ParagraphStyle("r2", parent=s_label, alignment=TA_RIGHT)), P(ctx["bol_number"], s_bolno)],
+    ]], colWidths=[W * 0.3, W * 0.4, W * 0.3])
+    head.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0), ("RIGHTPADDING", (0, 0), (-1, -1), 0)]))
+    driver = " · ".join(x for x in [english(leg.driver_name), english(leg.driver_phone)] if x) if leg else ""
+    info = Table([
+        kv("Shipment ID", sh.number) + kv("Container #", sh.container_number),
+        kv("Carrier", ctx["carrier"].name if ctx["carrier"] else "") + kv("Driver / Phone", driver),
+    ], colWidths=[W * 0.14, W * 0.36, W * 0.14, W * 0.36])
+    info.setStyle(box_style())
+    body = [P(x, s_instr) if x.strip() else Spacer(1, 6) for x in ctx["instructions"].split("\n")]
+    text = lined_box("INSTRUCTIONS", body)
+    ack = Table([
+        [P("DRIVER ACKNOWLEDGEMENT", s_label)],
+        [[P("I have read and understood the instructions above and will follow them.", s_cell), Spacer(1, 14),
+          P("Driver signature: ______________________________   Print name: ______________________   Date: ____________", s_cell)]],
+    ], colWidths=[W])
+    ack.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
+    return [head, Spacer(1, 8), info, Spacer(1, 8), text, Spacer(1, 8), ack]
 
 
 def render_bols(contexts):

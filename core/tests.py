@@ -259,6 +259,15 @@ class BolTests(Base):
         r = self.client.get(reverse("shipment_bol", args=[self.s.pk]))
         self.assertEqual(len(_re.findall(rb"/Type /Page\b", r.content)), 1)
 
+    def test_long_driver_instructions_move_to_attached_sheet(self):
+        import re as _re
+        self.login(self.ap)
+        for lines, pages in [(30, 2), (200, 6)]:
+            self.leg.bol_instructions = "\n".join(f"{i}. Report to staging area and wait for escort before moving." for i in range(lines))
+            self.leg.save()
+            r = self.client.get(reverse("shipment_bol", args=[self.s.pk]) + f"?leg={self.leg.pk}")
+            self.assertEqual(len(_re.findall(rb"/Type /Page\b", r.content)), pages)
+
     def test_bol_number(self):
         self.assertEqual(self.leg.effective_bol_number, f"{self.s.number}-1")
 
