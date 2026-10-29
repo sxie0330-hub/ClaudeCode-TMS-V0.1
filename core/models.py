@@ -69,13 +69,35 @@ class Role(models.TextChoices):
 
 class Profile(models.Model):
     user = models.OneToOneField(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="profile")
-    role = models.CharField("角色", max_length=4, choices=Role.choices, blank=True)
+    # One person can hold several roles (e.g. 操作 + 询报价). Stored as ",OP,RFQ," so a
+    # database "contains ',OP,'" filter finds them; read with .role_set, write with set_roles().
+    roles = models.CharField("角色", max_length=40, blank=True, default="")
     phone = models.CharField("电话", max_length=40, blank=True)
 
     history = HistoricalRecords()
 
     def __str__(self):
-        return f"{self.user} ({self.get_role_display() or '未分配'})"
+        return f"{self.user} ({self.roles_label or '未分配'})"
+
+    @property
+    def role_set(self):
+        return {r for r in self.roles.split(",") if r in Role.values}
+
+    def set_roles(self, roles):
+        keep = [r for r in Role.values if r in set(roles)]  # stable order
+        self.roles = f",{','.join(keep)}," if keep else ""
+
+    @property
+    def roles_label(self):
+        return "、".join(Role(r).label for r in Role.values if r in self.role_set)
+
+    @staticmethod
+    def with_roles(*roles):
+        """Q filter on users holding any of these roles."""
+        q = models.Q(pk__in=[])
+        for r in roles:
+            q |= models.Q(profile__roles__contains=f",{r},")
+        return q
 
 
 # --------------------------------------------------------------------------
@@ -977,6 +999,24 @@ class AiChange(models.Model):
 # --------------------------------------------------------------------------
 # Mailbox scanning (see core/mailscan.py)
 # --------------------------------------------------------------------------
+class Notification(models.Model):
+    """In-app notice for one person: bell count, a pop-up on their next page, optional desktop alert."""
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="notifications")
+    text = models.CharField(max_length=300)
+    url = models.CharField(max_length=300, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    shown_at = models.DateTimeField(null=True, blank=True)  # popped up once
+    read_at = models.DateTimeField(null=True, blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [models.Index(fields=["user", "read_at"])]
+
+    def __str__(self):
+        return self.text
+
+
 class GmailConnection(models.Model):
     """A person's read-only Gmail access, granted by themselves."""
 

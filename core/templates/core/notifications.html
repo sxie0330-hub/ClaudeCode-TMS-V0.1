@@ -1,0 +1,12 @@
+{% extends "core/base.html" %}
+{% block title %}通知{% endblock %}
+{% block content %}
+<div class="head"><h1>通知</h1><div class="actions">
+  <button class="btn" type="button" id="desk-btn" hidden>开启桌面通知</button>
+  <form method="post">{% csrf_token %}<button class="btn" type="submit">全部标为已读</button></form></div></div>
+<div class="panel"><div class="tablewrap"><table class="t"><tbody>
+{% for n in items %}<tr><td style="width:150px" class="muted">{{ n.created_at|date:"m-d H:i" }}</td>
+  <td>{% if not n.read_at %}<b>{% endif %}<a href="{% url 'notification_go' n.pk %}">{{ n.text }}</a>{% if not n.read_at %}</b> <span class="b b-L-NEW">未读</span>{% endif %}</td></tr>
+{% empty %}<tr><td class="muted">还没有通知</td></tr>{% endfor %}
+</tbody></table></div></div>
+{% endblock %}

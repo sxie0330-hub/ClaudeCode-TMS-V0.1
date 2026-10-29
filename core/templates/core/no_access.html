@@ -1,8 +1,10 @@
 {% extends "core/base.html" %}
+{% block title %}等待分配权限{% endblock %}
 {% block content %}
+<meta http-equiv="refresh" content="60">
 <div class="login">
   <h1>等待分配权限</h1>
-  <p class="muted">你已用 {{ user.email }} 登录，但管理员还没有给你分配角色。请联系管理层在「团队」页面为你设置角色。</p>
+  <p class="muted">你已用 {{ user.email }} 登录，但管理员还没有给你分配角色。管理层已收到通知，会在「团队」页面为你设置角色。分配好之后这个页面会自动进入 TMS（每分钟刷新一次）。</p>
   <form method="post" action="{% url 'account_logout' %}">{% csrf_token %}<button class="btn" type="submit">退出</button></form>
 </div>
 {% endblock %}

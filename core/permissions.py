@@ -6,6 +6,8 @@
   应收 AR     : read operations, see/edit AR — never sees AP
   询报价 RFQ  : inquiries and quotes (incl. RFQ-stage costs); read operations
 
+A person may hold several roles; they get the union of what each allows.
+
 Money visibility is enforced everywhere money can surface: charge tables,
 timeline/audit entries, CSV export and search.
 """
@@ -14,42 +16,49 @@ from django.core.exceptions import PermissionDenied
 from .models import Charge, Profile, Role
 
 
-def role_of(user):
+def roles_of(user):
+    """Set of roles a user holds. A person can hold several (e.g. 操作 + 询报价)."""
     if not user.is_authenticated:
-        return ""
+        return set()
     if user.is_superuser:
-        return Role.MANAGEMENT
+        return {Role.MANAGEMENT}
     profile = getattr(user, "profile", None)
     if profile is None:
         profile, _ = Profile.objects.get_or_create(user=user)
-    return profile.role
+    return profile.role_set
 
 
 def has_access(user):
-    return bool(role_of(user))
+    return bool(roles_of(user))
 
 
 def is_management(user):
-    return role_of(user) == Role.MANAGEMENT
+    return Role.MANAGEMENT in roles_of(user)
 
 
 def can_edit_ops(user):
-    return role_of(user) in (Role.MANAGEMENT, Role.OP)
+    return bool(roles_of(user) & {Role.MANAGEMENT, Role.OP})
 
 
 def can_quote(user):
     """Inquiries and quotes: RFQ / sales, operations and management. RFQ-stage costs are visible to all three."""
-    return role_of(user) in (Role.MANAGEMENT, Role.OP, Role.RFQ)
+    return bool(roles_of(user) & {Role.MANAGEMENT, Role.OP, Role.RFQ})
+
+
+SIDES = {
+    Role.MANAGEMENT: {Charge.Side.AR, Charge.Side.AP},
+    Role.OP: {Charge.Side.AP},
+    Role.AP: {Charge.Side.AP},
+    Role.AR: {Charge.Side.AR},
+}
 
 
 def visible_sides(user):
-    """Charge sides (AR/AP) this user may see."""
-    return {
-        Role.MANAGEMENT: {Charge.Side.AR, Charge.Side.AP},
-        Role.OP: {Charge.Side.AP},
-        Role.AP: {Charge.Side.AP},
-        Role.AR: {Charge.Side.AR},
-    }.get(role_of(user), set())
+    """Charge sides (AR/AP) this user may see: the union over their roles."""
+    out = set()
+    for r in roles_of(user):
+        out |= SIDES.get(r, set())
+    return out
 
 
 def can_see_side(user, side):

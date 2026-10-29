@@ -60,6 +60,9 @@ LEAD_PROMPT = """你是一家美国物流公司（ATS / PTT，做 OOG 大件、�
 2. 每一段运输（起点 → 终点）写一条 lanes；同一段要好几车就写 trucks，不要重复写多条。港口提柜送到工地、再从工地转运，就是两段。
 3. 货物写进 cargo：重量和尺寸照原文抄数字和单位，不要自己换算，系统会统一换成 ft / lbs。“L×W×H” 拆成 length / width / height，各自带单位。
 4. ATS 和 PTT 是我们自己，只能填 company，绝不能填成 customer。
+4b. 内容带有邮件头（From / Date / Subject）时，客户是**最早那封询价邮件的发件方公司**：看 From 的名字、邮箱域名（如 ana@gulfpower.com → Gulf Power）和签名档；
+   我们自己的人（advtransolution.com 等 ATS / PTT 邮箱）发出或转发的邮件不是客户。contact_name / contact_email / contact_phone 用客户发件人的。
+   如果“已有资料”里的客户和这个公司是同一家（名字或邮箱域名对得上），customer 用完全相同的名字。
 5. 日期 YYYY-MM-DD；只写月/日的按今天推断年份。
 6. summary 和 questions 用中文；lanes.notes 和 cargo.description 用英文（会直接用在给承运商的询价邮件里）。
 7. 内容是承运商的报价回复而不是客户询价时，照样尽量整理，并在 summary 里说明。"""

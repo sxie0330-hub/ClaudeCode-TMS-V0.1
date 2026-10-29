@@ -15,7 +15,8 @@
 <div class="grid2">
   <div class="panel"><header><h2>客户与需求</h2></header><div class="body">
     <dl class="kv">
-      <dt>客户</dt><dd>{% if lead.customer %}<a href="{{ lead.customer.get_absolute_url }}">{{ lead.customer.name }}</a>{% else %}{{ lead.prospect_name|default:"—" }} {% if lead.prospect_name %}<small class="lfd-warn">新客户，成单时自动建</small>{% endif %}{% endif %}</dd>
+      <dt>客户</dt><dd>{% if lead.customer %}<a href="{{ lead.customer.get_absolute_url }}">{{ lead.customer.name }}</a>{% else %}{{ lead.prospect_name|default:"—" }} {% if lead.prospect_name %}<small class="lfd-warn">新客户</small>
+        <form method="post" action="{% url 'lead_add_customer' lead.pk %}" style="display:inline">{% csrf_token %}<button class="sm" type="submit">一键加入客户库</button></form>{% endif %}{% endif %}</dd>
       <dt>联系人</dt><dd>{{ lead.contact_name|default:"—" }} {{ lead.contact_email }} {{ lead.contact_phone }}</dd>
       <dt>客户参考号</dt><dd>{{ lead.customer_ref|default:"—" }}</dd>
       <dt>负责人</dt><dd>{{ lead.owner.get_full_name|default:lead.owner.email|default:"—" }}</dd>

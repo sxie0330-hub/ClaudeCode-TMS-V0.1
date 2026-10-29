@@ -644,7 +644,15 @@ def project_create(request):
 def project_edit(request, pk):
     p = get_object_or_404(Project, pk=pk)
     _need(can_edit_ops(request.user))
-    return _edit(request, ProjectForm, p, f"编辑项目 {p.number}", lambda o: o.get_absolute_url())
+    before = set(p.owners.values_list("pk", flat=True))
+    resp = _edit(request, ProjectForm, p, f"编辑项目 {p.number}", lambda o: o.get_absolute_url())
+    if request.method == "POST" and resp.status_code == 302:
+        from .notify import notify
+
+        added = p.owners.exclude(pk__in=before)
+        notify(added, f"{request.user.get_full_name() or request.user.email} 把项目 {p.number} {p.name} 交给你负责", p.get_absolute_url(),
+               exclude=request.user)
+    return resp
 
 
 @require_POST
@@ -788,19 +796,60 @@ def team(request):
     User = get_user_model()
     if request.method == "POST":
         user = get_object_or_404(User, pk=request.POST.get("user"))
-        role = request.POST.get("role", "")
-        if role not in ("",) + tuple(Role.values):
-            raise Http404
-        if user == request.user and role != Role.MANAGEMENT:
+        roles = [r for r in request.POST.getlist("roles") if r in Role.values]
+        if user == request.user and Role.MANAGEMENT not in roles:
             messages.error(request, "不能取消自己的管理层角色")
         else:
             profile, _ = Profile.objects.get_or_create(user=user)
-            profile.role = role
+            before = profile.role_set
+            profile.set_roles(roles)
             profile.save()
-            messages.success(request, f"已更新 {user.email or user.username} 的角色")
+            if profile.role_set != before:
+                from .notify import notify
+
+                label = profile.roles_label or "无（已停用）"
+                notify(user, f"{request.user.get_full_name() or request.user.email} 把你的角色设为：{label}", "/", exclude=request.user)
+            messages.success(request, f"已更新 {user.email or user.username} 的角色：{profile.roles_label or '未分配'}")
         return redirect("team")
     users = User.objects.order_by("email").select_related("profile")
+    for u in users:
+        u.role_set = {"MGMT"} if u.is_superuser else (u.profile.role_set if hasattr(u, "profile") else set())
     return render(request, "core/team.html", {"users": users, "roles": Role.choices})
+
+
+# --- in-app notifications ---------------------------------------------------
+def notifications(request):
+    from .models import Notification
+
+    qs = Notification.objects.filter(user=request.user)
+    if request.method == "POST":
+        qs.filter(read_at__isnull=True).update(read_at=timezone.now())
+        return redirect("notifications")
+    return render(request, "core/notifications.html", {"items": qs[:200]})
+
+
+def notification_go(request, nid):
+    from .models import Notification
+
+    n = get_object_or_404(Notification, pk=nid, user=request.user)
+    if n.read_at is None:
+        n.read_at = timezone.now()
+        n.save(update_fields=["read_at"])
+    return redirect(n.url or "notifications")
+
+
+def notification_poll(request):
+    """New notices since the page loaded: pop-ups (and desktop alerts) while someone keeps a page open."""
+    from django.http import JsonResponse
+
+    from .models import Notification
+
+    qs = Notification.objects.filter(user=request.user)
+    new = list(qs.filter(shown_at__isnull=True, read_at__isnull=True)[:5])
+    if new:
+        Notification.objects.filter(pk__in=[n.pk for n in new]).update(shown_at=timezone.now())
+    return JsonResponse({"unread": qs.filter(read_at__isnull=True).count(),
+                         "new": [{"id": n.pk, "text": n.text, "url": reverse("notification_go", args=[n.pk])} for n in new]})
 
 
 def import_upload(request):

@@ -13,7 +13,7 @@
       {% if conn.last_result %}· {{ conn.last_result }}{% endif %} · 已读过 {{ scanned }} 封相关邮件</p>
     {% if conn.last_error %}<p class="lfd-warn">上次出错：{{ conn.last_error }}</p>{% endif %}
     <div style="display:flex;gap:8px;flex-wrap:wrap">
-      {% if ai_enabled %}<form method="post" action="{% url 'mail_scan_now' %}" class="inline">{% csrf_token %}
+      {% if ai_enabled and perm.edit_ops %}<form method="post" action="{% url 'mail_scan_now' %}" class="inline">{% csrf_token %}
         <button class="primary" type="submit" onclick="this.disabled=true;this.textContent='扫描中，可能要一两分钟…';this.form.submit()">现在扫描一次</button></form>{% endif %}
       <form method="post" action="{% url 'mail_disconnect' %}" class="inline" onsubmit="return confirm('断开后 TMS 不会再读取你的邮件。确定？');">{% csrf_token %}<button type="submit">断开邮箱</button></form>
     </div>
@@ -23,7 +23,7 @@
   {% endif %}
 </div>
 
-{% if conn and ai_enabled %}
+{% if conn and ai_enabled and perm.edit_ops %}
 <form method="post" action="{% url 'mail_find' %}" class="card form" style="max-width:none">{% csrf_token %}
   <h2 style="margin:0 0 6px;font-size:1rem">按邮件主题识别</h2>
   <p class="muted" style="font-size:13px;margin:0 0 8px">不限日期，连同往来回复和 Excel / CSV 附件一起交给 AI（最多 15 封）。适合新项目的开工邮件、带柜号表格的邮件。

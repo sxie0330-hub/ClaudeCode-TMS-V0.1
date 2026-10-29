@@ -9,12 +9,12 @@ from django.views.decorators.http import require_POST
 
 from . import ai, mailscan
 from .models import AiExtraction, GmailConnection, Project
-from .permissions import can_edit_ops
+from .permissions import can_edit_ops, can_quote
 from .views import _need
 
 
 def mail_settings(request):
-    _need(can_edit_ops(request.user))
+    _need(can_quote(request.user))
     conn = GmailConnection.objects.filter(user=request.user).first()
     projects = Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")
     recent = AiExtraction.objects.filter(source=AiExtraction.Source.GMAIL, created_by=request.user).select_related("project")[:20]
@@ -25,7 +25,7 @@ def mail_settings(request):
 
 
 def mail_connect(request):
-    _need(can_edit_ops(request.user))
+    _need(can_quote(request.user))
     try:
         return redirect(mailscan.auth_url(request, request.user))
     except mailscan.ScanError as e:
@@ -34,7 +34,7 @@ def mail_connect(request):
 
 
 def mail_callback(request):
-    _need(can_edit_ops(request.user))
+    _need(can_quote(request.user))
     if request.GET.get("error"):
         messages.warning(request, "没有完成授权，邮箱没有连接")
         return redirect("mail_settings")
