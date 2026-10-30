@@ -16,15 +16,18 @@
   <div class="panel"><header><h2>协议内容</h2></header><div class="body"><dl class="kv">
     <dt>线路</dt><dd><b>{{ a.origin }} → {{ a.destination }}</b></dd>
     <dt>货物 / 车型</dt><dd>{{ a.commodity|default:"—" }} · {{ a.equipment|default:"—" }}</dd>
-    <dt>运力</dt><dd>{{ a.capacity|default:"—" }}</dd>
+    <dt>乙方运力</dt><dd>{{ a.capacity|default:"—" }} <small class="muted">（只记录，不构成甲方承诺）</small></dd>
     <dt>有效期</dt><dd>{{ a.valid_from|default:"—" }} → {{ a.valid_until|default:"项目结束" }}</dd>
     <dt>运价</dt><dd>{% for ln in ctx.base %}{{ ln.get_charge_type_display }} {{ ln.unit_price|money }} {{ ln.get_unit_display }}{% if ln.description %} <small class="muted">{{ ln.description }}</small>{% endif %}<br>{% empty %}<span class="lfd-warn">没有</span>{% endfor %}
       {% if ctx.per_truck %}<b>每车合计 {{ ctx.per_truck|money }}</b>{% endif %}</dd>
     <dt>附加费</dt><dd>免费等待 {{ a.free_hours|floatformat:"-1" }} 小时<br>{% for ln in ctx.extras %}{{ ln.get_charge_type_display }} {% if ln.unit_price %}{{ ln.unit_price|money }} {{ ln.get_unit_display }}{% else %}需书面批准{% endif %}<br>{% endfor %}</dd>
     <dt>已派 Load</dt><dd>{{ ctx.loads|length }} 个</dd>
   </dl></div></div>
-  <div class="panel"><header><h2>开票说明</h2><small class="muted">印在协议上，告诉承运商怎么给我们 AP 开票</small></header><div class="body">
-    <pre class="draft">{{ a.invoice_instructions }}</pre>{% if a.notes %}<p><b>其他条件</b></p><pre class="draft">{{ a.notes }}</pre>{% endif %}</div></div>
+  <div class="panel"><header><h2>甲方要求 · 开票要求</h2><small class="muted">印在协议上（英文）。开票要求按 {{ ctx.company.name }} 的 Carrier Invoice Submission Guidelines</small></header><div class="body">
+    <p><b>甲方要求乙方</b></p><pre class="draft">{{ a.requirements|default:"（用标准要求）" }}</pre>
+    <p><b>怎么给甲方开票</b></p><ul style="margin:0 0 0 18px;font-size:13px">{% for x in invoicing %}<li>{{ x }}</li>{% endfor %}</ul>
+    {% if a.notes %}<p><b>其他条件</b></p><pre class="draft">{{ a.notes }}</pre>{% endif %}
+    <p class="muted" style="font-size:12.5px">协议里写明甲方不承诺货量，每车以甲方书面派单为准；Detention 需要实时通知、POD 上进出场时间和双方签字、GPS / ELD 记录、甲方书面批准。</p></div></div>
 </div>
 <div class="panel"><header><h2>邮件草稿</h2><small class="muted">TMS 不会自动发送：打开 Gmail 草稿，附上 PDF，人工点发送</small></header><div class="body">
   <dl class="kv"><dt>收件人</dt><dd>{{ to|default:"（承运商没有邮箱）" }}</dd><dt>主题</dt><dd>{{ subject }}</dd></dl><pre class="draft">{{ body }}</pre></div></div>

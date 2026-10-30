@@ -434,7 +434,7 @@ def r_pod_upload(ctx):
 
 
 @rule(key="ratecon_missing", category="开工前检查 · 没确认就会延误", label="已派承运商、快提货了，还没出运价协议", why="没有签回的运价协议，运价和开票方式容易起纠纷",
-      level="today", threshold=2, unit="天内提货", side="AP")
+      level="today", threshold=2, unit="天内提货", side="RATES")
 def r_ratecon_missing(ctx):
     from .models import RateAgreement
 
@@ -538,6 +538,10 @@ RULE_MAP = {r.key: r for r in RULES}
 def rule_allowed(r, user):
     if r.side == "MARGIN":
         return can_see_margin(user)
+    if r.side == "RATES":
+        from .permissions import can_manage_rates
+
+        return can_manage_rates(user)
     if r.side:
         return r.side in visible_sides(user)
     return True

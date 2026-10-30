@@ -179,8 +179,9 @@ class RateAgreementForm(BaseForm):
     class Meta:
         model = RateAgreement
         fields = ["origin", "destination", "commodity", "equipment", "capacity", "valid_from", "valid_until", "free_hours",
-                  "invoice_instructions", "notes"]
-        widgets = {"invoice_instructions": forms.Textarea(attrs={"rows": 7}), "notes": forms.Textarea(attrs={"rows": 3})}
+                  "requirements", "invoice_instructions", "notes"]
+        widgets = {"requirements": forms.Textarea(attrs={"rows": 8}), "invoice_instructions": forms.Textarea(attrs={"rows": 3}),
+                   "notes": forms.Textarea(attrs={"rows": 3})}
 
 
 def rate_lines_formset():

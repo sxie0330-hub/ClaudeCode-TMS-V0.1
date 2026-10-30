@@ -956,11 +956,15 @@ class RateAgreement(models.Model):
     destination = models.CharField("终点", max_length=160, help_text="如 Nokesville, VA")
     commodity = models.CharField("货物", max_length=255, blank=True)
     equipment = models.CharField("车型", max_length=80, blank=True)
-    capacity = models.CharField("运力安排", max_length=255, blank=True, help_text="如：每天 3 车，共约 300 车")
+    capacity = models.CharField("乙方可提供的运力（仅记录，不构成甲方承诺）", max_length=255, blank=True,
+                                help_text="如：Carrier states it can cover up to 3 trucks per day。协议里会写明甲方不承诺任何货量")
     valid_from = models.DateField("有效期起", null=True, blank=True)
     valid_until = models.DateField("有效期止", null=True, blank=True, help_text="留空 = 直到项目结束")
     free_hours = models.DecimalField("免费等待（小时）", max_digits=4, decimal_places=1, default=Decimal("2"))
-    invoice_instructions = models.TextField("开票说明（英文，印在协议上）", blank=True)
+    requirements = models.TextField("甲方要求乙方（英文，印在协议上）", blank=True,
+                                    help_text="一行一条。新建时带出标准要求，可按项目增删")
+    invoice_instructions = models.TextField("补充开票说明（英文，可不填）", blank=True,
+                                            help_text="标准开票要求按公司（ATS / PTT）自动印出，这里只写这个项目额外的要求")
     notes = models.TextField("其他条件（英文，印在协议上）", blank=True)
     version = models.PositiveSmallIntegerField("版本", default=0, editable=False)
     issued_at = models.DateTimeField("最近出具", null=True, blank=True, editable=False)

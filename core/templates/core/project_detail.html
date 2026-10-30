@@ -84,7 +84,7 @@
 </div>
 </form>
 
-{% if see_ap %}<div class="panel" id="rates"><header><h2>承运商运价协议</h2><small class="muted">一个承运商一份，覆盖这条线路的所有 Load；告诉承运商价格和怎么给我们开票</small>
+{% if can_rates %}<div class="panel" id="rates"><header><h2>承运商运价协议</h2><small class="muted">一个承运商一份，覆盖这条线路的所有 Load；告诉承运商价格和怎么给我们开票</small>
   <div class="actions"><a class="btn sm" href="{% url 'rate_agreement_new' p.pk %}">+ 新建</a></div></header>
   <div class="tablewrap"><table class="t"><thead><tr><th>协议</th><th>承运商</th><th>线路</th><th>车型</th><th class="num">每车</th><th>有效期</th><th>出具</th></tr></thead><tbody>
   {% for a in rate_agreements %}<tr><td><a href="{{ a.get_absolute_url }}"><b>{{ a.number }}</b></a></td><td>{{ a.carrier }}</td>

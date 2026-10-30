@@ -2314,8 +2314,8 @@ class AiUsageTests(Base):
 
 
 class RateAgreementTests(Base):
-    def make(self):
-        self.login(self.ap)
+    def make(self, who=None):
+        self.login(who or self.op)
         r = self.client.post(f"/projects/{self.project.pk}/rates/new/", {"carrier": self.carrier.pk})
         from .models import RateAgreement
 
@@ -2323,55 +2323,68 @@ class RateAgreementTests(Base):
         self.assertRedirects(r, f"/rates/{a.pk}/edit/", fetch_redirect_response=False)
         return a
 
-    def test_one_agreement_per_project_carrier_prefilled_from_charges(self):
+    def test_one_agreement_per_project_carrier_prefilled_and_op_allowed(self):
         from .models import Note
         from . import ratecon
 
-        for who in (self.op, self.ar, self.nobody):
+        for who in (self.ar, self.nobody):
             self.login(who)
-            self.assertEqual(self.client.get(f"/projects/{self.project.pk}/rates/new/").status_code, 403)  # carrier rates are AP data
-        a = self.make()
+            self.assertEqual(self.client.get(f"/projects/{self.project.pk}/rates/new/").status_code, 403)
+        a = self.make(self.op)  # operations issue rate agreements
         self.assertTrue(a.number.startswith(f"RA-{self.project.number}-"))
         base = [ln for ln in a.lines.all() if not ln.optional]
         self.assertEqual([(ln.charge_type, ln.unit_price, ln.unit) for ln in base], [("LINEHAUL", Decimal("6543.00"), "TRUCK")])
         self.assertTrue(a.lines.filter(charge_type="DETENTION", optional=True).exists())
-        self.assertIn("One invoice per truck", a.invoice_instructions)
+        self.assertIn("check-in / check-out", a.requirements)
         page = self.client.get(f"/rates/{a.pk}/")
         self.assertContains(page, "6,543.00")
-        self.assertContains(page, "还没有 AP 邮箱")
+        self.assertContains(page, "invoices@advtransolution.com")
         self.assertNotContains(page, "9,100")
         pdf = self.client.get(f"/rates/{a.pk}/pdf/")
         self.assertTrue(pdf.content.startswith(b"%PDF"))
         a.refresh_from_db()
         self.assertEqual(a.version, 1)
         self.assertTrue(Note.objects.filter(project=self.project, text__contains="出具运价协议").exists())
-        ctx = ratecon.context(a, self.ap)
+        ctx = ratecon.context(a, self.op)
+        text = " ".join(str(f.text) if hasattr(f, "text") else "" for f in ratecon.build(ctx))
+        self.assertIn("does not commit to any number of loads", text)
+        self.assertIn("GPS or ELD", text)
+        self.assertIn("Leo Lai", text)
         to, subject, body = ratecon.email_draft(ctx)
         self.assertIn(a.number, subject)
-        self.assertNotIn("Trina", subject + body)
-        # the Load page links every leg of this carrier to the same agreement
+        self.assertNotIn("Trina", subject + body + text)
         self.assertContains(self.client.get(self.s.get_absolute_url()), a.number)
         self.assertContains(self.client.get(self.project.get_absolute_url()), a.number)
+        # OP still sees no other AP money
+        self.assertNotContains(self.client.get(self.s.get_absolute_url()), "6,543")
 
-    def test_edit_lines_and_ap_email_setting(self):
+    def test_ptt_invoicing_contacts(self):
+        from . import ratecon
+
+        self.project.company = "PTT"
+        self.project.save()
+        a = self.make()
+        lines = " ".join(ratecon.invoicing_lines(ratecon.context(a, self.op)))
+        self.assertIn("invoices@pacifictandt.com", lines)
+        self.assertIn("raymond@pacifictandt.com, andrew@pacifictandt.com", lines)
+        self.assertNotIn("advtransolution", lines)
+
+    def test_edit_lines(self):
         a = self.make()
         a.lines.all().delete()
         fs = {"lines-TOTAL_FORMS": "1", "lines-INITIAL_FORMS": "0", "lines-MIN_NUM_FORMS": "0", "lines-MAX_NUM_FORMS": "1000",
-              "lines-0-charge_type": "LINEHAUL", "lines-0-description": "All-in incl. fuel", "lines-0-unit_price": "24000",
+              "lines-0-charge_type": "LINEHAUL", "lines-0-description": "All-in", "lines-0-unit_price": "24000",
               "lines-0-unit": "TRUCK"}
-        r = self.client.post(f"/rates/{a.pk}/edit/", {"origin": "Carson, CA", "destination": "Nokesville, VA", "capacity": "3 trucks / day",
-                                                     "free_hours": "2", "invoice_instructions": "Send to ap@x.com", **fs})
+        r = self.client.post(f"/rates/{a.pk}/edit/", {"origin": "Carson, CA", "destination": "Nokesville, VA",
+                                                     "capacity": "Carrier states up to 3 trucks per day", "free_hours": "2",
+                                                     "requirements": "Bring 4 straps", **fs})
         self.assertRedirects(r, f"/rates/{a.pk}/", fetch_redirect_response=False)
         a.refresh_from_db()
         self.assertEqual(a.per_truck, Decimal("24000"))
-        from . import ratecon
-
-        with self.settings(TMS_DOC_COMPANIES={**settings.TMS_DOC_COMPANIES, "ATS": {**settings.TMS_DOC_COMPANIES["ATS"], "ap_email": "ap@ats.com"}}):
-            self.assertIn("ap@ats.com", ratecon.default_invoice_instructions(self.project))
 
 
 class RateConAlertTests(Base):
-    def test_missing_agreement_reminds_ap_side_only(self):
+    def test_missing_agreement_reminds_rate_roles(self):
         from . import alerts
         from .models import RateAgreement
 
@@ -2379,7 +2392,8 @@ class RateConAlertTests(Base):
         self.leg.scheduled_pickup = date.today() + timedelta(days=1)
         self.leg.save()
         self.assertIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})
-        self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.op)})  # OP sees no carrier rates
+        self.assertIn("ratecon_missing", {a.rule for a in alerts.collect(self.op)})  # OP issues rate agreements
+        self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.ar)})
         a = RateAgreement.objects.create(project=self.project, carrier=self.carrier, origin="A", destination="B")
         self.assertIn("ratecon_missing", {x.rule for x in alerts.collect(self.mgmt)})  # a draft is not enough
         RateAgreement.objects.filter(pk=a.pk).update(version=1)

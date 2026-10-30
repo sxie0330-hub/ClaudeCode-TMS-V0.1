@@ -63,6 +63,7 @@ from .permissions import (
     can_edit_ops,
     can_edit_shipment_ops,
     can_see_margin,
+    can_manage_rates,
     can_see_side,
     is_management,
     visible_sides,
@@ -309,6 +310,7 @@ def shipment_detail(request, pk):
         "can_edit": can_edit_shipment_ops(user, s),
         "can_edit_docs": can_edit_ops(user),
         "can_edit_ar": can_see_side(user, "AR"),
+        "can_rates": can_manage_rates(user),
         "can_edit_ap": can_see_side(user, "AP"),
     })
 
@@ -671,7 +673,9 @@ def shipment_bol(request, pk):
 # Carrier rate agreement (rate confirmation) per project and carrier. Shows carrier rates: AP-visible roles only.
 # ---------------------------------------------------------------------------
 def _rates_allowed(user):
-    _need(can_see_side(user, Charge.Side.AP))
+    from .permissions import can_manage_rates
+
+    _need(can_manage_rates(user))
 
 
 def rate_agreement_new(request, pk):
@@ -700,6 +704,7 @@ def rate_agreement(request, pk):
     ctx = ratecon.context(a, request.user)
     to, subject, body = ratecon.email_draft(ctx)
     return render(request, "core/rate_agreement.html", {"a": a, "ctx": ctx, "problems": ratecon.problems(ctx), "to": to,
+                                                        "invoicing": ratecon.invoicing_lines(ctx),
                                                         "subject": subject, "body": body, "gmail": quotes.gmail_compose_url(to, subject, body)})
 
 
@@ -830,9 +835,10 @@ def project_detail(request, pk):
         "money": money,
         "kpi": kpi,
         "milestones": _milestones(p, loads),
-        "rate_agreements": list(p.rate_agreements.select_related("carrier").prefetch_related("lines")) if "AP" in sides else [],
+        "can_rates": can_manage_rates(user),
+        "rate_agreements": list(p.rate_agreements.select_related("carrier").prefetch_related("lines")) if can_manage_rates(user) else [],
         "carriers_missing": list(Carrier.objects.filter(legs__shipment__project=p).exclude(rate_agreements__project=p).distinct())
-        if "AP" in sides else [],
+        if can_manage_rates(user) else [],
         "alerts": alert_engine.collect(user, project=p),
         "timeline": audit.project_timeline(p, can_revert=is_management(user)),
         "note_form": NoteForm(),

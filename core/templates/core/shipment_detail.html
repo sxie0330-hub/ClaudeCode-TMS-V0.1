@@ -72,7 +72,7 @@
     <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'leg' %}">+ 添加运输段</a>{% endif %}</div>
   </header>
   <div class="tablewrap"><table class="t">
-    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th>{% if can_edit_ap %}<th>运价确认</th>{% endif %}<th></th></tr></thead>
+    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th>{% if can_rates %}<th>运价协议</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for l in legs %}
       <tr>
@@ -88,7 +88,7 @@
         <td>{{ l.actual_delivery|dash }}</td>
         <td>{% if l.tracking_url %}<a href="{{ l.tracking_url }}" target="_blank" rel="noopener">跟踪</a>{% endif %}</td>
         <td><a href="{% url 'shipment_bol' s.pk %}?leg={{ l.pk }}" target="_blank">{{ l.effective_bol_number }}</a></td>
-        {% if can_edit_ap %}<td>{% if l.rate_agreement %}<a href="{{ l.rate_agreement.get_absolute_url }}">{{ l.rate_agreement.number }}</a>{% if not l.rate_agreement.version %} <small class="lfd-warn">未出具</small>{% endif %}{% elif l.carrier_id and s.project_id %}<a href="{% url 'rate_agreement_new' s.project_id %}?carrier={{ l.carrier_id }}">新建</a>{% else %}—{% endif %}</td>{% endif %}
+        {% if can_rates %}<td>{% if l.rate_agreement %}<a href="{{ l.rate_agreement.get_absolute_url }}">{{ l.rate_agreement.number }}</a>{% if not l.rate_agreement.version %} <small class="lfd-warn">未出具</small>{% endif %}{% elif l.carrier_id and s.project_id %}<a href="{% url 'rate_agreement_new' s.project_id %}?carrier={{ l.carrier_id }}">新建</a>{% else %}—{% endif %}</td>{% endif %}
         <td>{% if can_edit %}<a href="{% url 'child_edit' 'leg' l.pk %}">编辑</a> · <a href="{% url 'child_delete' 'leg' l.pk %}">删除</a>{% endif %}</td>
       </tr>
       {% if l.notes %}<tr><td></td><td colspan="13" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}

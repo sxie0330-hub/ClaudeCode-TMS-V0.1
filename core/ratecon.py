@@ -1,7 +1,9 @@
-"""Carrier Rate Agreement (rate confirmation) for a project: one document per carrier per project, not per load.
+"""Carrier Rate Agreement (rate confirmation) for a project: one text agreement per carrier per project, not per load.
 
-It tells the carrier what we pay (rate per truck plus accessorial schedule) and how to invoice our AP team.
-The customer's name and the AR side never appear. Terms: settings.TMS_RATECON_TERMS (English).
+Party A is our company (ATS or PTT, from the project), Party B the carrier. It states what Party A requires, the rate
+Party B quoted, the proof needed for detention and other accessorials, and how to invoice Party A's AP team (from the
+company's "Carrier Invoice Submission Guidelines"). It never commits Party A to any volume. The customer's name and
+the AR side never appear. Terms: settings.TMS_RATECON_TERMS (English).
 """
 from collections import Counter
 from decimal import Decimal
@@ -9,14 +11,13 @@ from io import BytesIO
 
 from django.conf import settings
 from django.utils import timezone
-from reportlab.lib.enums import TA_RIGHT
+from reportlab.lib.enums import TA_CENTER
 from reportlab.lib.pagesizes import LETTER
 from reportlab.lib.styles import ParagraphStyle
 from reportlab.lib.units import inch
-from reportlab.platypus import KeepTogether, SimpleDocTemplate, Spacer, Table, TableStyle
+from reportlab.platypus import KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
-from .bol import (GREY, LINE, W, P, box_style, company_info, english, fmt_num, logo_image, s_bolno, s_cell, s_cell_b, s_cell_r,
-                  s_label, s_small, s_sub, s_title, s_value, s_value_b)
+from .bol import company_info, english, esc, fmt_num, logo_image
 from .models import Charge, RateLine
 
 ACCESSORIAL = {Charge.Type.DETENTION, Charge.Type.LAYOVER, Charge.Type.TONU, Charge.Type.STORAGE, Charge.Type.TARP,
@@ -24,22 +25,28 @@ ACCESSORIAL = {Charge.Type.DETENTION, Charge.Type.LAYOVER, Charge.Type.TONU, Cha
 UNIT_EN = {RateLine.Unit.TRUCK: "per truck", RateLine.Unit.HOUR: "per hour", RateLine.Unit.DAY: "per day",
            RateLine.Unit.EACH: "each", RateLine.Unit.FLAT: "flat"}
 
+DEFAULT_REQUIREMENTS = "\n".join([
+    "Provide the equipment stated above, in good working condition, with straps / chains / tarps as the load requires.",
+    "Arrive on time for every pickup and delivery appointment; tell Party A at once of any delay, breakdown or exception.",
+    "Load, secure and transport the cargo safely and legally; oversize / overweight loads follow every permit and escort condition.",
+    "Send tracking updates at pickup, at least daily in transit, and on arrival / departure at each stop.",
+    "Have the shipper and consignee sign the BOL / POD with printed name, date and check-in / check-out times.",
+    "Send the signed POD to Party A operations within 24 hours of delivery.",
+])
 
-# ---------------------------------------------------------------------------
-# Defaults for a new agreement
-# ---------------------------------------------------------------------------
-def default_invoice_instructions(project):
-    co = company_info(project)
-    email = co.get("ap_email") or "[AP e-mail]"
-    bill_to = " · ".join(x for x in [co["name"], co.get("address", "")] if x)
-    return "\n".join([
-        f"Bill to: {bill_to}",
-        f"Send invoices by e-mail to: {email}",
-        "One invoice per truck / load. Each invoice must show this Rate Agreement #, our Load #, the container # (if any) and the BOL #.",
-        "Attach the signed BOL / POD. Invoices without a clean signed POD are not processed.",
-        "Accessorials (detention, layover, TONU, etc.) are paid only with the written approval attached and the times on the BOL / POD.",
-        f"Payment terms: {settings.TMS_RATECON_PAYMENT_TERMS}",
-    ])
+# Proof Party B must provide before an accessorial is paid (Party A's invoice guidelines plus detention evidence).
+ACCESSORIAL_PROOF = [
+    "Detention: (1) Party B told Party A operations in writing, while it was happening, that free time had run out; "
+    "(2) the BOL / POD shows check-in and check-out times signed by both the driver and the shipper / consignee; "
+    "(3) a GPS or ELD record shows the truck's arrival and departure at the facility; and (4) Party A operations approved it in writing. "
+    "Time caused by Party B (late arrival, missing equipment, driver hours) is not paid.",
+    "Port detention: the GPS record of the time at the terminal.",
+    "Layover: written approval from Party A operations before it starts.",
+    "Truck ordered not used (TONU): Party A's written cancellation after the truck was dispatched.",
+    "Chassis: in and out Equipment Interchange Receipts (EIRs); chassis split fees: proof the chassis was returned to a different location.",
+    "Weight charges: the scale / weight tickets.",
+    "Any other charge: the communication showing Party A operations approved it.",
+]
 
 
 def _city(loc):
@@ -74,7 +81,7 @@ def prefill(project, carrier):
         if first else "",
         "free_hours": project.detention_free_hours,
         "valid_from": project.start_date,
-        "invoice_instructions": default_invoice_instructions(project),
+        "requirements": DEFAULT_REQUIREMENTS,
     }
     lines = []
     lead = project.leads.order_by("-pk").first() if hasattr(project, "leads") else None
@@ -99,7 +106,7 @@ def prefill(project, carrier):
                           "unit": RateLine.Unit.HOUR if ctype == Charge.Type.DETENTION else (
                               RateLine.Unit.EACH if accessorial else RateLine.Unit.TRUCK)})
     if not any(ln["charge_type"] == Charge.Type.DETENTION for ln in lines):
-        lines.append({"charge_type": Charge.Type.DETENTION, "description": "After free time, with real-time notice and written approval",
+        lines.append({"charge_type": Charge.Type.DETENTION, "description": "After free time, with the proof listed in this agreement",
                       "unit_price": Decimal("0"), "unit": RateLine.Unit.HOUR, "optional": True})
     return data, lines
 
@@ -122,126 +129,133 @@ def context(agreement, user=None):
 
 def problems(ctx):
     """What to fix before sending (Chinese, for the page)."""
-    out, a, c = [], ctx["a"], ctx["carrier"]
+    out, c = [], ctx["carrier"]
     if not (c.mc_number or c.dot_number):
         out.append(f"{c.name} 没有 MC# / DOT#")
     out += [f"{c.name}：{p}" for p in c.compliance_problems()]
     if not ctx["base"] or not any(ln.unit_price for ln in ctx["base"]):
-        out.append("运价表里没有基本运费（每车价格）")
-    if "[AP e-mail]" in a.invoice_instructions:
-        out.append("开票说明里还没有 AP 邮箱：在设置里填 TMS_ATS_AP_EMAIL / TMS_PTT_AP_EMAIL，或直接改开票说明")
+        out.append("运价里没有基本运费（乙方每车报价）")
+    if not ctx["company"].get("ap_email"):
+        out.append("这家公司还没有设置收发票邮箱")
     if any(ln.optional and not ln.unit_price for ln in ctx["extras"]):
-        out.append("有附加费没填单价（如 Detention 每小时多少），不填会印成 “as approved in writing”")
+        out.append("有附加费没填单价（如 Detention 每小时多少），不填会写成 “as approved by Party A in writing”")
     return out
 
 
 def _money(v):
-    return f"${Decimal(v):,.2f}"
+    return f"USD {Decimal(v):,.2f}"
 
 
-def _rate_rows(lines):
-    rows = []
-    for ln in lines:
-        rate = _money(ln.unit_price) if ln.unit_price else "As approved in writing"
-        rows.append([P(ln.get_charge_type_display(), s_cell), P(english(ln.description), s_cell), P(rate, s_cell_r),
-                     P(UNIT_EN.get(ln.unit, ln.unit), s_cell)])
-    return rows
+def _rate_text(ln):
+    rate = f"{_money(ln.unit_price)} {UNIT_EN.get(ln.unit, ln.unit)}" if ln.unit_price else "as approved by Party A in writing"
+    desc = english(ln.description)
+    return f"{ln.get_charge_type_display()}: {rate}" + (f" ({desc})" if desc else "")
+
+
+# Styles for a plain text agreement
+_body = ParagraphStyle("ra_body", fontName="Helvetica", fontSize=9, leading=12)
+_small = ParagraphStyle("ra_small", parent=_body, fontSize=8, leading=10.5, bulletFontSize=8, leftIndent=14, bulletIndent=2)
+_head = ParagraphStyle("ra_head", parent=_body, fontName="Helvetica-Bold", fontSize=9.5, leading=13, spaceBefore=7, spaceAfter=2)
+_title = ParagraphStyle("ra_title", parent=_body, fontName="Helvetica-Bold", fontSize=15, leading=19, alignment=TA_CENTER)
+_sub = ParagraphStyle("ra_sub", parent=_body, alignment=TA_CENTER)
+_item = ParagraphStyle("ra_item", parent=_body, leftIndent=14, bulletIndent=4)
+
+
+def _p(text, style=_body):
+    return Paragraph(esc(text), style)
+
+
+def _items(lines, style=_item):
+    return [Paragraph(esc(x), style, bulletText="•") for x in lines if x and x.strip()]
+
+
+def invoicing_lines(ctx):
+    co, a = ctx["company"], ctx["a"]
+    out = [
+        f"Send every invoice to: {co.get('ap_email') or '—'}. The e-mail subject must include the invoice number. All documents in PDF.",
+        "One invoice per load. The invoice must quote this agreement number, Party A's Load # and the container / batch number "
+        "(if any), and must match the supporting documents.",
+        "Attach the Bill of Lading / Proof of Delivery, clear and legible, with the delivery signature, printed name, and delivery "
+        "date and time, plus the supporting documents for any accessorial (section 5). Invoice and documents may be one combined "
+        "PDF or clearly named separate files.",
+        "For high-volume or storage billing, also attach a summary Excel sheet listing invoice number, reference number "
+        "(container or batch) and invoice amount.",
+        "All documents must be clearly scanned and fully legible, and all reference numbers must be the same on the invoice, POD "
+        "and supporting documents. Incomplete or non-compliant invoices are returned unpaid and may delay payment.",
+        f"Payment terms: {settings.TMS_RATECON_PAYMENT_TERMS}",
+    ]
+    if co.get("statements_to"):
+        out.append("Statements: " + ", ".join(co["statements_to"]) + ".")
+    if co.get("ap_contact"):
+        out.append(f"Questions: {co['ap_contact']}.")
+    extra = [x for x in english(a.invoice_instructions, drop_lines=True).split("\n") if x.strip()]
+    return out + extra
 
 
 def build(ctx):
-    a, co, carrier = ctx["a"], ctx["company"], ctx["carrier"]
+    a, co, carrier, project = ctx["a"], ctx["company"], ctx["carrier"], ctx["project"]
     story = []
-    logo = logo_image(co["logo_path"]) if co["logo_path"] else P(co["name"], s_title)
-    company = " · ".join(x for x in [co["name"], co["address"], co["phone"]] if x)
-    head = Table([[
-        logo,
-        [P("RATE CONFIRMATION", s_title), P("Carrier Rate Agreement — covers every load of this lane", s_sub), P(company, s_sub)],
-        [P("Agreement #", ParagraphStyle("rcl", parent=s_label, alignment=TA_RIGHT)), P(a.number, s_bolno),
-         P(f"Date: {ctx['today'].strftime('%m/%d/%Y')}" + (f" · Rev {ctx['version']}" if ctx["version"] > 1 else ""),
-           ParagraphStyle("rcd", parent=s_cell, alignment=TA_RIGHT))],
-    ]], colWidths=[1.9 * inch, W - 1.9 * inch - 2.1 * inch, 2.1 * inch])
-    head.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "MIDDLE"), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
-    story += [head, Spacer(1, 6)]
+    if co["logo_path"]:
+        story += [logo_image(co["logo_path"], max_w=1.9 * inch, max_h=0.7 * inch), Spacer(1, 4)]
+    story += [_p("CARRIER RATE CONFIRMATION AND AGREEMENT", _title),
+              _p(f"Agreement No. {a.number}" + (f"  ·  Revision {ctx['version']}" if ctx["version"] > 1 else "")
+                 + f"  ·  Date {ctx['today'].strftime('%m/%d/%Y')}", _sub), Spacer(1, 6)]
 
+    party_a = ", ".join(x for x in [co["name"], co["address"], co["phone"]] if x)
     disp_name, disp_email = ctx["dispatcher"]
-    broker = [P("BROKER", s_label), P(co["name"], s_value_b)]
-    if co["address"]:
-        broker.append(P(co["address"], s_cell))
-    if co["phone"]:
-        broker.append(P(f"Phone: {co['phone']}", s_cell))
-    if disp_name:
-        broker.append(P(f"Contact: {disp_name}" + (f" · {disp_email}" if disp_email and disp_email != disp_name else ""), s_cell))
-    ids = " · ".join(x for x in [f"MC# {carrier.mc_number}" if carrier.mc_number else "", f"USDOT# {carrier.dot_number}" if carrier.dot_number else "",
-                                 f"SCAC {carrier.scac}" if carrier.scac else ""] if x)
-    carr = [P("CARRIER", s_label), P(carrier.name, s_value_b)]
-    if ids:
-        carr.append(P(ids, s_cell))
-    contact = " · ".join(x for x in [english(carrier.contact_name), carrier.contact_phone, carrier.contact_email] if x)
-    if contact:
-        carr.append(P(f"Contact: {contact}", s_cell))
-    t = Table([[broker, carr]], colWidths=[W / 2, W / 2])
-    t.setStyle(box_style())
-    story += [t, Spacer(1, 5)]
+    ids = ", ".join(x for x in [f"MC# {carrier.mc_number}" if carrier.mc_number else "",
+                                f"USDOT# {carrier.dot_number}" if carrier.dot_number else ""] if x)
+    contact = ", ".join(x for x in [english(carrier.contact_name), carrier.contact_phone, carrier.contact_email] if x)
+    story += [_p("1. Parties", _head),
+              _p(f"Party A (broker): {party_a}" + (f". Operations contact: {disp_name}" + (f", {disp_email}" if disp_email and disp_email != disp_name else "") if disp_name else "") + "."),
+              _p(f"Party B (carrier): {carrier.name}" + (f", {ids}" if ids else "") + (f". Contact: {contact}" if contact else "") + ".")]
 
-    valid = " – ".join(x for x in [a.valid_from.strftime("%m/%d/%Y") if a.valid_from else "",
-                                   a.valid_until.strftime("%m/%d/%Y") if a.valid_until else "until the project is complete"] if x)
-    lane = [
-        [P("Lane", s_label), P(f"{english(a.origin)}  →  {english(a.destination)}", s_value_b), P("Project ref", s_label), P(ctx["project"].number, s_value_b)],
-        [P("Commodity", s_label), P(english(a.commodity) or "—", s_value), P("Equipment", s_label), P(english(a.equipment) or "—", s_value_b)],
-        [P("Capacity", s_label), P(english(a.capacity) or "As tendered by the broker", s_value), P("Valid", s_label), P(valid, s_value)],
-    ]
-    t = Table(lane, colWidths=[0.95 * inch, W / 2 - 0.95 * inch + 0.6 * inch, 0.95 * inch, W / 2 - 0.95 * inch - 0.6 * inch])
-    t.setStyle(box_style())
-    story += [t, Spacer(1, 5)]
+    valid = (f"from {a.valid_from.strftime('%m/%d/%Y')} " if a.valid_from else "") + (
+        f"until {a.valid_until.strftime('%m/%d/%Y')}" if a.valid_until else "until the project is complete or this agreement is ended under section 7")
+    scope = [f"Project: {project.number}", f"Lane: {english(a.origin)} to {english(a.destination)}"]
+    if a.commodity:
+        scope.append(f"Commodity: {english(a.commodity)}")
+    if a.equipment:
+        scope.append(f"Equipment: {english(a.equipment)}")
+    scope.append(f"Term: {valid}")
+    story += [_p("2. Project and lane", _head)] + _items(scope)
 
-    head_row = [[P(h, s_label) for h in ("Charge", "Description", "Rate (USD)", "Unit")]]
-    widths = [1.5 * inch, W - 1.5 * inch - 1.4 * inch - 1.1 * inch, 1.4 * inch, 1.1 * inch]
-    rows = head_row + (_rate_rows(ctx["base"]) or [[P("—", s_cell), P("Rate to be confirmed in writing", s_cell), P("", s_cell), P("", s_cell)]])
-    if ctx["per_truck"]:
-        rows.append([P("", s_cell), P("ALL-IN RATE PER TRUCK", s_cell_b), P(_money(ctx["per_truck"]), ParagraphStyle("pt", parent=s_cell_b, alignment=TA_RIGHT, fontSize=10.5, leading=13)),
-                     P("per truck", s_cell_b)])
-    t = Table(rows, colWidths=widths, repeatRows=1)
-    t.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
-    story += [KeepTogether([P("RATE", s_label), t]), Spacer(1, 4)]
-    extra = [P(f"Free time: {fmt_num(a.free_hours)} hours at each pickup and delivery. The accessorials below are paid only when reported "
-               "while they happen and approved in writing by the broker.", s_cell)]
-    if ctx["extras"]:
-        t = Table(head_row + _rate_rows(ctx["extras"]), colWidths=widths)
-        t.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY)]))
-        extra.append(t)
-    story += [KeepTogether([P("ACCESSORIALS", s_label)] + extra), Spacer(1, 5)]
+    reqs = [x for x in english(a.requirements, drop_lines=True).split("\n") if x.strip()]
+    story += [_p("3. What Party A requires of Party B", _head)] + _items(reqs or DEFAULT_REQUIREMENTS.split("\n"))
 
-    def boxed(title, text):
-        lines = [x for x in english(text, drop_lines=True).split("\n")]
-        tb = Table([[P(title, s_label)]] + [[P(x or " ", s_cell)] for x in lines], colWidths=[W])
-        tb.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, LINE), ("BACKGROUND", (0, 0), (-1, 0), GREY),
-                                ("LEFTPADDING", (0, 0), (-1, -1), 4), ("TOPPADDING", (0, 0), (-1, -1), 1.5),
-                                ("BOTTOMPADDING", (0, 0), (-1, -1), 1.5)]))
-        return tb
+    vol = ("Party A does not commit to any number of loads. Party A tenders loads one at a time, at its sole discretion, by written "
+           "load tender; each tender states the Load #, pickup / delivery appointments and BOL. Party A may assign any load to another "
+           "carrier at any time.")
+    if a.capacity.strip():
+        vol += f" Party B states its capacity as: {english(a.capacity)}. This is Party B's statement only and does not oblige Party A to tender that volume."
+    story += [_p("4. Volume", _head), _p(vol)]
 
-    story += [boxed("HOW TO INVOICE US", a.invoice_instructions or default_invoice_instructions(ctx["project"])), Spacer(1, 5)]
+    rate_lines = [_rate_text(ln) for ln in ctx["base"]] or ["Rate to be confirmed by Party A in writing"]
+    if ctx["per_truck"] and len(ctx["base"]) > 1:
+        rate_lines.append(f"Total per truck: {_money(ctx['per_truck'])}")
+    acc = [f"Free time: {fmt_num(a.free_hours)} hours at each pickup and each delivery."] + [_rate_text(ln) for ln in ctx["extras"]]
+    story += [_p("5. Rate quoted by Party B", _head), _p("Party B quoted, and Party A accepts, the following rate for each load. "
+                                                            "It is all-in unless an item is listed below."),
+              *_items(rate_lines),
+              _p("Accessorials are paid only with the proof below and only when the charge is not caused by Party B:", _body),
+              *_items(acc + ACCESSORIAL_PROOF)]
+
+    story += [_p("6. How to invoice Party A", _head)] + _items(invoicing_lines(ctx))
     if a.notes.strip():
-        story += [boxed("OTHER CONDITIONS", a.notes), Spacer(1, 5)]
-    ops = ("Each load is tendered by e-mail with its Load #, pickup / delivery appointments and BOL. Send tracking updates at pickup, "
-           "daily in transit, and on arrival / departure at each stop. Oversize / overweight loads follow every permit condition.")
-    story += [boxed("DISPATCH", ops), Spacer(1, 5)]
-
-    terms = [P("TERMS AND CONDITIONS", s_label)] + [P(f"{i}. {x}", s_small) for i, x in enumerate(settings.TMS_RATECON_TERMS, 1)]
-    t = Table([[x] for x in terms], colWidths=[W])
-    t.setStyle(TableStyle([("BOX", (0, 0), (-1, -1), 0.8, LINE), ("LEFTPADDING", (0, 0), (-1, -1), 4),
-                           ("TOPPADDING", (0, 0), (-1, -1), 1), ("BOTTOMPADDING", (0, 0), (-1, -1), 1)]))
-    story += [t, Spacer(1, 6)]
+        story += [_p("Other conditions", _head)] + _items([x for x in english(a.notes, drop_lines=True).split("\n") if x.strip()])
+    story += [_p("7. Terms", _head)] + [Paragraph(esc(x), _small, bulletText=f"{i}.") for i, x in enumerate(settings.TMS_RATECON_TERMS, 1)]
+    story += [Spacer(1, 4), _p("This agreement covers every load Party A tenders to Party B on this lane while it is valid. A revised "
+                               "agreement replaces this one from its date. Party B signs and returns it before the first pickup; "
+                               "dispatching a tendered load also confirms acceptance.", _small)]
 
     sig = Table([
-        [P("ACCEPTED BY CARRIER", s_label), P("ISSUED BY BROKER", s_label)],
-        [P("Signature: ______________________________", s_value), P(co["name"], s_value_b)],
-        [P("Printed name: ___________________________", s_value), P(f"By: {disp_name or '______________________'}", s_value)],
-        [P("Date: _____________   MC#: ______________", s_value), P(f"Date: {ctx['today'].strftime('%m/%d/%Y')}", s_value)],
-    ], colWidths=[W / 2, W / 2])
-    sig.setStyle(box_style([("BACKGROUND", (0, 0), (-1, 0), GREY), ("INNERGRID", (0, 1), (-1, -1), 0, LINE)]))
-    story.append(KeepTogether(sig))
-    story.append(P("This agreement applies to every load the broker tenders to the carrier on this lane while it is valid. "
-                   "A revised agreement replaces this one from its date. Please sign and return before the first pickup.", s_small))
+        [_p(f"Party A: {co['name']}"), _p(f"Party B: {carrier.name}")],
+        [_p("Signature: ______________________________"), _p("Signature: ______________________________")],
+        [_p(f"Name / title: {disp_name or '__________________________'}"), _p("Name / title: __________________________")],
+        [_p(f"Date: {ctx['today'].strftime('%m/%d/%Y')}"), _p("Date: ___________________")],
+    ], colWidths=[3.6 * inch, 3.6 * inch])
+    sig.setStyle(TableStyle([("VALIGN", (0, 0), (-1, -1), "TOP"), ("TOPPADDING", (0, 0), (-1, -1), 5), ("LEFTPADDING", (0, 0), (-1, -1), 0)]))
+    story += [Spacer(1, 10), KeepTogether(sig)]
     return story
 
 
@@ -252,13 +266,13 @@ class _Doc(SimpleDocTemplate):
         c = self.canv
         c.saveState()
         c.setFont("Helvetica", 7)
-        c.drawRightString(self.pagesize[0] - self.rightMargin, self.bottomMargin * 0.45, f"Rate Agreement {self.number}  ·  Page {c.getPageNumber()}")
+        c.drawRightString(self.pagesize[0] - self.rightMargin, self.bottomMargin * 0.45, f"Agreement {self.number}  ·  Page {c.getPageNumber()}")
         c.restoreState()
 
 
 def render(ctx):
     buf = BytesIO()
-    doc = _Doc(buf, pagesize=LETTER, leftMargin=0.4 * inch, rightMargin=0.4 * inch, topMargin=0.4 * inch, bottomMargin=0.45 * inch,
+    doc = _Doc(buf, pagesize=LETTER, leftMargin=0.65 * inch, rightMargin=0.65 * inch, topMargin=0.5 * inch, bottomMargin=0.55 * inch,
                title=f"Rate Confirmation {ctx['a'].number}", author=ctx["company"]["name"])
     doc.number = ctx["a"].number
     doc.build(build(ctx))
@@ -269,15 +283,14 @@ def email_draft(ctx):
     """(to, subject, body) for a Gmail draft. A person attaches the PDF and presses Send."""
     a, c = ctx["a"], ctx["carrier"]
     subject = f"Rate Confirmation {a.number} - {english(a.origin)} to {english(a.destination)}"
-    rate = f"{_money(ctx['per_truck'])} per truck all-in" if ctx["per_truck"] else "see attached"
+    rate = f"{_money(ctx['per_truck'])} per truck all-in" if ctx["per_truck"] else "the rate you quoted"
     body = "\n".join([
         f"Hi {english(c.contact_name) if c.contact_name else 'team'},",
         "",
         f"Attached is our Rate Confirmation {a.number} for {english(a.origin)} to {english(a.destination)}"
-        + (f" ({english(a.equipment)})" if a.equipment else "") + f": {rate}.",
-        "It covers every load we tender to you on this lane, and explains how to invoice our AP team.",
-        "",
-        "Please sign and return it before the first pickup.",
+        + (f" ({english(a.equipment)})" if a.equipment else "") + f", at {rate}.",
+        "It covers the loads we tender to you on this lane; each load is confirmed separately by our load tender.",
+        "Please read the detention proof and invoicing requirements, then sign and return it before the first pickup.",
         "",
         "Thank you,",
         ctx["dispatcher"][0] or ctx["company"]["name"],
