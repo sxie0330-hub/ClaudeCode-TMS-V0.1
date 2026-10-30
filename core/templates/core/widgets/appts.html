@@ -1,2 +1,2 @@
-<div class="wg-big">{{ d.count }}</div><div class="wg-sub">今天和明天的提货 / 送货</div>
+<a class="wg-big wg-num" href="{{ d.link }}" title="打开这些 Load">{{ d.count }}</a><div class="wg-sub">今天和明天的提货 / 送货 · <a href="{{ d.link }}">查看全部 →</a></div>
 {% if size != "S" %}{% for leg in d.items %}<div class="wg-li"><a href="{{ leg.shipment.get_absolute_url }}"><b>{{ leg.shipment.container_number|default:leg.shipment.number }}</b></a><span class="wg-sub">{% if leg.scheduled_pickup and not leg.actual_pickup %}提货 {{ leg.scheduled_pickup|date:"m-d" }} {{ leg.origin|default:"" }}{% else %}送货 {{ leg.scheduled_delivery|date:"m-d" }} {{ leg.destination|default:"" }}{% endif %}</span></div>{% endfor %}{% endif %}

@@ -1,2 +1,2 @@
-{% load tms %}<div class="wg-big" style="color:var(--warn)">{{ d.count }}</div><div class="wg-sub">待审 / 争议中 · 合计 {{ d.total|money }}</div>
+{% load tms %}<a class="wg-big wg-num" style="color:var(--warn)" href="{{ d.link }}" title="打开这些 Load">{{ d.count }}</a><div class="wg-sub">待审 / 争议中 · 合计 {{ d.total|money }} · <a href="{{ d.link }}">查看全部 →</a></div>
 {% if size != "S" %}{% for c in d.items %}<div class="wg-sub"><a href="{{ c.shipment.get_absolute_url }}#charges">{{ c.shipment.container_number|default:c.shipment.number }}</a> {{ c.get_charge_type_display }} {{ c.amount|money }}</div>{% endfor %}{% endif %}

@@ -244,3 +244,5 @@ tr.chosen td { background: var(--ok-bg); }
 .oog{padding:4px 12px 10px;border-top:1px solid var(--line,#e5e7eb)}
 .oog h3{font-size:.92rem;margin:10px 0 4px}
 .oog p{margin:4px 0}
+a.wg-num { display: inline-block; color: inherit; text-decoration: none; }
+a.wg-num:hover { color: var(--accent, #1d4ed8); text-decoration: underline; }

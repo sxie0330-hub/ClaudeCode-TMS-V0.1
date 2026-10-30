@@ -7,6 +7,7 @@ import uuid
 from datetime import timedelta
 from decimal import Decimal
 
+from django.conf import settings
 from django.db.models import Count, Q, Sum
 from django.utils import timezone
 
@@ -153,6 +154,17 @@ def _project_rows(user, config):
     return {"columns": [(c, dict(PROJECT_COLUMNS)[c]) for c in cols], "rows": rows, "scope": config.get("scope", "mine")}
 
 
+def _link(scope, **params):
+    """Load list filtered to what a number tile counts."""
+    from urllib.parse import urlencode
+
+    from django.urls import reverse
+
+    if scope == "mine":
+        params["mine"] = "1"
+    return reverse("shipment_list") + "?" + urlencode(params)
+
+
 def widget_data(user, w, todo=None):
     kind, cfg = w["type"], w.get("config", {})
     today = timezone.localdate()
@@ -181,34 +193,40 @@ def widget_data(user, w, todo=None):
         ids = cfg.get("loads") or []
         return {"loads": list(Shipment.objects.filter(pk__in=ids).select_related("project").prefetch_related("legs__carrier"))}
     if kind == "lfd":
-        qs = _loads(user, scope).filter(lfd__lte=today + timedelta(days=3), status__in=alert_engine.NOT_PICKED)
-        return {"count": qs.count(), "items": list(qs.order_by("lfd")[:5])}
+        qs = _loads(user, scope).filter(lfd__lte=today + timedelta(days=settings.TMS_LFD_WARNING_DAYS), status__in=alert_engine.NOT_PICKED)
+        return {"count": qs.count(), "items": list(qs.order_by("lfd")[:5]), "link": _link(scope, lfd="soon", sort="lfd"),
+                "days": settings.TMS_LFD_WARNING_DAYS}
     if kind == "appts":
         days = [today, today + timedelta(days=1)]
         legs = Leg.objects.filter(shipment__in=_loads(user, scope)).filter(
             Q(scheduled_pickup__in=days, actual_pickup__isnull=True) | Q(scheduled_delivery__in=days, actual_delivery__isnull=True)
         ).select_related("shipment", "origin", "destination", "carrier")
         legs = list(legs[:30])
-        return {"count": len(legs), "items": legs[:8], "today": today}
+        return {"count": len(legs), "items": legs[:8], "today": today, "link": _link(scope, appt="soon")}
     if kind == "pod_pending":
-        qs = _loads(user, scope).filter(status=Status.DELIVERED, pod_received__isnull=True)
-        return {"count": qs.count(), "projects": qs.values("project").distinct().count(), "items": list(qs.select_related("project")[:6])}
+        qs = _loads(user, scope).filter(status=Status.DELIVERED, pod_uploaded_at__isnull=True, pod_waived_reason="")
+        return {"count": qs.count(), "received": qs.filter(pod_received__isnull=False).count(),
+                "projects": qs.values("project").distinct().count(), "items": list(qs.select_related("project")[:6]),
+                "link": _link(scope, pod="open")}
     if kind == "in_transit":
         qs = _loads(user, scope).filter(status=Status.IN_TRANSIT)
-        return {"count": qs.count(), "items": list(qs.select_related("project").prefetch_related("legs__carrier")[:8])}
+        return {"count": qs.count(), "items": list(qs.select_related("project").prefetch_related("legs__carrier")[:8]),
+                "link": _link(scope, status=Status.IN_TRANSIT)}
     if kind == "in_yard":
         qs = _loads(user, scope).filter(status=Status.IN_YARD)
-        return {"count": qs.count(), "items": list(qs.select_related("project")[:8])}
+        return {"count": qs.count(), "items": list(qs.select_related("project")[:8]), "link": _link(scope, status=Status.IN_YARD)}
     if kind == "extra_charges":
         qs = Charge.objects.filter(shipment__in=_loads(user, scope), side="AP", charge_type__in=alert_engine.ACCESSORIAL,
                                    state__in=[Charge.State.OPEN, Charge.State.DISPUTED])
-        return {"count": qs.count(), "total": qs.aggregate(t=Sum("amount"))["t"] or 0, "items": list(qs.select_related("shipment", "carrier")[:6])}
+        return {"count": qs.count(), "total": qs.aggregate(t=Sum("amount"))["t"] or 0, "items": list(qs.select_related("shipment", "carrier")[:6]),
+                "link": _link(scope, extra="open")}
     if kind == "ap_invoice":
         qs = Charge.objects.filter(shipment__in=_loads(user, scope).filter(status=Status.DELIVERED), side="AP", state=Charge.State.OPEN, invoice_number="")
-        return {"count": qs.values("shipment").distinct().count()}
+        return {"count": qs.values("shipment").distinct().count(), "link": _link(scope, ap="noinvoice")}
     if kind == "ar_uninvoiced":
         qs = Charge.objects.filter(shipment__in=_loads(user, scope).filter(status=Status.DELIVERED), side="AR", state=Charge.State.OPEN)
-        return {"count": qs.values("shipment").distinct().count(), "total": qs.aggregate(t=Sum("amount"))["t"] or 0}
+        return {"count": qs.values("shipment").distinct().count(), "total": qs.aggregate(t=Sum("amount"))["t"] or 0,
+                "link": _link(scope, ar="open")}
     if kind == "margin_month":
         start = today.replace(day=1)
         loads = Shipment.objects.filter(legs__actual_delivery__gte=start, status__in=[Status.DELIVERED, Status.CLOSED]).distinct()
@@ -231,7 +249,10 @@ def widget_data(user, w, todo=None):
         req = type("R", (), {"GET": q})()
         qs = _shipment_filters(req, Shipment.objects.select_related("project", "customer").prefetch_related("legs__carrier"))
         limit = {"M": 3, "L": 7, "W": 4, "XL": 10}.get(w["size"], 5)
-        return {"title": cfg.get("title") or "保存的筛选", "count": qs.count(), "items": list(qs[:limit]), "query": cfg.get("query", "")}
+        from django.urls import reverse
+
+        return {"title": cfg.get("title") or "保存的筛选", "count": qs.count(), "items": list(qs[:limit]), "query": cfg.get("query", ""),
+                "link": reverse("shipment_list") + "?" + cfg.get("query", "")}
     return {}
 
 

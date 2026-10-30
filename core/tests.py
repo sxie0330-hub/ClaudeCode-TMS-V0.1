@@ -639,6 +639,44 @@ class DashboardTests(Base):
         self.assertIn("watched_loads", kinds)
         self.assertContains(self.client.get(reverse("home")), self.s.container_number)
 
+    def test_number_tiles_link_to_the_same_loads(self):
+        from . import widgets
+        from .models import Shipment
+
+        self.project.owners.add(self.op)
+        Leg.objects.filter(pk=self.leg.pk).update(actual_pickup=date.today())
+        self.leg.refresh_from_db()
+        self.leg.save()
+        other = Shipment.objects.create(customer=self.customer, container_number="OTHU0000001")  # not my project
+        Leg.objects.create(shipment=other, sequence=1, origin=self.yard, destination=self.site, actual_pickup=date.today())
+        other.save()
+        d = widgets.widget_data(self.op, {"type": "in_transit", "size": "S", "config": {}})
+        self.assertEqual(d["count"], 1)
+        self.assertIn("status=TRANSIT", d["link"])
+        self.assertIn("mine=1", d["link"])
+        self.login(self.op)
+        r = self.client.get(d["link"])
+        self.assertContains(r, "CYMU2523606")
+        self.assertNotContains(r, "OTHU0000001")
+        self.assertContains(r, "我负责的项目")
+        self.assertContains(r, "清除筛选")
+        home = self.client.get("/")
+        self.assertContains(home, 'class="wg-big wg-num"')
+
+        # POD tile: delivered, not yet uploaded
+        Leg.objects.filter(pk=self.leg.pk).update(actual_delivery=date.today())
+        self.leg.refresh_from_db()
+        self.leg.save()
+        self.s.pod_received = date.today()
+        self.s.save()
+        d = widgets.widget_data(self.op, {"type": "pod_pending", "size": "S", "config": {}})
+        self.assertEqual((d["count"], d["received"]), (1, 1))
+        self.assertContains(self.client.get(d["link"]), "CYMU2523606")
+        self.s.pod_uploaded_at = timezone.now()
+        self.s.save()
+        self.assertEqual(widgets.widget_data(self.op, {"type": "pod_pending", "size": "S", "config": {}})["count"], 0)
+        self.assertNotContains(self.client.get(d["link"]), "CYMU2523606")
+
     def test_widget_config(self):
         from . import widgets
         self.login(self.mgmt)
