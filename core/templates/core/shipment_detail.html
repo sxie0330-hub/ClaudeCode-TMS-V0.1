@@ -7,7 +7,7 @@
   <h1>{{ s.container_number|default:s.number }}</h1>
   {% if s.container_number %}<span class="b">{{ s.number }}</span>{% endif %}
   <span class="b b-{{ s.status }}">{{ s.get_status_display }}</span>
-  {% if s.status == 'DELIVERED' or s.status == 'CLOSED' %}{% if s.pod_received %}<span class="b b-DELIVERED">POD 已收</span>{% else %}<span class="b b-HOLD">POD 未收</span>{% endif %}{% endif %}
+  {% if s.status == 'DELIVERED' or s.status == 'CLOSED' %}{% with st=s.pod_state %}{% if st == 'UPLOADED' %}<span class="b b-DELIVERED">POD 已上传</span>{% elif st == 'WAIVED' %}<span class="b">无需 POD</span>{% elif st == 'RECEIVED' %}<span class="b b-HOLD">POD 已收 · 待上传</span>{% else %}<span class="b b-HOLD">POD 未收</span>{% endif %}{% endwith %}{% endif %}
   <span class="muted">{{ s.customer.name }}</span>
   <div class="actions">
     <form method="post" action="{% url 'watch_load' s.pk %}" class="inline">{% csrf_token %}<button>关注</button></form>
@@ -155,7 +155,32 @@
       <div class="actions">{% if can_edit_docs %}<a class="btn sm" href="{% url 'shipment_docs' s.pk %}">编辑链接 / 还空</a>{% endif %}</div>
     </header>
     <div class="body"><dl class="kv">
-      <dt>POD</dt><dd>{% if s.pod_received %}<b style="color:var(--ok)">已收 {{ s.pod_received }}</b>{% else %}<span class="muted">未收</span>{% endif %}{% if s.pod_check %} · {{ s.get_pod_check_display }}{% endif %}{% if s.pod_link %} · <a href="{{ s.pod_link }}" target="_blank" rel="noopener">打开</a>{% endif %}</dd>
+      <dt>POD</dt><dd>{% with st=s.pod_state %}
+        {% if st == 'UPLOADED' %}<b style="color:var(--ok)">已上传</b> {{ s.pod_uploaded_at|date:"m-d H:i" }}{% if s.pod_uploaded_by %} · {{ s.pod_uploaded_by.get_full_name|default:s.pod_uploaded_by.email }}{% endif %}{% if s.pod_received %}<br><small class="muted">签收 / 收到 {{ s.pod_received }}</small>{% endif %}
+        {% elif st == 'WAIVED' %}<b>无需 POD</b> <small class="muted">{{ s.pod_waived_reason }}</small>
+        {% elif st == 'RECEIVED' %}<b class="lfd-warn">已收 {{ s.pod_received }}，待核对上传</b>
+        {% else %}<span class="muted">未收</span>{% endif %}
+        {% if s.pod_check %} · {{ s.get_pod_check_display }}{% endif %}{% if s.pod_link %} · <a href="{{ s.pod_link }}" target="_blank" rel="noopener">打开</a>{% endif %}
+        {% if can_edit_docs %}
+          {% if st == 'RECEIVED' or st == 'MISSING' %}
+          <form method="post" action="{% url 'shipment_pod' s.pk %}" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:8px">{% csrf_token %}
+            <input type="hidden" name="action" value="uploaded">
+            <input name="pod_link" type="url" placeholder="存放位置链接（可不填，如 OneDrive）" style="flex:1;min-width:200px" value="{{ s.pod_link }}">
+            <button class="sm primary" type="submit">POD 已核对并上传</button></form>
+          {% elif st == 'UPLOADED' %}
+          <form method="post" action="{% url 'shipment_pod' s.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="undo"><button class="sm" type="submit">撤销已上传</button></form>
+          {% endif %}
+          {% if perm.mgmt %}
+            {% if st == 'WAIVED' %}
+            <form method="post" action="{% url 'shipment_pod' s.pk %}" class="inline">{% csrf_token %}<input type="hidden" name="action" value="unwaive"><button class="sm" type="submit">取消“无需 POD”</button></form>
+            {% elif st != 'UPLOADED' %}
+            <details style="margin-top:6px"><summary class="muted" style="font-size:12.5px">这个 Load 不需要 POD？（管理层）</summary>
+              <form method="post" action="{% url 'shipment_pod' s.pk %}" style="display:flex;gap:6px;margin-top:6px">{% csrf_token %}
+                <input type="hidden" name="action" value="waive"><input name="reason" placeholder="原因，如：客户不要求 / 内部转运" style="flex:1" required>
+                <button class="sm" type="submit">设为无需 POD</button></form></details>
+            {% endif %}
+          {% endif %}
+        {% endif %}{% endwith %}</dd>
       {% if s.empty_return_due %}<dt>还空期限</dt><dd>{{ s.empty_return_due }}</dd>{% endif %}
       <dt>照片</dt><dd>{% if s.photos_link %}<a href="{{ s.photos_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>
       <dt>检验报告</dt><dd>{% if s.inspection_link %}<a href="{{ s.inspection_link }}" target="_blank" rel="noopener">打开</a>{% else %}—{% endif %}</dd>

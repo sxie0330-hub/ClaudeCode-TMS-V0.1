@@ -6,6 +6,7 @@ from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.test import TestCase, override_settings
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import CargoLine, Carrier, Charge, Customer, Leg, Location, Profile, Project, Role, Shipment, Status, YardStay
 
@@ -464,7 +465,89 @@ class ProjectStatusTests(Base):
         self.s.save()
         rows = {m["name"]: m for m in _milestones(self.project, list(self.project.shipments.prefetch_related("legs")))}
         self.assertTrue(rows["末车送达"]["done"])
-        self.assertEqual(rows["POD 收齐"]["date"], date(2026, 1, 6))
+        self.assertFalse(rows["POD 上传齐"]["done"])  # seen in an e-mail, not yet filed by a person
+        self.assertIn("邮件里已收 1", rows["POD 上传齐"]["note"])
+        self.assertTrue(rows["POD 上传齐"]["warn"])
+        self.s.pod_uploaded_at = timezone.now()
+        self.s.save()
+        rows = {m["name"]: m for m in _milestones(self.project, list(self.project.shipments.prefetch_related("legs")))}
+        self.assertTrue(rows["POD 上传齐"]["done"])
+
+
+class PodUploadTests(Base):
+    def deliver(self, s):
+        leg = s.legs.first() or Leg.objects.create(shipment=s, sequence=1, origin=self.yard, destination=self.site, carrier=self.carrier)
+        Leg.objects.filter(pk=leg.pk).update(actual_pickup=date(2026, 10, 27), actual_delivery=date(2026, 10, 28))
+        leg.refresh_from_db()
+        leg.save()
+        s.refresh_from_db()
+        self.assertEqual(s.status, "DELIVERED")
+        return s
+
+    def test_upload_gates_close_and_project_done(self):
+        from .models import Project
+
+        s = self.deliver(self.s)
+        s.pod_received = date(2026, 10, 28)  # AI saw it in an e-mail
+        s.save()
+        self.assertEqual(s.pod_state, "RECEIVED")
+        self.login(self.mgmt)
+        self.client.post(f"/shipments/{s.pk}/close/")
+        s.refresh_from_db()
+        self.assertIsNone(s.closed_at)  # not filed yet
+        r = self.client.post(f"/projects/{self.project.pk}/edit/", {**self.project_form(), "manual_status": "DONE"})
+        self.assertContains(r, "POD 没确认上传")
+        self.project.refresh_from_db()
+        self.assertNotEqual(self.project.status, Project.Status.DONE)
+
+        self.login(self.op)
+        self.client.post(f"/shipments/{s.pk}/pod/", {"action": "uploaded", "pod_link": "https://onedrive.live.com/x"})
+        s.refresh_from_db()
+        self.assertEqual((s.pod_state, s.pod_uploaded_by, s.pod_link, s.pod_check), ("UPLOADED", self.op, "https://onedrive.live.com/x", "OK"))
+        self.login(self.mgmt)
+        self.client.post(f"/shipments/{s.pk}/close/")
+        s.refresh_from_db()
+        self.assertIsNotNone(s.closed_at)
+        self.client.post(f"/projects/{self.project.pk}/edit/", {**self.project_form(), "manual_status": "DONE"})
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.status, Project.Status.DONE)
+
+    def project_form(self):
+        p = self.project
+        return {"company": p.company, "customer": p.customer_id, "name": p.name, "detention_free_hours": "2", "manual_status": ""}
+
+    def test_bulk_upload_waive_and_permissions(self):
+        s2 = Shipment.objects.create(customer=self.customer, project=self.project, container_number="CYMU2524990", consignee=self.site)
+        self.login(self.ap)
+        self.assertEqual(self.client.post("/shipments/pod-uploaded/", {"ids": [self.s.pk, s2.pk]}).status_code, 403)
+        self.login(self.op)
+        self.client.post("/shipments/pod-uploaded/", {"ids": [self.s.pk, s2.pk]})
+        self.assertEqual(set(Shipment.objects.filter(pk__in=[self.s.pk, s2.pk]).values_list("pod_uploaded_by", flat=True)), {self.op.pk})
+        # waive is management only and needs a reason
+        self.assertEqual(self.client.post(f"/shipments/{s2.pk}/pod/", {"action": "waive", "reason": "x"}).status_code, 403)
+        self.client.post(f"/shipments/{s2.pk}/pod/", {"action": "undo"})
+        s2.refresh_from_db()
+        self.assertEqual(s2.pod_state, "RECEIVED")  # the received date stays; only the upload is undone
+        self.login(self.mgmt)
+        self.client.post(f"/shipments/{s2.pk}/pod/", {"action": "waive", "reason": ""})
+        s2.refresh_from_db()
+        self.assertEqual(s2.pod_state, "RECEIVED")
+        self.client.post(f"/shipments/{s2.pk}/pod/", {"action": "waive", "reason": "内部转运，客户不要求"})
+        s2.refresh_from_db()
+        self.assertEqual((s2.pod_state, s2.pod_done), ("WAIVED", True))
+
+    def test_received_not_uploaded_alert(self):
+        from . import alerts
+
+        self.project.owners.add(self.op)
+        s = self.deliver(self.s)
+        s.pod_received = timezone.localdate() - timedelta(days=2)
+        s.save()
+        self.assertIn("pod_upload", {a.rule for a in alerts.collect(self.op)})
+        self.assertNotIn("pod", {a.rule for a in alerts.collect(self.op)})
+        s.pod_uploaded_at = timezone.now()
+        s.save()
+        self.assertNotIn("pod_upload", {a.rule for a in alerts.collect(self.op)})
 
 
 class AlertTests(Base):
@@ -1245,6 +1328,25 @@ class MailScanTests(Base):
              "updates": [{"field": "actual_delivery", "value": "2026-10-28", "evidence": "x"}]}]})
         ext = AiExtraction.objects.get(source=AiExtraction.Source.GMAIL)
         self.assertEqual(ext.status, AiExtraction.State.DONE)
+
+    def test_pdfs_first_and_signature_images_skipped(self):
+        from . import mailscan
+
+        def doc(mid, name, mime, size):
+            return {"message_id": mid, "name": name, "mime": mime, "aid": name, "inline": None, "size": size}
+
+        msgs = [
+            {"internal": 1, "docs": [doc("a", "Load_LD5700_POD.pdf", "application/pdf", 300000)]
+             + [doc("a", "image.png", "image/png", 6000) for _ in range(8)]},
+            {"internal": 2, "docs": [doc("b", "Load_LD5699_POD.pdf", "application/pdf", 300000), doc("b", "photo1.jpg", "image/jpeg", 900000)]
+             + [doc("b", "image.png", "image/png", 6000) for _ in range(8)]},
+            {"internal": 3, "docs": [doc("c", "Load_LD5701_POD.pdf", "application/pdf", 300000), doc("c", "photo2.jpg", "image/jpeg", 900000),
+                                     doc("c", "photo3.jpg", "image/jpeg", 900000)] + [doc("c", "image.png", "image/png", 6000) for _ in range(8)]},
+        ]
+        order, small = mailscan._doc_order(msgs)
+        self.assertEqual([d["name"] for d in order],
+                         ["Load_LD5701_POD.pdf", "Load_LD5699_POD.pdf", "Load_LD5700_POD.pdf", "photo2.jpg", "photo1.jpg", "photo3.jpg"])
+        self.assertEqual(small, 24)
 
     def test_gmail_quota_waits_and_retries(self):
         from unittest import mock

@@ -315,19 +315,43 @@ def read_message(token, mid):
     }
 
 
-def fetch_docs(token, msgs):
-    """Download the PDFs / images of these messages, newest first (the latest POD
-    or rate confirmation matters most), within what one AI request can take."""
-    out, total, n = [], 0, 0
-    for m in sorted(msgs, key=lambda m: m.get("internal", 0), reverse=True):
+SMALL_IMAGE_BYTES = 20 * 1024  # e-mail signature logos and icons; never a POD or a document
+
+
+def _doc_order(msgs):
+    """Which attachments to read first: every PDF (newest e-mail first), then images taken in turn from each
+    e-mail (newest first). Small images (signatures, logos) are left out. Returns (ordered docs, n small)."""
+    newest = sorted(msgs, key=lambda m: m.get("internal", 0), reverse=True)
+    pdfs, images, small = [], [], 0
+    for m in newest:
+        mine = []
         for d in m.get("docs", []):
-            if n >= ai.MAX_DOCS or total + d["size"] > ai.MAX_DOCS_BYTES:
-                out.append({"name": d["name"], "mime": d["mime"], "data": None})  # listed as not read
-                continue
-            data = _download(token, d["message_id"], d["aid"], d["inline"])
-            if data and len(data) <= ai.MAX_DOC_BYTES:
-                out.append({"name": d["name"], "mime": d["mime"], "data": data})
-                total, n = total + len(data), n + 1
+            if d["mime"] == "application/pdf":
+                pdfs.append(d)
+            elif d["size"] and d["size"] < SMALL_IMAGE_BYTES:
+                small += 1
+            else:
+                mine.append(d)
+        images.append(mine)
+    turns = []
+    for i in range(max((len(x) for x in images), default=0)):
+        turns += [x[i] for x in images if i < len(x)]
+    return pdfs + turns, small
+
+
+def fetch_docs(token, msgs):
+    """Download the PDFs / images of these messages within what one AI request can take. PDFs come first so a
+    thread full of signature images cannot push out the POD of its first e-mail."""
+    out, total, n = [], 0, 0
+    docs, _small = _doc_order(msgs)
+    for d in docs:
+        if n >= ai.MAX_DOCS or total + d["size"] > ai.MAX_DOCS_BYTES:
+            out.append({"name": d["name"], "mime": d["mime"], "data": None})  # listed as not read
+            continue
+        data = _download(token, d["message_id"], d["aid"], d["inline"])
+        if data and len(data) <= ai.MAX_DOC_BYTES:
+            out.append({"name": d["name"], "mime": d["mime"], "data": data})
+            total, n = total + len(data), n + 1
     return out
 
 

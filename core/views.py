@@ -46,6 +46,7 @@ from .models import (
     TrailerType,
     MasterBL,
     Note,
+    PodCheck,
     Profile,
     Project,
     Role,
@@ -358,10 +359,79 @@ def shipment_close(request, pk):
         if s.status != Status.DELIVERED:
             messages.error(request, "只有已送达的 Load 可以结案")
             return redirect(s)
+        if not s.pod_done:
+            messages.error(request, "POD 还没确认上传，不能结案。请 OP 核对并上传 POD 后点“POD 已上传”，或由管理层设为无需 POD")
+            return redirect(s)
         s.closed_at = timezone.now()
         _note(s, request.user, "管理层结案")
     s.save()
     return redirect(s)
+
+
+# ---------------------------------------------------------------------------
+# POD: a person confirms it was checked and filed (TMS keeps no file)
+# ---------------------------------------------------------------------------
+def _mark_pod_uploaded(s, user, link=""):
+    if s.pod_uploaded_at:
+        return False
+    s.pod_uploaded_at, s.pod_uploaded_by = timezone.now(), user
+    if not s.pod_received:
+        s.pod_received = timezone.localdate()
+    if not s.pod_check:
+        s.pod_check = PodCheck.OK
+    if link:
+        s.pod_link = link
+    s.save()
+    _note(s, user, "POD 已核对并上传" + (f"：{link}" if link else ""))
+    return True
+
+
+@require_POST
+def shipment_pod(request, pk):
+    """action = uploaded / undo / waive / unwaive."""
+    s = get_object_or_404(Shipment, pk=pk)
+    user, action = request.user, request.POST.get("action")
+    _need(can_edit_ops(user))
+    if action == "uploaded":
+        link = request.POST.get("pod_link", "").strip()
+        if link and not link.lower().startswith(("http://", "https://")):
+            messages.error(request, "POD 存放位置请填完整链接（https://…），或者留空")
+            return redirect(s)
+        _mark_pod_uploaded(s, user, link)
+    elif action == "undo" and s.pod_uploaded_at:
+        s.pod_uploaded_at, s.pod_uploaded_by = None, None
+        s.save()
+        _note(s, user, "撤销 POD 已上传")
+    elif action in ("waive", "unwaive"):
+        _need(is_management(user))
+        if action == "waive":
+            reason = request.POST.get("reason", "").strip()
+            if not reason:
+                messages.error(request, "请写明为什么这个 Load 不需要 POD")
+                return redirect(s)
+            s.pod_waived_reason = reason[:255]
+            _note(s, user, f"管理层设为无需 POD：{reason}")
+        else:
+            s.pod_waived_reason = ""
+            _note(s, user, "管理层取消“无需 POD”")
+        s.save()
+    if s.project_id:
+        s.project.refresh_status()
+    return redirect(request.POST.get("next") or s.get_absolute_url())
+
+
+@require_POST
+def bulk_pod_uploaded(request):
+    _need(can_edit_ops(request.user))
+    shipments = list(Shipment.objects.filter(pk__in=request.POST.getlist("ids")).order_by("number"))
+    back = request.META.get("HTTP_REFERER") or reverse("shipment_list")
+    if not shipments:
+        messages.error(request, "请先勾选 Load")
+        return redirect(back)
+    done = [x for x in shipments if _mark_pod_uploaded(x, request.user)]
+    skipped = len(shipments) - len(done)
+    messages.success(request, f"{len(done)} 个 Load 标为 POD 已上传" + (f"，{skipped} 个之前已经标过" if skipped else ""))
+    return redirect(back)
 
 
 @require_POST
@@ -558,8 +628,11 @@ def _milestones(p, loads):
         rows.append({"name": "首车提货", "date": min(picks) if picks else (min(plan_pick) if plan_pick else None), "done": bool(picks), "note": "" if picks else "计划"})
         rows.append({"name": "末车提货", "date": max(picks) if len(picks) == n else None, "done": len(picks) == n, "note": "" if len(picks) == n else f"{len(picks)}/{n}"})
         rows.append({"name": "末车送达", "date": max(dels) if len(dels) == n else None, "done": len(dels) == n, "note": "" if len(dels) == n else f"{len(dels)}/{n}"})
-        rows.append({"name": "POD 收齐", "date": max(pods) if len(pods) == n else None, "done": len(pods) == n, "note": "" if len(pods) == n else f"{len(pods)}/{n}",
-                     "warn": len(dels) == n and len(pods) < n})
+        filed = [x for x in live if x.pod_done]
+        last = max((x.pod_uploaded_at for x in filed if x.pod_uploaded_at), default=None)
+        note = "" if len(filed) == n else f"已上传 {len(filed)}/{n}" + (f" · 邮件里已收 {len(pods)}" if len(pods) != len(filed) else "")
+        rows.append({"name": "POD 上传齐", "date": timezone.localtime(last).date() if last and len(filed) == n else None,
+                     "done": len(filed) == n, "note": note, "warn": len(dels) == n and len(filed) < n})
     rows.append({"name": "完结", "date": None, "done": p.status == Project.Status.DONE, "note": "负责人确认"})
     return rows
 
@@ -582,7 +655,8 @@ def project_detail(request, pk):
     kpi = {
         "n": len(live_loads),
         "delivered": sum(1 for x in live_loads if x.status in (Status.DELIVERED, Status.CLOSED)),
-        "pod": sum(1 for x in live_loads if x.pod_received),
+        "pod": sum(1 for x in live_loads if x.pod_received or x.pod_done),
+        "pod_done": sum(1 for x in live_loads if x.pod_done),
         "extra": sum((x.extra for x in live_loads), Decimal("0")) if sides else None,
         "pct": (money["margin"] / money["ar"] * 100) if money.get("margin") is not None and money.get("ar") else None,
     }
