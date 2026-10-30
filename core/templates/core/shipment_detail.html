@@ -72,7 +72,7 @@
     <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'leg' %}">+ 添加运输段</a>{% endif %}</div>
   </header>
   <div class="tablewrap"><table class="t">
-    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th>{% if can_edit_ap %}<th>运价确认</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for l in legs %}
       <tr>
@@ -88,10 +88,11 @@
         <td>{{ l.actual_delivery|dash }}</td>
         <td>{% if l.tracking_url %}<a href="{{ l.tracking_url }}" target="_blank" rel="noopener">跟踪</a>{% endif %}</td>
         <td><a href="{% url 'shipment_bol' s.pk %}?leg={{ l.pk }}" target="_blank">{{ l.effective_bol_number }}</a></td>
+        {% if can_edit_ap %}<td>{% if l.carrier_id %}<a href="{% url 'shipment_ratecon' s.pk l.pk %}">{% if l.ratecon_version %}第 {{ l.ratecon_version }} 版 · {{ l.ratecon_at|date:"m-d" }}{% else %}生成{% endif %}</a>{% else %}<span class="muted">先指定承运商</span>{% endif %}</td>{% endif %}
         <td>{% if can_edit %}<a href="{% url 'child_edit' 'leg' l.pk %}">编辑</a> · <a href="{% url 'child_delete' 'leg' l.pk %}">删除</a>{% endif %}</td>
       </tr>
-      {% if l.notes %}<tr><td></td><td colspan="12" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}
-    {% empty %}<tr><td colspan="13" class="muted">还没有运输段。例如：①拖柜 码头→堆场 ②OTR 堆场→现场。</td></tr>{% endfor %}
+      {% if l.notes %}<tr><td></td><td colspan="13" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}
+    {% empty %}<tr><td colspan="14" class="muted">还没有运输段。例如：①拖柜 码头→堆场 ②OTR 堆场→现场。</td></tr>{% endfor %}
     </tbody>
   </table></div>
 </div>

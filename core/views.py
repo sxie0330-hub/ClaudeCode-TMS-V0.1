@@ -598,6 +598,40 @@ def shipment_bol(request, pk):
     return _pdf(pdf, f"BOL-{ctx['bol_number']}.pdf")
 
 
+# ---------------------------------------------------------------------------
+# Rate Confirmation to the carrier (shows the carrier rate: AP-visible roles only)
+# ---------------------------------------------------------------------------
+def _ratecon_leg(request, pk, lid):
+    from . import ratecon
+
+    s = get_object_or_404(Shipment, pk=pk)
+    leg = get_object_or_404(Leg, pk=lid, shipment=s)
+    _need(can_see_side(request.user, Charge.Side.AP))
+    return s, leg, ratecon.ratecon_context(leg, request.user)
+
+
+def shipment_ratecon(request, pk, lid):
+    from . import quotes, ratecon
+
+    s, leg, ctx = _ratecon_leg(request, pk, lid)
+    to, subject, body = ratecon.email_draft(ctx)
+    return render(request, "core/ratecon.html", {
+        "s": s, "leg": leg, "ctx": ctx, "problems": ratecon.problems(ctx),
+        "gmail": quotes.gmail_compose_url(to, subject, body), "to": to, "subject": subject, "body": body,
+    })
+
+
+def shipment_ratecon_pdf(request, pk, lid):
+    from . import ratecon
+
+    s, leg, ctx = _ratecon_leg(request, pk, lid)
+    pdf = ratecon.render(ctx)
+    Leg.objects.filter(pk=leg.pk).update(ratecon_version=ctx["version"], ratecon_at=timezone.now())
+    _note(s, request.user, f"生成运价确认单 {ctx['number']}" + (f"（第 {ctx['version']} 版）" if ctx["version"] > 1 else "")
+          + f"，{leg.carrier or '未指定承运商'}，合计 ${ctx['total']:,.2f}")
+    return _pdf(pdf, f"RateCon-{ctx['number']}.pdf")
+
+
 @require_POST
 def bulk_bol(request):
     ids = request.POST.getlist("ids")

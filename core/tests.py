@@ -2311,3 +2311,46 @@ class AiUsageTests(Base):
         self.assertContains(r, "询报价 · AI 整理询价")
         self.assertContains(r, "$0.04")  # two calls x $0.01875
         self.assertContains(self.client.get("/ai/usage/?month=bad"), "AI 用量")
+
+
+class RateConTests(Base):
+    def test_ratecon_pdf_permissions_version_and_note(self):
+        from .models import Note
+        from . import ratecon
+
+        url = f"/shipments/{self.s.pk}/legs/{self.leg.pk}/ratecon/"
+        for who in (self.op, self.ar, self.nobody):
+            self.login(who)
+            self.assertEqual(self.client.get(url).status_code, 403)  # the carrier rate is AP information
+        self.login(self.ap)
+        r = self.client.get(url)
+        self.assertContains(r, "RC-")
+        self.assertContains(r, "6,543.00")
+        self.assertContains(r, "没有 MC# / DOT#")  # KD Trucking has none in the fixture
+        self.assertNotContains(r, "9,100")  # never the customer side
+        pdf = self.client.get(url.replace("ratecon/", "ratecon.pdf"))
+        self.assertTrue(pdf.content.startswith(b"%PDF"))
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.ratecon_version, 1)
+        self.assertTrue(Note.objects.filter(shipment=self.s, text__contains="生成运价确认单").exists())
+        self.client.get(url.replace("ratecon/", "ratecon.pdf"))
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.ratecon_version, 2)
+        ctx = ratecon.ratecon_context(self.leg, self.ap)
+        self.assertEqual((ctx["version"], ctx["total"]), (3, Decimal("6543")))
+        to, subject, body = ratecon.email_draft(ctx)
+        self.assertIn(ctx["number"], subject)
+        self.assertNotIn("Trina", subject + body)  # customer name stays off the carrier's paperwork
+
+
+class RateConAlertTests(Base):
+    def test_missing_ratecon_reminds_ap_side_only(self):
+        from . import alerts
+
+        self.project.owners.add(self.op, self.mgmt)
+        self.leg.scheduled_pickup = date.today() + timedelta(days=1)
+        self.leg.save()
+        self.assertIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})
+        self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.op)})  # OP sees no carrier rates
+        type(self.leg).objects.filter(pk=self.leg.pk).update(ratecon_version=1)
+        self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})

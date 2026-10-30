@@ -1,0 +1,32 @@
+{% extends "core/base.html" %}
+{% load tms %}
+{% block title %}运价确认单 {{ ctx.number }}{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{{ s.get_absolute_url }}">{{ s.container_number|default:s.number }}</a> / 运价确认单</div>
+<div class="head"><h1>运价确认单 {{ ctx.number }}</h1>
+  {% if leg.ratecon_version %}<span class="muted">已生成 {{ leg.ratecon_version }} 版，最近 {{ leg.ratecon_at|date:"Y-m-d H:i" }}；再生成会是第 {{ ctx.version }} 版</span>{% endif %}
+  <div class="actions"><a class="btn primary" href="{% url 'shipment_ratecon_pdf' s.pk leg.pk %}" target="_blank">生成 PDF</a>
+    {% if to %}<a class="btn" href="{{ gmail }}" target="_blank" rel="noopener">打开 Gmail 草稿</a>{% endif %}</div></div>
+
+{% if problems %}<div class="panel" style="border-left:4px solid var(--warn,#d97706)"><div class="body">
+  <b>发出前请先处理：</b>
+  <ul style="margin:6px 0 0 18px">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>
+</div></div>{% endif %}
+
+<div class="grid2">
+  <div class="panel"><header><h2>内容预览</h2></header><div class="body"><dl class="kv">
+    <dt>承运商</dt><dd>{% if ctx.carrier %}<a href="{{ ctx.carrier.get_absolute_url }}">{{ ctx.carrier.name }}</a>{% if ctx.carrier.mc_number %} · MC# {{ ctx.carrier.mc_number }}{% endif %}{% else %}—{% endif %}</dd>
+    <dt>第 {{ leg.sequence }} 段</dt><dd>{{ leg.origin|default:"—" }} → {{ leg.destination|default:"—" }}</dd>
+    <dt>提货</dt><dd>{{ ctx.pickup_appt|default:"—" }}</dd>
+    <dt>送达</dt><dd>{{ ctx.delivery_appt|default:"—" }}</dd>
+    <dt>车型</dt><dd>{{ leg.equipment|default:"—" }}</dd>
+    <dt>付给承运商</dt><dd>{% for c in ctx.charges %}{{ c.get_charge_type_display }} {{ c.amount|money }}{% if c.description %} <small class="muted">{{ c.description }}</small>{% endif %}<br>{% empty %}<span class="lfd-warn">没有 AP 费用</span>{% endfor %}
+      <b>合计 {{ ctx.total|money }}</b></dd>
+  </dl>
+  <p class="muted" style="font-size:12.5px">金额来自这个 Load 付给该承运商的 AP 费用（作废的不算）。客户名称和售价不会出现在确认单上。
+    条款和付款条件是默认英文条款，在 settings 里可以改，建议请律师看一遍。</p></div></div>
+  <div class="panel"><header><h2>邮件草稿</h2><small class="muted">TMS 不会自动发送：打开 Gmail 草稿，附上 PDF，人工点发送</small></header><div class="body">
+    <dl class="kv"><dt>收件人</dt><dd>{{ to|default:"（承运商没有邮箱）" }}</dd><dt>主题</dt><dd>{{ subject }}</dd></dl>
+    <pre class="draft">{{ body }}</pre></div></div>
+</div>
+{% endblock %}

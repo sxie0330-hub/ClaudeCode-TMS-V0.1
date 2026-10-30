@@ -155,6 +155,25 @@ TMS_DOC_COMPANIES = {
         "logo": "logo-ptt",
     },
 }
+# Rate Confirmation to carriers (core/ratecon.py). English. A starting point: have it reviewed and edit here.
+TMS_RATECON_PAYMENT_TERMS = os.environ.get(
+    "TMS_RATECON_PAYMENT_TERMS",
+    "Net 30 days from receipt of the carrier invoice together with a clean, signed BOL / POD. Invoices must quote the Rate Con #.")
+TMS_RATECON_TERMS = [
+    "Carrier is an independent contractor and accepts this load under its own operating authority. This confirmation and the "
+    "Broker-Carrier Agreement in place, if any, govern this shipment; this confirmation controls if they conflict on rate.",
+    "No re-brokering, co-brokering, assigning or interlining. The load must move on the carrier's own equipment and drivers; "
+    "a violation voids the rate and the carrier remains liable for the load.",
+    "Carrier keeps in force at least USD 1,000,000 auto liability and USD 100,000 cargo insurance (higher if the shipper requires) "
+    "and sends a current certificate before pickup.",
+    "Carrier is liable for loss, damage or delay of the cargo from pickup to delivery as provided by 49 U.S.C. 14706 (Carmack). "
+    "Any exception must be noted on the BOL / delivery receipt and reported to the broker the same day.",
+    "Freight must be loaded, secured, tarped where required and transported in compliance with FMCSA rules, including 49 CFR 393 "
+    "cargo securement. Oversize / overweight moves follow every permit condition and escort requirement.",
+    "Changes to rate, route, stops or dates are valid only when confirmed in writing by the broker.",
+    "Carrier and its drivers will not contact the broker's customer, shipper or consignee about rates or future business "
+    "except as needed to carry out this load.",
+]
 TMS_LFD_WARNING_DAYS = int(os.environ.get("TMS_LFD_WARNING_DAYS", "3"))
 
 # --- AI email reading (Gemini on Vertex AI, see core/ai.py) ----------------

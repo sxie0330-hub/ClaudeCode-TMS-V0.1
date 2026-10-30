@@ -411,6 +411,24 @@ def r_pod_upload(ctx):
                   lambda ls: f"{_proj(ls[0])} · 上传后点“POD 已上传”")
 
 
+@rule(key="ratecon_missing", category="开工前检查 · 没确认就会延误", label="已派承运商、快提货了，还没出运价确认单", why="没有签回的运价确认单，运价和条款容易起纠纷",
+      level="today", threshold=2, unit="天内提货", side="AP")
+def r_ratecon_missing(ctx):
+    horizon = ctx.today + timedelta(days=ctx.n)
+    legs = (Leg.objects.filter(shipment__in=ctx.loads(), carrier__isnull=False, actual_pickup__isnull=True,
+                               scheduled_pickup__isnull=False, scheduled_pickup__lte=horizon, ratecon_version=0)
+            .select_related("shipment__project", "carrier"))
+    items = []
+    for leg in legs:
+        s = leg.shipment
+        s._rc_leg = leg
+        items.append(s)
+    return _group(ctx, "ratecon_missing", "运价", items,
+                  lambda ls: f"{len(ls)} 个 Load 已派车还没出运价确认单" if len(ls) > 1 else
+                  f"{_load_label(ls[0])} 第 {ls[0]._rc_leg.sequence} 段（{ls[0]._rc_leg.carrier}）{ls[0]._rc_leg.scheduled_pickup:%m-%d} 提货，还没出运价确认单",
+                  lambda ls: f"{_proj(ls[0])} · 在 Load 页运输段里点“运价确认”")
+
+
 @rule(key="extra_charges", category="回款与利润", label="承运商额外费用待审批 / 有争议", why="防重复付款", level="urgent", side="AP")
 def r_extra(ctx):
     qs = Charge.objects.filter(shipment__in=ctx.loads(), side="AP", charge_type__in=ACCESSORIAL, state__in=[Charge.State.OPEN, Charge.State.DISPUTED])

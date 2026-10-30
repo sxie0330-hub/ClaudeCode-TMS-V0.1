@@ -698,6 +698,8 @@ class Leg(SoftDeleteModel):
     bol_number = models.CharField("BOL 号（留空自动生成）", max_length=40, blank=True)
     bol_instructions = models.TextField("本段 BOL 特别说明", blank=True)
     notes = models.TextField("备注", blank=True)
+    ratecon_version = models.PositiveSmallIntegerField("运价确认单版本", default=0, editable=False)
+    ratecon_at = models.DateTimeField("运价确认单生成时间", null=True, blank=True, editable=False)
 
     history = HistoricalRecords()
 
