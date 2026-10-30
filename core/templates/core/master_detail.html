@@ -7,6 +7,11 @@
     {% if kind == 'customer' and perm.edit_ops %}<a class="btn" href="{% url 'project_create' %}?customer={{ obj.pk }}">+ 新建项目</a>{% endif %}
     {% if can_edit %}<a class="btn primary" href="{% url 'master_edit' kind obj.pk %}">编辑</a>{% endif %}
   </div></div>
+{% if kind == 'carrier' %}<div class="panel" style="border-left:4px solid {% if problems %}var(--warn,#d97706){% else %}var(--ok,#15803d){% endif %}"><div class="body">
+  <b>资质记录</b> <small class="muted">文件由资质专员存在 Google Drive，这里只记录到期日和是否齐全</small>
+  {% if obj.compliance_link %} · <a href="{{ obj.compliance_link }}" target="_blank" rel="noopener">打开资质文件夹</a>{% endif %}
+  {% if problems %}<ul style="margin:6px 0 0 18px">{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul>{% else %}<div style="color:var(--ok,#15803d);margin-top:4px">齐全</div>{% endif %}
+</div></div>{% endif %}
 <div class="panel"><div class="body"><dl class="kv">
   {% for name, value in fields %}<dt>{{ name }}</dt><dd style="white-space:pre-wrap">{{ value|dash }}</dd>{% endfor %}
 </dl></div></div>

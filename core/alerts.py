@@ -429,6 +429,27 @@ def r_ratecon_missing(ctx):
                   lambda ls: f"{_proj(ls[0])} · 在 Load 页运输段里点“运价确认”")
 
 
+@rule(key="carrier_coi", category="开工前检查 · 没确认就会延误", label="在用承运商的保险快到期 / 已过期", why="保险过期还派车，出事故或货损没有保障",
+      level="urgent", threshold=30, unit="天内到期")
+def r_carrier_coi(ctx):
+    horizon = ctx.today + timedelta(days=ctx.n)
+    legs = Leg.objects.filter(shipment__in=ctx.loads(), carrier__isnull=False, actual_delivery__isnull=True).select_related("carrier")
+    seen, out = set(), []
+    for leg in legs:
+        c = leg.carrier
+        if c.pk in seen or c.kind not in c.COMPLIANCE_KINDS:
+            continue
+        seen.add(c.pk)
+        due = [(label, d) for label, d in (("汽车责任险", c.auto_insurance_expires), ("货物险", c.cargo_insurance_expires)) if d and d <= horizon]
+        if not due:
+            continue
+        label, d = min(due, key=lambda x: x[1])
+        text = f"{c.name} {label}已过期（{d:%m-%d}）" if d < ctx.today else f"{c.name} {label} {d:%m-%d} 到期"
+        out.append(ctx.alert("carrier_coi", f"c{c.pk}", "承运商", text, "请资质专员更新 COI，并在承运商资料里改到期日",
+                             c.get_absolute_url(), None, level="urgent" if d < ctx.today else None))
+    return out
+
+
 @rule(key="extra_charges", category="回款与利润", label="承运商额外费用待审批 / 有争议", why="防重复付款", level="urgent", side="AP")
 def r_extra(ctx):
     qs = Charge.objects.filter(shipment__in=ctx.loads(), side="AP", charge_type__in=ACCESSORIAL, state__in=[Charge.State.OPEN, Charge.State.DISPUTED])

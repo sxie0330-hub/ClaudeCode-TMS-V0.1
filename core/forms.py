@@ -90,7 +90,9 @@ class CustomerForm(BaseForm):
 class CarrierForm(BaseForm):
     class Meta:
         model = Carrier
-        fields = ["name", "code", "kind", "scac", "mc_number", "dot_number", "contact_name", "contact_phone", "contact_email", "dispatch_notes"]
+        fields = ["name", "code", "kind", "scac", "mc_number", "dot_number", "contact_name", "contact_phone", "contact_email", "dispatch_notes",
+                  "compliance_link", "auto_insurance_expires", "cargo_insurance_expires", "w9_on_file", "authority_checked_on",
+                  "compliance_notes"]
 
 
 class LocationForm(BaseForm):

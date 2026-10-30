@@ -2354,3 +2354,27 @@ class RateConAlertTests(Base):
         self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.op)})  # OP sees no carrier rates
         type(self.leg).objects.filter(pk=self.leg.pk).update(ratecon_version=1)
         self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})
+
+
+class CarrierComplianceTests(Base):
+    def test_record_alert_and_ratecon_warning(self):
+        from . import alerts, ratecon
+
+        self.project.owners.add(self.op)
+        c = self.carrier
+        self.assertIn("还没收到 W-9", c.compliance_problems())
+        self.assertNotIn("carrier_coi", {a.rule for a in alerts.collect(self.op)})  # no dates recorded: no alarm noise
+        c.auto_insurance_expires = date.today() - timedelta(days=1)
+        c.cargo_insurance_expires = date.today() + timedelta(days=200)
+        c.save()
+        a = [x for x in alerts.collect(self.op) if x.rule == "carrier_coi"]
+        self.assertEqual(len(a), 1)
+        self.assertIn("汽车责任险已过期", a[0].title)
+        self.leg.refresh_from_db()
+        ctx = ratecon.ratecon_context(self.leg, self.ap)
+        self.assertTrue(any("汽车责任险已于" in p for p in ratecon.problems(ctx)), ratecon.problems(ctx))
+        self.login(self.op)
+        r = self.client.get(c.get_absolute_url())
+        self.assertContains(r, "资质记录")
+        self.assertContains(r, "汽车责任险已于")
+        self.assertContains(self.client.get("/data/carrier/"), "资质")

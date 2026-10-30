@@ -842,7 +842,7 @@ def project_bulk_shipments(request, pk):
 # ---------------------------------------------------------------------------
 MASTER = {
     "customer": (Customer, CustomerForm, "客户", ["name", "code", "contact_name", "contact_phone"]),
-    "carrier": (Carrier, CarrierForm, "承运商", ["name", "code", "kind", "scac", "contact_name", "contact_phone"]),
+    "carrier": (Carrier, CarrierForm, "承运商", ["name", "code", "kind", "scac", "contact_name", "contact_phone", "compliance_status"]),
     "location": (Location, LocationForm, "地址", ["code", "name", "kind", "full_address", "contact_phone"]),
     "trailer": (TrailerType, TrailerTypeForm, "车型", ["name", "deck_height_in", "deck_length_ft", "trailer_tare_lbs",
                                                       "tractor_tare_lbs", "rated_capacity_lbs", "sort", "active"]),
@@ -861,7 +861,8 @@ def master_list(request, kind):
             cond |= Q(**{f"{f}__icontains": q})
         qs = qs.filter(cond)
     page = Paginator(qs, 100).get_page(request.GET.get("page"))
-    headers = [model._meta.get_field(c).verbose_name if c != "full_address" else "地址" for c in cols]
+    computed = {"full_address": "地址", "compliance_status": "资质"}
+    headers = [computed[c] if c in computed else model._meta.get_field(c).verbose_name for c in cols]
     def cell(o, c):
         v = o.get_kind_display() if c == "kind" else getattr(o, c)
         return ("是" if v else "否") if isinstance(v, bool) else v
@@ -874,8 +875,10 @@ def master_list(request, kind):
 def master_detail(request, kind, pk):
     model, _, label, _ = MASTER[kind]
     obj = get_object_or_404(model, pk=pk)
-    fields = [(f.verbose_name, obj._get_FIELD_display(f) if f.choices else getattr(obj, f.name)) for f in model._meta.fields
-              if f.name not in ("id", "is_deleted", "created_at", "updated_at")]
+    def shown(f):
+        v = obj._get_FIELD_display(f) if f.choices else getattr(obj, f.name)
+        return ("是" if v else "否") if isinstance(v, bool) else v
+    fields = [(f.verbose_name, shown(f)) for f in model._meta.fields if f.name not in ("id", "is_deleted", "created_at", "updated_at")]
     related = []
     if kind == "customer":
         related = [("项目", obj.projects.all()[:100]), ("最近 Load", obj.shipments.select_related("project")[:100])]
@@ -884,7 +887,9 @@ def master_detail(request, kind, pk):
     elif kind == "location":
         related = [("最近 Load（收货地）", Shipment.objects.filter(consignee=obj)[:100])]
     can_edit = is_management(request.user) if kind == "trailer" else can_edit_ops(request.user)
+    problems = obj.compliance_problems() if kind == "carrier" else []
     return render(request, "core/master_detail.html", {"kind": kind, "label": label, "obj": obj, "fields": fields, "related": related,
+                                                       "problems": problems,
                                                        "can_edit": can_edit})
 
 

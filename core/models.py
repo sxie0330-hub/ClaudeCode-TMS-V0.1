@@ -144,14 +144,56 @@ class Carrier(SoftDeleteModel):
     contact_phone = models.CharField("电话", max_length=60, blank=True)
     contact_email = models.EmailField("邮箱", blank=True)
     dispatch_notes = models.TextField("调度备注", blank=True, help_text="设备、能力、常跑线路等操作信息")
+    # Compliance record only: the documents live in Google Drive and a specialist keeps them.
+    compliance_link = models.URLField("资质文件夹（Google Drive）", max_length=500, blank=True)
+    auto_insurance_expires = models.DateField("汽车责任险到期", null=True, blank=True)
+    cargo_insurance_expires = models.DateField("货物险到期", null=True, blank=True)
+    w9_on_file = models.BooleanField("W-9 已收", default=False)
+    authority_checked_on = models.DateField("运输资质（MC / DOT）核实日期", null=True, blank=True,
+                                            help_text="在 FMCSA 上查过运营资质有效的日期")
+    compliance_notes = models.CharField("资质备注", max_length=255, blank=True)
 
     history = HistoricalRecords()
+
+    COMPLIANCE_KINDS = ("DRAYAGE", "OTR", "HEAVY", "LTL", "BROKER")
+    COI_WARNING_DAYS = 30
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.code or self.name
+
+    def compliance_problems(self, today=None):
+        """Chinese lines for what is expired, expiring or missing; trucking carriers only."""
+        if self.kind not in self.COMPLIANCE_KINDS:
+            return []
+        today = today or timezone.localdate()
+        out = []
+        for label, d in (("汽车责任险", self.auto_insurance_expires), ("货物险", self.cargo_insurance_expires)):
+            if d is None:
+                out.append(f"没有记录{label}到期日")
+            elif d < today:
+                out.append(f"{label}已于 {d:%Y-%m-%d} 过期")
+            elif (d - today).days <= self.COI_WARNING_DAYS:
+                out.append(f"{label} {d:%Y-%m-%d} 到期（还有 {(d - today).days} 天）")
+        if not self.w9_on_file:
+            out.append("还没收到 W-9")
+        if not self.authority_checked_on:
+            out.append("运输资质（MC / DOT）还没核实")
+        return out
+
+    @property
+    def compliance_status(self):
+        if self.kind not in self.COMPLIANCE_KINDS:
+            return "—"
+        n = len(self.compliance_problems())
+        return "齐全" if not n else f"{n} 项待处理"
+
+    @property
+    def insurance_expired(self):
+        today = timezone.localdate()
+        return any(d and d < today for d in (self.auto_insurance_expires, self.cargo_insurance_expires))
 
     def get_absolute_url(self):
         return reverse("master_detail", args=["carrier", self.pk])
