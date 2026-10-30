@@ -1227,6 +1227,24 @@ class GmailConnection(models.Model):
     last_result = models.CharField(max_length=300, blank=True)
     last_error = models.CharField(max_length=500, blank=True)
 
+    # Each person's own schedule for the automatic scan (Los Angeles time)
+    class Scope(models.TextChoices):
+        MINE = "MINE", "我负责的项目"
+        MINE_PINNED = "MINE_PINNED", "我负责的项目 + 工作台置顶的项目"
+        ALL = "ALL", "所有在执行项目（仅管理层）"
+
+    HOURS = [(h, f"{h % 12 or 12}:00 {'am' if h < 12 else 'pm'}") for h in range(6, 22)]
+
+    auto_scan = models.BooleanField("每天自动扫描", default=True)
+    scan_hour_1 = models.PositiveSmallIntegerField("第一次", choices=HOURS, default=17)
+    scan_hour_2 = models.PositiveSmallIntegerField("第二次（可不选）", choices=HOURS, null=True, blank=True)
+    scan_weekends = models.BooleanField("周末也扫描", default=True)
+    scan_scope = models.CharField("扫描范围", max_length=12, choices=Scope.choices, default=Scope.MINE)
+    last_auto_at = models.DateTimeField(null=True, blank=True, help_text="上次定时扫描开始的时间")
+
+    def scan_hours(self):
+        return sorted(h for h in (self.scan_hour_1, self.scan_hour_2) if h is not None)
+
     def __str__(self):
         return self.email
 
@@ -1236,6 +1254,8 @@ class ScannedMessage(models.Model):
 
     connection = models.ForeignKey(GmailConnection, on_delete=models.CASCADE, related_name="scanned")
     message_id = models.CharField(max_length=64)
+    rfc_id = models.CharField(max_length=250, blank=True, db_index=True,
+                              help_text="邮件的 Message-ID 头，同一封邮件在不同人的邮箱里相同，用来避免重复交给 AI")
     subject = models.CharField(max_length=300, blank=True)
     scanned_at = models.DateTimeField(auto_now_add=True)
     extraction = models.ForeignKey(AiExtraction, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")

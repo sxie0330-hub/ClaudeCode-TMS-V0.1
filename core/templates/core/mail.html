@@ -5,7 +5,7 @@
 <div class="head"><h1>邮箱自动扫描</h1></div>
 
 <div class="card">
-  <p style="margin-top:0">每天傍晚 5:00（洛杉矶时间），TMS 只读地查看你的 Gmail：用<b>在执行项目</b>的柜号、MBL、承运商单号（还没有柜号的项目用“项目编号 + 客户名”）搜索当天的新邮件，Excel / CSV 附件也会读取，
+  <p style="margin-top:0">在你设定的时间（洛杉矶时间，默认每天傍晚 5:00），TMS 只读地查看你的 Gmail：用<b>扫描范围内在执行项目</b>的柜号、MBL、承运商单号（还没有柜号的项目用“项目编号 + 客户名”）搜索上次扫描之后的新邮件，Excel / CSV 附件也会读取，
     没提到这些单号的邮件不会被打开。同一项目的邮件合并交给 AI 识别一次，结果放进 <a href="{% url 'todo' %}">今日待办</a>，<b>你确认后才写入</b>。</p>
   {% if conn %}
     <p>已连接 <b>{{ conn.email }}</b>（{{ conn.connected_at|date:"Y-m-d" }} 起）·
@@ -22,6 +22,26 @@
     <p class="muted" style="font-size:13px">会跳到 Google 授权页，权限是“查看您的电子邮件”（只读，不能发信、删信）。只能连接你自己的邮箱，随时可以断开。</p>
   {% endif %}
 </div>
+
+{% if conn and perm.edit_ops and form %}
+<form method="post" class="card form" style="max-width:none">{% csrf_token %}
+  <h2 style="margin:0 0 6px;font-size:1rem">我的扫描设置</h2>
+  <p class="muted" style="font-size:13px;margin:0 0 8px">每天最多 2 次。每次只读上次扫描之后的新邮件，所以扫 2 次不会多读邮件，
+    只是同一个项目上午、下午都有新邮件时会多一次 AI 识别。同一封邮件同事的扫描已经交给 AI 识别过的，不会再识别一次。
+    每次最多识别 {{ max_ai }} 个项目，其余下次继续。</p>
+  {% if form.non_field_errors %}<p class="lfd-warn">{{ form.non_field_errors|join:" " }}</p>{% endif %}
+  <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:8px;align-items:end">
+    <label><span>{{ form.auto_scan }} {{ form.auto_scan.label }}</span></label>
+    <label>{{ form.scan_hour_1.label }}{{ form.scan_hour_1 }}</label>
+    <label>{{ form.scan_hour_2.label }}{{ form.scan_hour_2 }}{% for e in form.scan_hour_2.errors %}<span class="lfd-warn" style="font-size:12px">{{ e }}</span>{% endfor %}</label>
+    <label><span>{{ form.scan_weekends }} {{ form.scan_weekends.label }}</span></label>
+    <label>{{ form.scan_scope.label }}{{ form.scan_scope }}</label>
+    <button class="primary" type="submit">保存</button>
+  </div>
+  {% if usage %}<p class="muted" style="font-size:13px;margin:8px 0 0">最近 {{ usage.days }} 天你的邮件识别（自动扫描 + 按主题识别）：
+    {{ usage.calls }} 次 AI 调用，估算约 ${{ usage.cost|floatformat:2 }}。</p>{% endif %}
+</form>
+{% endif %}
 
 {% if conn and ai_enabled and perm.edit_ops %}
 <form method="post" action="{% url 'mail_find' %}" class="card form" style="max-width:none">{% csrf_token %}

@@ -519,6 +519,19 @@ class PodUploadTests(Base):
         p = self.project
         return {"company": p.company, "customer": p.customer_id, "name": p.name, "detention_free_hours": "2", "manual_status": ""}
 
+    def test_new_project_notifies_owners(self):
+        from .models import Notification
+
+        self.login(self.mgmt)
+        r = self.client.post("/projects/new/", {"company": "ATS", "customer": self.customer.pk, "name": "New lane",
+                                                "detention_free_hours": "2", "manual_status": "", "owners": [self.op.pk, self.mgmt.pk]})
+        self.assertEqual(r.status_code, 302)
+        p = Project.objects.get(name="New lane")
+        n = Notification.objects.get(user=self.op)
+        self.assertIn(p.number, n.text)
+        self.assertEqual(n.url, p.get_absolute_url())
+        self.assertFalse(Notification.objects.filter(user=self.mgmt).exists())  # not to yourself
+
     def test_bulk_upload_waive_and_permissions(self):
         s2 = Shipment.objects.create(customer=self.customer, project=self.project, container_number="CYMU2524990", consignee=self.site)
         self.login(self.ap)
@@ -1320,6 +1333,85 @@ class MailScanTests(Base):
              mock.patch.object(mailscan, "_get", side_effect=self.fake_get), \
              mock.patch.object(mailscan, "read_message", side_effect=lambda tok, mid: self.inbox[mid]):
             return mailscan.scan_one(self.conn, caller=caller)
+
+    def test_scope_mine_skips_projects_i_do_not_own(self):
+        self.project.owners.remove(self.op)
+        res = self.run_scan()
+        self.assertIn("扫描范围里没有在执行的项目", res["result"])
+        self.assertEqual(self.calls, [])
+        self.conn.scan_scope = "MINE_PINNED"
+        self.conn.save()
+        from . import widgets as W
+
+        board = W.get_layout(self.op)
+        board.layout.insert(0, W.new_widget("project", "M", {"project": self.project.pk}))
+        board.save()
+        self.run_scan()
+        self.assertEqual(len(self.calls), 1)
+
+    def test_scope_all_only_for_management(self):
+        from . import mailscan
+
+        self.conn.scan_scope = "ALL"
+        self.assertNotEqual(mailscan.scope_project_ids(self.conn), None)  # OP: falls back to own + pinned
+        from .models import GmailConnection
+
+        boss = GmailConnection.objects.create(user=self.mgmt, email="b@x.com", refresh_token="x", scan_scope="ALL")
+        self.assertIsNone(mailscan.scope_project_ids(boss))
+
+    def test_same_email_in_two_mailboxes_goes_to_ai_once(self):
+        from . import mailscan
+        from .models import GmailConnection
+
+        for m in self.inbox.values():
+            m["rfc_id"] = f"<{m['id']}@mail.example>"
+        self.run_scan()
+        self.assertEqual(len(self.calls), 1)
+        self.project.owners.add(self.mgmt)
+        self.conn = GmailConnection.objects.create(user=self.mgmt, email=self.mgmt.email, refresh_token=mailscan.encrypt("r"))
+        res = self.run_scan()
+        self.assertEqual(len(self.calls), 1)  # nothing new for AI
+        self.assertIn("没有重复交给 AI", res["result"])
+
+    def test_due_hours_weekends_and_hourly_run(self):
+        from datetime import datetime
+        from unittest import mock
+
+        from . import mailscan
+
+        la = mailscan.LA
+        c = self.conn  # default: 5 pm, every day
+        self.assertFalse(mailscan.due(c, datetime(2026, 10, 28, 16, 30, tzinfo=la)))
+        self.assertTrue(mailscan.due(c, datetime(2026, 10, 28, 17, 0, tzinfo=la)))
+        c.last_auto_at = datetime(2026, 10, 28, 17, 0, tzinfo=la)
+        self.assertFalse(mailscan.due(c, datetime(2026, 10, 28, 18, 0, tzinfo=la)))  # once per slot
+        c.scan_hour_1, c.scan_hour_2 = 9, 15
+        c.last_auto_at = datetime(2026, 10, 28, 9, 0, tzinfo=la)
+        self.assertFalse(mailscan.due(c, datetime(2026, 10, 28, 14, 0, tzinfo=la)))
+        self.assertTrue(mailscan.due(c, datetime(2026, 10, 28, 15, 0, tzinfo=la)))
+        self.assertTrue(mailscan.due(c, datetime(2026, 10, 29, 9, 0, tzinfo=la)))
+        c.scan_weekends = False
+        self.assertFalse(mailscan.due(c, datetime(2026, 10, 31, 9, 0, tzinfo=la)))  # Saturday
+        c.auto_scan = False
+        self.assertFalse(mailscan.due(c, datetime(2026, 10, 29, 9, 0, tzinfo=la)))
+        c.auto_scan, c.scan_hour_1, c.scan_hour_2, c.last_auto_at, c.scan_weekends = True, 17, None, None, True
+        c.save()
+        with mock.patch.object(mailscan, "scan_one", return_value={"mailbox": c.email, "result": "ok"}) as one:
+            self.assertEqual(mailscan.scan_all(now=datetime(2026, 10, 28, 12, 0, tzinfo=la)), [])
+            mailscan.scan_all(now=datetime(2026, 10, 28, 17, 0, tzinfo=la))
+            mailscan.scan_all(now=datetime(2026, 10, 28, 18, 0, tzinfo=la))
+        self.assertEqual(one.call_count, 1)
+
+    def test_schedule_settings_page(self):
+        self.login(self.op)
+        r = self.client.post("/mail/", {"auto_scan": "on", "scan_hour_1": "9", "scan_hour_2": "10", "scan_scope": "MINE"})
+        self.assertContains(r, "至少间隔 3 小时")
+        r = self.client.post("/mail/", {"auto_scan": "on", "scan_hour_1": "9", "scan_hour_2": "15", "scan_scope": "ALL"})
+        self.assertEqual(r.status_code, 200)  # ALL is not a choice for OP
+        r = self.client.post("/mail/", {"auto_scan": "on", "scan_hour_1": "9", "scan_hour_2": "15", "scan_scope": "MINE_PINNED"})
+        self.assertEqual(r.status_code, 302)
+        self.conn.refresh_from_db()
+        self.assertEqual((self.conn.scan_hours(), self.conn.scan_weekends, self.conn.scan_scope), ([9, 15], False, "MINE_PINNED"))
 
     def test_identifiers_and_query(self):
         from datetime import datetime, timezone as dt_tz

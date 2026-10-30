@@ -883,6 +883,10 @@ def project_create(request):
         form = ProjectForm(request.POST)
         if form.is_valid():
             p = form.save()
+            from .notify import notify
+
+            notify(p.owners.all(), f"{request.user.get_full_name() or request.user.email} 新建项目 {p.number} {p.name}，交给你负责",
+                   p.get_absolute_url(), exclude=request.user)
             messages.success(request, f"已创建项目 {p.number}")
             return redirect(p)
     else:
