@@ -519,6 +519,34 @@ class PodUploadTests(Base):
         p = self.project
         return {"company": p.company, "customer": p.customer_id, "name": p.name, "detention_free_hours": "2", "manual_status": ""}
 
+    def test_confirm_complete_when_all_pods_uploaded(self):
+        from django.utils import timezone
+
+        from .models import Status
+
+        self.s.manual_status = ""
+        self.s.save()
+        Shipment.objects.filter(pk=self.s.pk).update(status=Status.DELIVERED)
+        self.project.refresh_status()
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.status, Project.Status.DELIVERED)
+        self.assertFalse(self.project.ready_to_close)
+        self.login(self.op)
+        self.client.post(f"/projects/{self.project.pk}/close/")
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.status, Project.Status.DELIVERED)  # POD missing: refused
+        Shipment.objects.filter(pk=self.s.pk).update(pod_uploaded_at=timezone.now())
+        self.project.refresh_from_db()
+        self.assertTrue(self.project.ready_to_close)
+        r = self.client.get(f"/projects/{self.project.pk}/")
+        self.assertContains(r, "POD 已齐 · 待确认完结")
+        self.assertContains(r, "确认完结")
+        self.client.post(f"/projects/{self.project.pk}/close/")
+        self.project.refresh_from_db()
+        self.assertEqual(self.project.status, Project.Status.DONE)
+        self.login(self.ap)
+        self.assertEqual(self.client.post(f"/projects/{self.project.pk}/close/").status_code, 403)
+
     def test_new_project_notifies_owners(self):
         from .models import Notification
 

@@ -190,6 +190,7 @@ table.t tr.cat td { background: #f1f3f6; font-weight: 700; font-size: 12.5px; co
 .dot-urgent { background: #c8321f; } .dot-today { background: #d97a0b; }
 .b-PPENDING { background: var(--grey-bg); } .b-PACTIVE { background: var(--accent-bg); color: var(--accent); }
 .b-PDELIVERED { background: var(--warn-bg); color: var(--warn); } .b-PDONE { background: var(--ok-bg); color: var(--ok); }
+.b-PREADY { background: var(--ok-bg); color: var(--ok); }
 .b-PCANCELLED { background: #f2f4f7; color: #98a2b3; }
 
 /* project page */

@@ -2546,7 +2546,16 @@
 "两次扫描至少间隔 3 小时，否则第二次几乎读不到新邮件": "Leave at least 3 hours between the two scans, otherwise the second one finds almost nothing new",
 "上次扫描": "Last scan",
 "时间不够，剩余项目下次扫描继续": "Out of time; the remaining projects continue at the next scan",
-"不扫第二次": "No second scan"
+"不扫第二次": "No second scan",
+"POD 已齐 · 待确认完结": "PODs complete · confirm to close",
+"确认完结": "Confirm complete",
+"全部 Load 已送达、POD 已齐。确认项目完结？": "All Loads delivered and all PODs uploaded. Close this project?",
+"还有 Load 没送达，项目不能完结": "Some Loads are not delivered yet; the project cannot be closed",
+"确认项目完结（全部送达，POD 已齐）": "Project closed (all delivered, PODs complete)",
+"全部送达、POD 已齐，项目待确认完结": "All delivered and PODs complete: project waiting to be closed",
+"不完结，项目一直挂在执行中，统计和工作台都不准": "Until it is closed the project stays open and the numbers and workspace are off",
+"全部送达、POD 已齐，可以确认完结": "All delivered and PODs complete: ready to close",
+"在项目页点“确认完结”": "click \"Confirm complete\" on the project page"
 },
 "patterns": [
 [
@@ -3824,6 +3833,14 @@
 [
 "{} 起",
 "since {}"
+],
+[
+"还有 {} 个 Load 的 POD 没确认上传，项目不能完结",
+"{} Loads still have no POD marked uploaded; the project cannot be closed"
+],
+[
+"项目 {} 已完结",
+"Project {} closed"
 ]
 ]
 }

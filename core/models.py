@@ -334,6 +334,19 @@ class Project(SoftDeleteModel):
     def is_open(self):
         return self.status not in (self.Status.DONE, self.Status.CANCELLED)
 
+    def pods_missing(self):
+        """Loads (not cancelled) whose POD is neither uploaded nor waived."""
+        return [s for s in self.shipments.all() if s.status != Status.CANCELLED and not s.pod_done]
+
+    @property
+    def ready_to_close(self):
+        """Every Load delivered and every POD uploaded (or waived): only the owner's confirmation is left."""
+        return self.status == self.Status.DELIVERED and not self.pods_missing()
+
+    @property
+    def status_label(self):
+        return "POD 已齐 · 待确认完结" if self.ready_to_close else self.get_status_display()
+
 
 class Milestone(models.Model):
     """Custom project milestones. Standard ones (first pickup, last delivery,

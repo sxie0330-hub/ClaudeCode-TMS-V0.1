@@ -909,6 +909,24 @@ def project_edit(request, pk):
 
 
 @require_POST
+def project_close(request, pk):
+    """One click for the owner once every Load is delivered and every POD uploaded."""
+    p = get_object_or_404(Project, pk=pk)
+    _need(can_edit_ops(request.user))
+    missing = p.pods_missing()
+    if missing:
+        messages.error(request, f"还有 {len(missing)} 个 Load 的 POD 没确认上传，项目不能完结")
+    elif p.status != Project.Status.DELIVERED:
+        messages.error(request, "还有 Load 没送达，项目不能完结")
+    else:
+        p.manual_status = Project.Status.DONE
+        p.save()
+        _note(None, request.user, "确认项目完结（全部送达，POD 已齐）", kind=Note.Kind.NOTE, project=p)
+        messages.success(request, f"项目 {p.number} 已完结")
+    return redirect(p)
+
+
+@require_POST
 def project_note(request, pk):
     p = get_object_or_404(Project, pk=pk)
     form = NoteForm(request.POST)

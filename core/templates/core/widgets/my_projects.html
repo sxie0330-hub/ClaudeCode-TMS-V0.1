@@ -5,7 +5,7 @@
   <tbody>
   {% for r in d.rows %}<tr>{% for k, label in d.columns %}{% with v=r.cells|get_item:k %}
     {% if k == "name" %}<td><a href="{{ r.p.get_absolute_url }}"><b>{{ v }}</b></a></td>
-    {% elif k == "status" %}<td><span class="b b-P{{ r.p.status }}">{{ v }}</span></td>
+    {% elif k == "status" %}<td><span class="b b-P{% if r.p.ready_to_close %}READY{% else %}{{ r.p.status }}{% endif %}">{{ v }}</span></td>
     {% elif k == "alerts" %}<td>{% if v %}<span class="b b-lv-urgent">{{ v }}</span>{% else %}—{% endif %}</td>
     {% elif k in "ar ap margin" %}<td class="num">{{ v|money }}</td>
     {% else %}<td>{{ v|default:"—" }}</td>{% endif %}
