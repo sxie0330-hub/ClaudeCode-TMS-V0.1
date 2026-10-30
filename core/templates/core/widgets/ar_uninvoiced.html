@@ -1,1 +1,1 @@
-{% load tms %}<div class="wg-big">{{ d.count }}</div><div class="wg-sub">已送达未开票 · {{ d.total|money }}</div>
+{% load tms %}<a class="wg-big wg-num" href="{{ d.link }}" title="打开这些 Load">{{ d.count }}</a><div class="wg-sub">已送达未开票 · {{ d.total|money }} · <a href="{{ d.link }}">查看全部 →</a></div>

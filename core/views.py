@@ -109,6 +109,13 @@ def _confirm_delete(request, obj, title, success_url, cancel_url, text=None):
     return render(request, "core/confirm.html", {"title": title, "text": text or f"确定删除「{obj}」？", "cancel_url": cancel_url, "danger": True})
 
 
+SPECIAL_FILTERS = [
+    ("mine", "1", "我负责的项目"), ("lfd", "soon", "LFD 临近、还没提"), ("pod", "open", "已送达、POD 未上传"),
+    ("appt", "soon", "今天 / 明天有提货或送货"), ("ap", "noinvoice", "已送达、承运商发票号未填"),
+    ("ar", "open", "已送达、未开票"), ("extra", "open", "额外费用待审 / 争议中"),
+]
+
+
 def _shipment_filters(request, qs):
     g = request.GET
     q = g.get("q", "").strip()
@@ -133,6 +140,26 @@ def _shipment_filters(request, qs):
     if g.get("lfd") == "soon":
         horizon = timezone.localdate() + timezone.timedelta(days=settings.TMS_LFD_WARNING_DAYS)
         qs = qs.filter(lfd__lte=horizon, status__in=[Status.PLANNING, Status.AWAITING, Status.ARRIVED])
+    # Filters behind the home-page number tiles (see SPECIAL_FILTERS for their labels)
+    user = getattr(request, "user", None)
+    if g.get("mine") and getattr(user, "pk", None):
+        qs = qs.filter(project__owners=user).distinct()
+    if g.get("pod") == "open":
+        qs = qs.filter(status=Status.DELIVERED, pod_uploaded_at__isnull=True, pod_waived_reason="")
+    if g.get("appt") == "soon":
+        days = [timezone.localdate(), timezone.localdate() + timezone.timedelta(days=1)]
+        qs = qs.filter(Q(legs__scheduled_pickup__in=days, legs__actual_pickup__isnull=True)
+                       | Q(legs__scheduled_delivery__in=days, legs__actual_delivery__isnull=True)).distinct()
+    if g.get("ap") == "noinvoice":
+        qs = qs.filter(status=Status.DELIVERED, charges__side="AP", charges__state=Charge.State.OPEN, charges__invoice_number="",
+                       charges__is_deleted=False).distinct()
+    if g.get("ar") == "open":
+        qs = qs.filter(status=Status.DELIVERED, charges__side="AR", charges__state=Charge.State.OPEN, charges__is_deleted=False).distinct()
+    if g.get("extra") == "open":
+        from .alerts import ACCESSORIAL
+
+        qs = qs.filter(charges__side="AP", charges__charge_type__in=ACCESSORIAL, charges__is_deleted=False,
+                       charges__state__in=[Charge.State.OPEN, Charge.State.DISPUTED]).distinct()
     sort = g.get("sort", "-created_at")
     allowed = {"number", "-number", "lfd", "-lfd", "master_bl__eta", "-master_bl__eta", "-created_at", "status", "container_number"}
     return qs.order_by(sort if sort in allowed else "-created_at")
@@ -169,6 +196,8 @@ def shipment_list(request):
         "querystring": params.urlencode(),
         "g": request.GET,
         "today": timezone.localdate(),
+        "special": [label for key, val, label in SPECIAL_FILTERS if request.GET.get(key) == val],
+        "keep": [(key, val) for key, val, _ in SPECIAL_FILTERS if key != "lfd" and request.GET.get(key) == val],
     })
 
 

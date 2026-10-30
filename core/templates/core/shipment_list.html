@@ -11,7 +11,10 @@
   </div>
 </div>
 
+{% if special %}<div class="panel" style="padding:8px 12px;margin-bottom:8px">筛选：<b>{{ special|join:" · " }}</b>{% if g.status %} · {{ g.status }}{% endif %}
+  <a href="{% url 'shipment_list' %}" style="margin-left:10px">清除筛选</a></div>{% endif %}
 <form class="filters" method="get">
+  {% for k, v in keep %}<input type="hidden" name="{{ k }}" value="{{ v }}">{% endfor %}
   <input type="search" name="q" value="{{ g.q|default:'' }}" placeholder="柜号 / MBL / Load# / 序列号 / PO / Monday ID">
   <select name="status">
     <option value="">未结案（默认）</option>

@@ -1,2 +1,2 @@
-<div class="wg-big">{{ d.count }}</div><div class="wg-sub">已提货、未送达</div>
+<a class="wg-big wg-num" href="{{ d.link }}" title="打开这些 Load">{{ d.count }}</a><div class="wg-sub">已提货、未送达 · <a href="{{ d.link }}">查看全部 →</a></div>
 {% if size != "S" %}{% for s in d.items %}{% with leg=s.current_leg %}<div class="wg-li"><a href="{{ s.get_absolute_url }}"><b>{{ s.container_number|default:s.number }}</b></a><span class="wg-sub">{{ leg.carrier|default:"" }} · 计划 {{ leg.scheduled_delivery|date:"m-d"|default:"—" }}</span></div>{% endwith %}{% endfor %}{% endif %}
