@@ -1,0 +1,83 @@
+{
+"exact": {
+"中文": "中文",
+"切换到中文": "切换到中文",
+"使用公司 Google 账号登录": "Sign in with your company Google account",
+"登录": "Sign in",
+"记录沟通、异常、决定…": "Log communication, exceptions, decisions…",
+"在用的承运商：": "Carriers in use:",
+"在用的承运商": "Carriers in use",
+"今日 / 明日预约": "Today / tomorrow appointments",
+"LFD 倒计时": "LFD countdown",
+"已送达、POD 未上传": "Delivered, POD not uploaded",
+"个项目": "projects",
+"尚未提柜": "not picked up yet",
+"（计时中）": "(running)",
+"计时中": "running",
+"可收约": "billable approx.",
+"向客户收": "bill the customer",
+"向客户": "to the customer",
+"已存在": "already exists",
+"让对方在 BOL 上签到场、离场时间": "Have them sign in / out times on the BOL",
+"AI 邮件识别": "AI email reading",
+"[AI 邮件识别]": "[AI email reading]",
+"移除": "Remove",
+"未上传": "not uploaded",
+"POD 未上传": "POD not uploaded",
+"倒计时": "countdown",
+"今日": "Today",
+"明日预约": "tomorrow appointments",
+"让对方在 BOL 上签到场": "Have them sign in",
+"离场时间": "out times on the BOL",
+"车牌": "Truck plate",
+"拖车号": "trailer #",
+"核对后新建": "review, then create",
+"核对后添加": "review, then add",
+"加到已有项目": "Add to existing project",
+"同时建立里程碑": "Also create milestone",
+"按": "at",
+"Step Deck tri-axle 三轴阶梯板（双轴车头，共 6 轴）": "Step Deck tri-axle (tandem tractor, 6 axles total)",
+"Step Deck tri-axle + 三轴车头（共 7 轴）": "Step Deck tri-axle + tri-axle tractor (7 axles total)",
+"Double Drop tri-axle 三轴双落（可拆鹅颈，30' 凹槽）": "Double Drop tri-axle (detachable gooseneck, 30' well)",
+"RGN 共 9 轴 65 吨级（三轴车头 + 2 轴 jeep + 2 轴 RGN + 2 轴 booster，Trail King / Cozad）": "RGN 9 axles total, 65-ton class (tri-axle tractor + 2-axle jeep + 2-axle RGN + 2-axle booster, Trail King / Cozad)",
+"4+4 共 8 轴（四轴车头 + 四轴挂车）": "4+4, 8 axles total (4-axle tractor + 4-axle trailer)"
+},
+"patterns": [
+[
+"{}月{}日",
+"{0}/{1}"
+],
+[
+"{} 年 {} 月",
+"{1}/{0}"
+],
+[
+"{}年{}月",
+"{1}/{0}"
+],
+[
+"移除 {}",
+"Remove {}"
+],
+[
+"最早 {} 开始",
+"earliest starts {}"
+],
+[
+"按 {}/hr 可收约 {}",
+"at {}/hr approx. {} billable"
+],
+[
+"通过 AI 邮件识别 #{} 更新：{}",
+"Updated via AI email reading #{}: {}"
+],
+[
+"[AI 邮件识别] {}",
+"[AI email reading] {}"
+],
+[
+"已过 LFD {} 天，尚未提柜",
+"past LFD {} days, not picked up yet"
+]
+]
+}

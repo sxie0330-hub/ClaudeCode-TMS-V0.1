@@ -99,5 +99,6 @@ urlpatterns = [
     path("tasks/scan-email/", views_mail.task_scan_email, name="task_scan_email"),
     path("healthz", views.healthz, name="healthz"),
     path("health/", views.healthz, name="health"),  # Cloud Run blocks paths ending in "z"
+    path("lang/<str:code>/", views.set_language, name="set_language"),
     path("dev-login/", views.DevLoginView.as_view(), name="dev_login"),
 ]

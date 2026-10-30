@@ -5,6 +5,7 @@
 <div class="login">
   <h1>TMS</h1>
   <p class="muted">{{ company_name }}</p>
+  <p style="font-size:13px">{% if request.COOKIES.tms_lang == 'en' %}<a href="{% url 'set_language' 'zh' %}">中文</a>{% else %}<a href="{% url 'set_language' 'en' %}">English</a>{% endif %}</p>
   <form method="post" action="{% provider_login_url 'google' %}">
     {% csrf_token %}
     {% if redirect_field_value %}<input type="hidden" name="{{ redirect_field_name }}" value="{{ redirect_field_value }}">{% endif %}

@@ -19,6 +19,7 @@ def role(request):
             "see_margin": can_see_margin(user),
         },
         "company_name": settings.TMS_COMPANY_NAME,
+        "en": request.COOKIES.get("tms_lang") == "en",
         **_notifications(user),
     }
 

@@ -2485,3 +2485,32 @@ class PermitTrackingTests(Base):
         self.assertTrue(self.leg.permits_required)
         self.client.post(f"/shipments/{self.s.pk}/legs/{self.leg.pk}/permits/prefill/")  # again: nothing duplicated
         self.assertEqual(LegPermit.objects.filter(leg=self.leg).count(), 2)
+
+
+class LanguageTests(Base):
+    def test_switch_to_english_and_back(self):
+        self.login(self.mgmt)
+        zh = self.client.get("/").content.decode()
+        self.assertIn("我的工作台", zh)
+        r = self.client.get("/lang/en/?next=/projects/")
+        self.assertRedirects(r, "/projects/", fetch_redirect_response=False)
+        self.assertEqual(self.client.cookies["tms_lang"].value, "en")
+        en = self.client.get("/").content.decode()
+        self.assertIn("My workspace", en)
+        self.assertNotIn("我的工作台", en)
+        self.assertIn('lang="en"', en)
+        load = self.client.get(self.s.get_absolute_url()).content.decode()
+        self.assertIn("Leg", load)
+        self.assertIn("Holyoke", load)  # data stays as typed
+        self.client.get("/lang/zh/")
+        self.assertIn("我的工作台", self.client.get("/").content.decode())
+
+    def test_language_page_is_public_and_next_is_safe(self):
+        r = self.client.get("/lang/en/?next=https://evil.example.com/")
+        self.assertRedirects(r, "/", fetch_redirect_response=False)
+
+    def test_translate_keeps_unknown_chinese_intact(self):
+        from . import i18n
+
+        self.assertEqual(i18n.translate("环世"), "环世")  # a name: never split into single characters
+        self.assertEqual(i18n.translate("保存"), "Save")

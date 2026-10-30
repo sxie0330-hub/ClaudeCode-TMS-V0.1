@@ -1153,3 +1153,17 @@ class DevLoginView(auth_views.LoginView):
         if not settings.TMS_PASSWORD_LOGIN:
             raise Http404
         return super().dispatch(request, *args, **kwargs)
+
+
+def set_language(request, code):
+    """One-click switch between Chinese and English; remembered for a year in this browser."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from .i18n import COOKIE
+
+    nxt = request.GET.get("next") or request.META.get("HTTP_REFERER") or "/"
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        nxt = "/"
+    resp = redirect(nxt)
+    resp.set_cookie(COOKIE, "en" if code == "en" else "zh", max_age=365 * 24 * 3600, samesite="Lax")
+    return resp
