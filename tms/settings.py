@@ -147,18 +147,20 @@ TMS_COMPANY_PHONE = os.environ.get("TMS_COMPANY_PHONE", "")
 # TMS_COMPANY_* values above. Logos: core/static/core/logo.jpg (ATS) and
 # core/static/core/logo-ptt.png or .jpg (PTT, optional; without it the name is printed).
 TMS_DOC_COMPANIES = {
-    "ATS": {"name": TMS_COMPANY_NAME, "address": TMS_COMPANY_ADDRESS, "phone": TMS_COMPANY_PHONE, "logo": "logo.jpg"},
+    "ATS": {"name": TMS_COMPANY_NAME, "address": TMS_COMPANY_ADDRESS, "phone": TMS_COMPANY_PHONE, "logo": "logo.jpg",
+            "ap_email": os.environ.get("TMS_ATS_AP_EMAIL", "")},
     "PTT": {
         "name": os.environ.get("TMS_PTT_NAME") or "Pacific Transload and Transport",
         "address": os.environ.get("TMS_PTT_ADDRESS", ""),
         "phone": os.environ.get("TMS_PTT_PHONE", ""),
         "logo": "logo-ptt",
+        "ap_email": os.environ.get("TMS_PTT_AP_EMAIL", ""),
     },
 }
 # Rate Confirmation to carriers (core/ratecon.py). English. A starting point: have it reviewed and edit here.
 TMS_RATECON_PAYMENT_TERMS = os.environ.get(
     "TMS_RATECON_PAYMENT_TERMS",
-    "Net 30 days from receipt of the carrier invoice together with a clean, signed BOL / POD. Invoices must quote the Rate Con #.")
+    "Net 30 days from receipt of the carrier invoice together with a clean, signed BOL / POD.")
 TMS_RATECON_TERMS = [
     "Carrier is an independent contractor and accepts this load under its own operating authority. This confirmation and the "
     "Broker-Carrier Agreement in place, if any, govern this shipment; this confirmation controls if they conflict on rate.",

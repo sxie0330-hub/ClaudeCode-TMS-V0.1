@@ -2313,47 +2313,77 @@ class AiUsageTests(Base):
         self.assertContains(self.client.get("/ai/usage/?month=bad"), "AI 用量")
 
 
-class RateConTests(Base):
-    def test_ratecon_pdf_permissions_version_and_note(self):
+class RateAgreementTests(Base):
+    def make(self):
+        self.login(self.ap)
+        r = self.client.post(f"/projects/{self.project.pk}/rates/new/", {"carrier": self.carrier.pk})
+        from .models import RateAgreement
+
+        a = RateAgreement.objects.get(project=self.project, carrier=self.carrier)
+        self.assertRedirects(r, f"/rates/{a.pk}/edit/", fetch_redirect_response=False)
+        return a
+
+    def test_one_agreement_per_project_carrier_prefilled_from_charges(self):
         from .models import Note
         from . import ratecon
 
-        url = f"/shipments/{self.s.pk}/legs/{self.leg.pk}/ratecon/"
         for who in (self.op, self.ar, self.nobody):
             self.login(who)
-            self.assertEqual(self.client.get(url).status_code, 403)  # the carrier rate is AP information
-        self.login(self.ap)
-        r = self.client.get(url)
-        self.assertContains(r, "RC-")
-        self.assertContains(r, "6,543.00")
-        self.assertContains(r, "没有 MC# / DOT#")  # KD Trucking has none in the fixture
-        self.assertNotContains(r, "9,100")  # never the customer side
-        pdf = self.client.get(url.replace("ratecon/", "ratecon.pdf"))
+            self.assertEqual(self.client.get(f"/projects/{self.project.pk}/rates/new/").status_code, 403)  # carrier rates are AP data
+        a = self.make()
+        self.assertTrue(a.number.startswith(f"RA-{self.project.number}-"))
+        base = [ln for ln in a.lines.all() if not ln.optional]
+        self.assertEqual([(ln.charge_type, ln.unit_price, ln.unit) for ln in base], [("LINEHAUL", Decimal("6543.00"), "TRUCK")])
+        self.assertTrue(a.lines.filter(charge_type="DETENTION", optional=True).exists())
+        self.assertIn("One invoice per truck", a.invoice_instructions)
+        page = self.client.get(f"/rates/{a.pk}/")
+        self.assertContains(page, "6,543.00")
+        self.assertContains(page, "还没有 AP 邮箱")
+        self.assertNotContains(page, "9,100")
+        pdf = self.client.get(f"/rates/{a.pk}/pdf/")
         self.assertTrue(pdf.content.startswith(b"%PDF"))
-        self.leg.refresh_from_db()
-        self.assertEqual(self.leg.ratecon_version, 1)
-        self.assertTrue(Note.objects.filter(shipment=self.s, text__contains="生成运价确认单").exists())
-        self.client.get(url.replace("ratecon/", "ratecon.pdf"))
-        self.leg.refresh_from_db()
-        self.assertEqual(self.leg.ratecon_version, 2)
-        ctx = ratecon.ratecon_context(self.leg, self.ap)
-        self.assertEqual((ctx["version"], ctx["total"]), (3, Decimal("6543")))
+        a.refresh_from_db()
+        self.assertEqual(a.version, 1)
+        self.assertTrue(Note.objects.filter(project=self.project, text__contains="出具运价协议").exists())
+        ctx = ratecon.context(a, self.ap)
         to, subject, body = ratecon.email_draft(ctx)
-        self.assertIn(ctx["number"], subject)
-        self.assertNotIn("Trina", subject + body)  # customer name stays off the carrier's paperwork
+        self.assertIn(a.number, subject)
+        self.assertNotIn("Trina", subject + body)
+        # the Load page links every leg of this carrier to the same agreement
+        self.assertContains(self.client.get(self.s.get_absolute_url()), a.number)
+        self.assertContains(self.client.get(self.project.get_absolute_url()), a.number)
+
+    def test_edit_lines_and_ap_email_setting(self):
+        a = self.make()
+        a.lines.all().delete()
+        fs = {"lines-TOTAL_FORMS": "1", "lines-INITIAL_FORMS": "0", "lines-MIN_NUM_FORMS": "0", "lines-MAX_NUM_FORMS": "1000",
+              "lines-0-charge_type": "LINEHAUL", "lines-0-description": "All-in incl. fuel", "lines-0-unit_price": "24000",
+              "lines-0-unit": "TRUCK"}
+        r = self.client.post(f"/rates/{a.pk}/edit/", {"origin": "Carson, CA", "destination": "Nokesville, VA", "capacity": "3 trucks / day",
+                                                     "free_hours": "2", "invoice_instructions": "Send to ap@x.com", **fs})
+        self.assertRedirects(r, f"/rates/{a.pk}/", fetch_redirect_response=False)
+        a.refresh_from_db()
+        self.assertEqual(a.per_truck, Decimal("24000"))
+        from . import ratecon
+
+        with self.settings(TMS_DOC_COMPANIES={**settings.TMS_DOC_COMPANIES, "ATS": {**settings.TMS_DOC_COMPANIES["ATS"], "ap_email": "ap@ats.com"}}):
+            self.assertIn("ap@ats.com", ratecon.default_invoice_instructions(self.project))
 
 
 class RateConAlertTests(Base):
-    def test_missing_ratecon_reminds_ap_side_only(self):
+    def test_missing_agreement_reminds_ap_side_only(self):
         from . import alerts
+        from .models import RateAgreement
 
         self.project.owners.add(self.op, self.mgmt)
         self.leg.scheduled_pickup = date.today() + timedelta(days=1)
         self.leg.save()
         self.assertIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})
         self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.op)})  # OP sees no carrier rates
-        type(self.leg).objects.filter(pk=self.leg.pk).update(ratecon_version=1)
-        self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})
+        a = RateAgreement.objects.create(project=self.project, carrier=self.carrier, origin="A", destination="B")
+        self.assertIn("ratecon_missing", {x.rule for x in alerts.collect(self.mgmt)})  # a draft is not enough
+        RateAgreement.objects.filter(pk=a.pk).update(version=1)
+        self.assertNotIn("ratecon_missing", {x.rule for x in alerts.collect(self.mgmt)})
 
 
 class CarrierComplianceTests(Base):
@@ -2370,8 +2400,10 @@ class CarrierComplianceTests(Base):
         a = [x for x in alerts.collect(self.op) if x.rule == "carrier_coi"]
         self.assertEqual(len(a), 1)
         self.assertIn("汽车责任险已过期", a[0].title)
-        self.leg.refresh_from_db()
-        ctx = ratecon.ratecon_context(self.leg, self.ap)
+        from .models import RateAgreement
+
+        ra = RateAgreement.objects.create(project=self.project, carrier=c, origin="A", destination="B")
+        ctx = ratecon.context(ra, self.ap)
         self.assertTrue(any("汽车责任险已于" in p for p in ratecon.problems(ctx)), ratecon.problems(ctx))
         self.login(self.op)
         r = self.client.get(c.get_absolute_url())

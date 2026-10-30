@@ -88,7 +88,7 @@
         <td>{{ l.actual_delivery|dash }}</td>
         <td>{% if l.tracking_url %}<a href="{{ l.tracking_url }}" target="_blank" rel="noopener">跟踪</a>{% endif %}</td>
         <td><a href="{% url 'shipment_bol' s.pk %}?leg={{ l.pk }}" target="_blank">{{ l.effective_bol_number }}</a></td>
-        {% if can_edit_ap %}<td>{% if l.carrier_id %}<a href="{% url 'shipment_ratecon' s.pk l.pk %}">{% if l.ratecon_version %}第 {{ l.ratecon_version }} 版 · {{ l.ratecon_at|date:"m-d" }}{% else %}生成{% endif %}</a>{% else %}<span class="muted">先指定承运商</span>{% endif %}</td>{% endif %}
+        {% if can_edit_ap %}<td>{% if l.rate_agreement %}<a href="{{ l.rate_agreement.get_absolute_url }}">{{ l.rate_agreement.number }}</a>{% if not l.rate_agreement.version %} <small class="lfd-warn">未出具</small>{% endif %}{% elif l.carrier_id and s.project_id %}<a href="{% url 'rate_agreement_new' s.project_id %}?carrier={{ l.carrier_id }}">新建</a>{% else %}—{% endif %}</td>{% endif %}
         <td>{% if can_edit %}<a href="{% url 'child_edit' 'leg' l.pk %}">编辑</a> · <a href="{% url 'child_delete' 'leg' l.pk %}">删除</a>{% endif %}</td>
       </tr>
       {% if l.notes %}<tr><td></td><td colspan="13" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}

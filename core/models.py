@@ -740,8 +740,6 @@ class Leg(SoftDeleteModel):
     bol_number = models.CharField("BOL 号（留空自动生成）", max_length=40, blank=True)
     bol_instructions = models.TextField("本段 BOL 特别说明", blank=True)
     notes = models.TextField("备注", blank=True)
-    ratecon_version = models.PositiveSmallIntegerField("运价确认单版本", default=0, editable=False)
-    ratecon_at = models.DateTimeField("运价确认单生成时间", null=True, blank=True, editable=False)
 
     history = HistoricalRecords()
 
@@ -943,6 +941,73 @@ class Charge(SoftDeleteModel):
     def save(self, *args, **kwargs):
         self.amount = (self.quantity or 0) * (self.unit_price or 0)
         super().save(*args, **kwargs)
+
+
+
+class RateAgreement(models.Model):
+    """What we pay one carrier on one project (lane, equipment, capacity, rate per truck, accessorials) and how
+    the carrier invoices our AP team. One document for all the project's loads with that carrier; a new version
+    only when the deal changes."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="rate_agreements", verbose_name="项目")
+    carrier = models.ForeignKey(Carrier, on_delete=models.PROTECT, related_name="rate_agreements", verbose_name="承运商")
+    number = models.CharField("协议号", max_length=30, unique=True, editable=False)
+    origin = models.CharField("起点", max_length=160, help_text="如 Carson, CA / Port of Long Beach")
+    destination = models.CharField("终点", max_length=160, help_text="如 Nokesville, VA")
+    commodity = models.CharField("货物", max_length=255, blank=True)
+    equipment = models.CharField("车型", max_length=80, blank=True)
+    capacity = models.CharField("运力安排", max_length=255, blank=True, help_text="如：每天 3 车，共约 300 车")
+    valid_from = models.DateField("有效期起", null=True, blank=True)
+    valid_until = models.DateField("有效期止", null=True, blank=True, help_text="留空 = 直到项目结束")
+    free_hours = models.DecimalField("免费等待（小时）", max_digits=4, decimal_places=1, default=Decimal("2"))
+    invoice_instructions = models.TextField("开票说明（英文，印在协议上）", blank=True)
+    notes = models.TextField("其他条件（英文，印在协议上）", blank=True)
+    version = models.PositiveSmallIntegerField("版本", default=0, editable=False)
+    issued_at = models.DateTimeField("最近出具", null=True, blank=True, editable=False)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["project", "carrier__name", "id"]
+
+    def __str__(self):
+        return f"{self.number} {self.carrier}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            n = RateAgreement.objects.filter(project=self.project).count() + 1
+            while RateAgreement.objects.filter(number=f"RA-{self.project.number}-{n}").exists():
+                n += 1
+            self.number = f"RA-{self.project.number}-{n}"
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("rate_agreement", args=[self.pk])
+
+    @property
+    def per_truck(self):
+        return sum((ln.unit_price for ln in self.lines.all() if ln.unit == RateLine.Unit.TRUCK and not ln.optional), Decimal("0"))
+
+
+class RateLine(models.Model):
+    class Unit(models.TextChoices):
+        TRUCK = "TRUCK", "每车"
+        HOUR = "HOUR", "每小时"
+        DAY = "DAY", "每天"
+        EACH = "EACH", "每次"
+        FLAT = "FLAT", "总价"
+
+    agreement = models.ForeignKey(RateAgreement, on_delete=models.CASCADE, related_name="lines")
+    charge_type = models.CharField("费用类型", max_length=12, choices=Charge.Type.choices, default=Charge.Type.LINEHAUL)
+    description = models.CharField("说明（英文）", max_length=255, blank=True)
+    unit_price = models.DecimalField("单价 (USD)", max_digits=12, decimal_places=2, default=Decimal("0"))
+    unit = models.CharField("单位", max_length=5, choices=Unit.choices, default=Unit.TRUCK)
+    optional = models.BooleanField("视情况发生", default=False, help_text="如 Detention、TONU：需事先书面批准才可开票")
+
+    class Meta:
+        ordering = ["agreement", "optional", "id"]
 
 
 class Note(models.Model):

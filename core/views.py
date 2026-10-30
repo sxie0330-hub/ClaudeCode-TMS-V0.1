@@ -44,6 +44,8 @@ from .models import (
     Customer,
     Leg,
     LegPermit,
+    RateAgreement,
+    RateLine,
     Location,
     TrailerType,
     MasterBL,
@@ -257,6 +259,9 @@ def shipment_detail(request, pk):
 
     yard_stays = list(s.yard_stays.select_related("yard"))
     legs = list(s.legs.select_related("origin", "destination", "carrier").prefetch_related("permits"))
+    agreements = {a.carrier_id: a for a in RateAgreement.objects.filter(project_id=s.project_id)} if s.project_id else {}
+    for leg in legs:
+        leg.rate_agreement = agreements.get(leg.carrier_id)
     free = s.project.detention_free_hours if s.project else Decimal("2")
     rate = s.project.detention_rate if s.project else None
     waits = []
@@ -663,37 +668,69 @@ def shipment_bol(request, pk):
 
 
 # ---------------------------------------------------------------------------
-# Rate Confirmation to the carrier (shows the carrier rate: AP-visible roles only)
+# Carrier rate agreement (rate confirmation) per project and carrier. Shows carrier rates: AP-visible roles only.
 # ---------------------------------------------------------------------------
-def _ratecon_leg(request, pk, lid):
+def _rates_allowed(user):
+    _need(can_see_side(user, Charge.Side.AP))
+
+
+def rate_agreement_new(request, pk):
     from . import ratecon
 
-    s = get_object_or_404(Shipment, pk=pk)
-    leg = get_object_or_404(Leg, pk=lid, shipment=s)
-    _need(can_see_side(request.user, Charge.Side.AP))
-    return s, leg, ratecon.ratecon_context(leg, request.user)
+    p = get_object_or_404(Project, pk=pk)
+    _rates_allowed(request.user)
+    used = Carrier.objects.filter(legs__shipment__project=p).distinct()
+    if request.method == "POST":
+        carrier = get_object_or_404(Carrier, pk=request.POST.get("carrier"))
+        data, lines = ratecon.prefill(p, carrier)
+        a = RateAgreement.objects.create(project=p, carrier=carrier, created_by=request.user, **data)
+        for ln in lines:
+            RateLine.objects.create(agreement=a, **ln)
+        messages.success(request, f"已按{'询报价' if p.leads.exists() else '已有费用'}带出运价，请核对后保存")
+        return redirect("rate_agreement_edit", a.pk)
+    return render(request, "core/rate_new.html", {"p": p, "used": used, "carriers": Carrier.objects.all(),
+                                                  "pre": request.GET.get("carrier", "")})
 
 
-def shipment_ratecon(request, pk, lid):
+def rate_agreement(request, pk):
     from . import quotes, ratecon
 
-    s, leg, ctx = _ratecon_leg(request, pk, lid)
+    a = get_object_or_404(RateAgreement.objects.select_related("project", "carrier"), pk=pk)
+    _rates_allowed(request.user)
+    ctx = ratecon.context(a, request.user)
     to, subject, body = ratecon.email_draft(ctx)
-    return render(request, "core/ratecon.html", {
-        "s": s, "leg": leg, "ctx": ctx, "problems": ratecon.problems(ctx),
-        "gmail": quotes.gmail_compose_url(to, subject, body), "to": to, "subject": subject, "body": body,
-    })
+    return render(request, "core/rate_agreement.html", {"a": a, "ctx": ctx, "problems": ratecon.problems(ctx), "to": to,
+                                                        "subject": subject, "body": body, "gmail": quotes.gmail_compose_url(to, subject, body)})
 
 
-def shipment_ratecon_pdf(request, pk, lid):
+def rate_agreement_edit(request, pk):
+    from .forms import RateAgreementForm, rate_lines_formset
+
+    a = get_object_or_404(RateAgreement, pk=pk)
+    _rates_allowed(request.user)
+    FS = rate_lines_formset()
+    form = RateAgreementForm(request.POST or None, instance=a)
+    fs = FS(request.POST or None, instance=a)
+    if request.method == "POST" and form.is_valid() and fs.is_valid():
+        form.save()
+        fs.save()
+        messages.success(request, "已保存")
+        return redirect(a)
+    return render(request, "core/lead_formset.html", {"title": f"运价协议 {a.number} · {a.carrier}", "form": form, "fs": fs,
+                                                      "kind": "rate", "cancel_url": a.get_absolute_url(), "back": "返回协议"})
+
+
+def rate_agreement_pdf(request, pk):
     from . import ratecon
 
-    s, leg, ctx = _ratecon_leg(request, pk, lid)
+    a = get_object_or_404(RateAgreement.objects.select_related("project", "carrier"), pk=pk)
+    _rates_allowed(request.user)
+    ctx = ratecon.context(a, request.user)
     pdf = ratecon.render(ctx)
-    Leg.objects.filter(pk=leg.pk).update(ratecon_version=ctx["version"], ratecon_at=timezone.now())
-    _note(s, request.user, f"生成运价确认单 {ctx['number']}" + (f"（第 {ctx['version']} 版）" if ctx["version"] > 1 else "")
-          + f"，{leg.carrier or '未指定承运商'}，合计 ${ctx['total']:,.2f}")
-    return _pdf(pdf, f"RateCon-{ctx['number']}.pdf")
+    RateAgreement.objects.filter(pk=a.pk).update(version=ctx["version"], issued_at=timezone.now())
+    _note(None, request.user, f"出具运价协议 {a.number}（{a.carrier}，第 {ctx['version']} 版）"
+          + (f"，每车 ${ctx['per_truck']:,.2f}" if ctx["per_truck"] else ""), project=a.project)
+    return _pdf(pdf, f"RateConfirmation-{a.number}.pdf")
 
 
 @require_POST
@@ -793,6 +830,9 @@ def project_detail(request, pk):
         "money": money,
         "kpi": kpi,
         "milestones": _milestones(p, loads),
+        "rate_agreements": list(p.rate_agreements.select_related("carrier").prefetch_related("lines")) if "AP" in sides else [],
+        "carriers_missing": list(Carrier.objects.filter(legs__shipment__project=p).exclude(rate_agreements__project=p).distinct())
+        if "AP" in sides else [],
         "alerts": alert_engine.collect(user, project=p),
         "timeline": audit.project_timeline(p, can_revert=is_management(user)),
         "note_form": NoteForm(),

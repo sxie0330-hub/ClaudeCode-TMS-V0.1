@@ -16,6 +16,8 @@ from .models import (
     LeadCargo,
     LeadLane,
     LegPermit,
+    RateAgreement,
+    RateLine,
     TrailerType,
     Leg,
     Location,
@@ -171,6 +173,20 @@ class ShipmentDocsForm(BaseForm):
         model = Shipment
         fields = ["pod_received", "pod_check", "pod_link", "photos_link", "inspection_link", "other_docs_link",
                   "empty_return_due", "empty_return_date", "empty_return_location"]
+
+
+class RateAgreementForm(BaseForm):
+    class Meta:
+        model = RateAgreement
+        fields = ["origin", "destination", "commodity", "equipment", "capacity", "valid_from", "valid_until", "free_hours",
+                  "invoice_instructions", "notes"]
+        widgets = {"invoice_instructions": forms.Textarea(attrs={"rows": 7}), "notes": forms.Textarea(attrs={"rows": 3})}
+
+
+def rate_lines_formset():
+    return forms.inlineformset_factory(
+        RateAgreement, RateLine, fields=["charge_type", "description", "unit_price", "unit", "optional"], extra=2, can_delete=True,
+        widgets={"description": forms.TextInput(attrs={"size": 44}), "unit_price": forms.NumberInput(attrs={"style": "width:110px"})})
 
 
 class LegPermitForm(BaseForm):

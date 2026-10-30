@@ -19,7 +19,7 @@
         {% if f.help_text %}<span class="help">{{ f.help_text }}</span>{% endif %}{% for e in f.errors %}<span class="err">{{ e }}</span>{% endfor %}</div>
     {% endfor %}</div>
   </div></div>
-  <div class="panel"><header><h2>{% if kind == "customer" %}报价明细（description 用英文，客户可见）{% else %}报价明细（USD）{% endif %}</h2></header>
+  <div class="panel"><header><h2>{% if kind == "customer" %}报价明细（description 用英文，客户可见）{% elif kind == "rate" %}运价表（USD；说明用英文，承运商可见。“视情况发生”的放在附加费里）{% else %}报价明细（USD）{% endif %}</h2></header>
     <div class="tablewrap">{{ fs.management_form }}
     {% if fs.non_form_errors %}<div class="nonfield">{{ fs.non_form_errors }}</div>{% endif %}
     <table class="t"><thead><tr>{% for f in fs.forms.0.visible_fields %}<th>{{ f.label }}</th>{% endfor %}</tr></thead><tbody>
@@ -28,7 +28,7 @@
     </tbody></table></div>
     <p class="muted" style="font-size:12.5px;margin:6px 12px">空行不用填；要加更多行，先保存，会再出现两行空的。勾选最后一列的 Delete 删除这一行。{% if kind == "customer" %} 大项目可以用“分段标题”分组（如 Phase 1 – Port Drayage），正式 PDF 会按分段列出小计。{% endif %}</p>
   </div>
-  <p><button type="submit" class="primary">保存</button> <a class="btn" href="{{ cancel_url }}">返回询价</a></p>
+  <p><button type="submit" class="primary">保存</button> <a class="btn" href="{{ cancel_url }}">{{ back|default:"返回询价" }}</a></p>
 </form>
 {% if kind == "customer" %}
 <div class="panel"><header><h2>给客户的邮件草稿</h2><div class="actions"><button class="sm" type="button" data-copy="cq-all">复制主题 + 正文</button>

@@ -84,6 +84,16 @@
 </div>
 </form>
 
+{% if see_ap %}<div class="panel" id="rates"><header><h2>承运商运价协议</h2><small class="muted">一个承运商一份，覆盖这条线路的所有 Load；告诉承运商价格和怎么给我们开票</small>
+  <div class="actions"><a class="btn sm" href="{% url 'rate_agreement_new' p.pk %}">+ 新建</a></div></header>
+  <div class="tablewrap"><table class="t"><thead><tr><th>协议</th><th>承运商</th><th>线路</th><th>车型</th><th class="num">每车</th><th>有效期</th><th>出具</th></tr></thead><tbody>
+  {% for a in rate_agreements %}<tr><td><a href="{{ a.get_absolute_url }}"><b>{{ a.number }}</b></a></td><td>{{ a.carrier }}</td>
+    <td>{{ a.origin }} → {{ a.destination }}</td><td>{{ a.equipment|default:"—" }}</td><td class="num">{{ a.per_truck|money }}</td>
+    <td>{{ a.valid_from|date:"m-d"|default:"—" }} → {{ a.valid_until|date:"m-d"|default:"结束" }}</td>
+    <td>{% if a.version %}第 {{ a.version }} 版 · {{ a.issued_at|date:"m-d" }}{% else %}<span class="lfd-warn">草稿，未出具</span>{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="7" class="muted">还没有。{% for c in carriers_missing %}{% if forloop.first %}在用的承运商：{% endif %}<a href="{% url 'rate_agreement_new' p.pk %}?carrier={{ c.pk }}">{{ c.name }}</a>{% if not forloop.last %}、{% endif %}{% endfor %}</td></tr>{% endfor %}
+  </tbody></table></div></div>{% endif %}
+
 <div class="grid2">
   <div class="panel"><header><h2>商务条款与默认设置</h2></header><div class="body"><dl class="kv">
     <dt>商务条款</dt><dd style="white-space:pre-wrap">{{ p.terms|dash }}</dd>

@@ -433,22 +433,26 @@ def r_pod_upload(ctx):
                   lambda ls: f"{_proj(ls[0])} · 上传后点“POD 已上传”")
 
 
-@rule(key="ratecon_missing", category="开工前检查 · 没确认就会延误", label="已派承运商、快提货了，还没出运价确认单", why="没有签回的运价确认单，运价和条款容易起纠纷",
+@rule(key="ratecon_missing", category="开工前检查 · 没确认就会延误", label="已派承运商、快提货了，还没出运价协议", why="没有签回的运价协议，运价和开票方式容易起纠纷",
       level="today", threshold=2, unit="天内提货", side="AP")
 def r_ratecon_missing(ctx):
+    from .models import RateAgreement
+
     horizon = ctx.today + timedelta(days=ctx.n)
-    legs = (Leg.objects.filter(shipment__in=ctx.loads(), carrier__isnull=False, actual_pickup__isnull=True,
-                               scheduled_pickup__isnull=False, scheduled_pickup__lte=horizon, ratecon_version=0)
+    issued = set(RateAgreement.objects.filter(version__gt=0).values_list("project_id", "carrier_id"))
+    legs = (Leg.objects.filter(shipment__in=ctx.loads(), carrier__isnull=False, actual_pickup__isnull=True, shipment__project__isnull=False,
+                               scheduled_pickup__isnull=False, scheduled_pickup__lte=horizon)
             .select_related("shipment__project", "carrier"))
-    items = []
+    out, seen = [], set()
     for leg in legs:
-        s = leg.shipment
-        s._rc_leg = leg
-        items.append(s)
-    return _group(ctx, "ratecon_missing", "运价", items,
-                  lambda ls: f"{len(ls)} 个 Load 已派车还没出运价确认单" if len(ls) > 1 else
-                  f"{_load_label(ls[0])} 第 {ls[0]._rc_leg.sequence} 段（{ls[0]._rc_leg.carrier}）{ls[0]._rc_leg.scheduled_pickup:%m-%d} 提货，还没出运价确认单",
-                  lambda ls: f"{_proj(ls[0])} · 在 Load 页运输段里点“运价确认”")
+        key = (leg.shipment.project_id, leg.carrier_id)
+        if key in issued or key in seen:
+            continue
+        seen.add(key)
+        p = leg.shipment.project
+        out.append(ctx.alert("ratecon_missing", f"{key[0]}-{key[1]}", "运价", f"{p.name}：{leg.carrier} 还没有运价协议",
+                             f"{leg.scheduled_pickup:%m-%d} 起提货 · 在项目页“承运商运价协议”新建并出具", p.get_absolute_url() + "#rates", p))
+    return out
 
 
 @rule(key="carrier_coi", category="开工前检查 · 没确认就会延误", label="在用承运商的保险快到期 / 已过期", why="保险过期还派车，出事故或货损没有保障",
