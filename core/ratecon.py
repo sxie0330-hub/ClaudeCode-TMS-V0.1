@@ -182,7 +182,7 @@ def invoicing_lines(ctx):
         "(container or batch) and invoice amount.",
         "All documents must be clearly scanned and fully legible, and all reference numbers must be the same on the invoice, POD "
         "and supporting documents. Incomplete or non-compliant invoices are returned unpaid and may delay payment.",
-        f"Payment terms: {settings.TMS_RATECON_PAYMENT_TERMS}",
+        "Payment terms: " + settings.TMS_RATECON_PAYMENT_TERMS.format(days=a.payment_days or 30),
     ]
     if co.get("statements_to"):
         out.append("Statements: " + ", ".join(co["statements_to"]) + ".")

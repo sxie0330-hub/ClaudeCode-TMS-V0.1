@@ -2376,11 +2376,17 @@ class RateAgreementTests(Base):
               "lines-0-charge_type": "LINEHAUL", "lines-0-description": "All-in", "lines-0-unit_price": "24000",
               "lines-0-unit": "TRUCK"}
         r = self.client.post(f"/rates/{a.pk}/edit/", {"origin": "Carson, CA", "destination": "Nokesville, VA",
-                                                     "capacity": "Carrier states up to 3 trucks per day", "free_hours": "2",
+                                                     "capacity": "Carrier states up to 3 trucks per day", "free_hours": "2", "payment_days": "30",
                                                      "requirements": "Bring 4 straps", **fs})
         self.assertRedirects(r, f"/rates/{a.pk}/", fetch_redirect_response=False)
         a.refresh_from_db()
         self.assertEqual(a.per_truck, Decimal("24000"))
+        from . import ratecon
+
+        self.assertIn("Net 30 days", " ".join(ratecon.invoicing_lines(ratecon.context(a, self.op))))
+        a.payment_days = 45
+        a.save()
+        self.assertIn("Net 45 days", " ".join(ratecon.invoicing_lines(ratecon.context(a, self.op))))
 
 
 class RateConAlertTests(Base):

@@ -21,6 +21,7 @@
     <dt>运价</dt><dd>{% for ln in ctx.base %}{{ ln.get_charge_type_display }} {{ ln.unit_price|money }} {{ ln.get_unit_display }}{% if ln.description %} <small class="muted">{{ ln.description }}</small>{% endif %}<br>{% empty %}<span class="lfd-warn">没有</span>{% endfor %}
       {% if ctx.per_truck %}<b>每车合计 {{ ctx.per_truck|money }}</b>{% endif %}</dd>
     <dt>附加费</dt><dd>免费等待 {{ a.free_hours|floatformat:"-1" }} 小时<br>{% for ln in ctx.extras %}{{ ln.get_charge_type_display }} {% if ln.unit_price %}{{ ln.unit_price|money }} {{ ln.get_unit_display }}{% else %}需书面批准{% endif %}<br>{% endfor %}</dd>
+    <dt>付款</dt><dd>Net {{ a.payment_days }} 天（收到完整发票资料后）</dd>
     <dt>已派 Load</dt><dd>{{ ctx.loads|length }} 个</dd>
   </dl></div></div>
   <div class="panel"><header><h2>甲方要求 · 开票要求</h2><small class="muted">印在协议上（英文）。开票要求按 {{ ctx.company.name }} 的 Carrier Invoice Submission Guidelines</small></header><div class="body">

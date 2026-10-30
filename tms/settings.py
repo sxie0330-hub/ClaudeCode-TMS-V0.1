@@ -163,9 +163,8 @@ TMS_DOC_COMPANIES = {
     },
 }
 # Rate Confirmation to carriers (core/ratecon.py). English. A starting point: have it reviewed and edit here.
-TMS_RATECON_PAYMENT_TERMS = os.environ.get(
-    "TMS_RATECON_PAYMENT_TERMS",
-    "Net 30 days from Party A's receipt of a complete and correct invoice package as described in this agreement.")
+# Payment terms on the rate agreement; {days} comes from the agreement (default Net 30).
+TMS_RATECON_PAYMENT_TERMS = "Net {days} days from Party A's receipt of a complete and correct invoice package as described in this agreement."
 TMS_RATECON_TERMS = [
     "Party B is an independent contractor and performs every load under its own operating authority, equipment and drivers. "
     "No re-brokering, co-brokering, assigning or interlining; a violation voids the rate and Party B remains liable for the load.",

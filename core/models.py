@@ -961,6 +961,7 @@ class RateAgreement(models.Model):
     valid_from = models.DateField("有效期起", null=True, blank=True)
     valid_until = models.DateField("有效期止", null=True, blank=True, help_text="留空 = 直到项目结束")
     free_hours = models.DecimalField("免费等待（小时）", max_digits=4, decimal_places=1, default=Decimal("2"))
+    payment_days = models.PositiveSmallIntegerField("付款天数（Net）", default=30, help_text="收到完整发票资料后多少天付款，默认 Net 30")
     requirements = models.TextField("甲方要求乙方（英文，印在协议上）", blank=True,
                                     help_text="一行一条。新建时带出标准要求，可按项目增删")
     invoice_instructions = models.TextField("补充开票说明（英文，可不填）", blank=True,
