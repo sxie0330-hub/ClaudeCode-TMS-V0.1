@@ -265,7 +265,7 @@ def lead_reply(request, pk):
     if request.method == "POST":
         try:
             docs, sheets = _docs(request)
-            draft = ai_leads.read_reply(lead, "\n\n".join([text] + sheets).strip(), docs=docs)
+            draft = ai_leads.read_reply(lead, "\n\n".join([text] + sheets).strip(), docs=docs, user=request.user)
         except ai.AiError as e:
             messages.error(request, str(e))
     return render(request, "core/lead_reply.html", {

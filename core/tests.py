@@ -2131,3 +2131,40 @@ class LeadSubjectAndCustomerTests(Base):
         lead.refresh_from_db()
         c = Customer.objects.get(name="Gulf Power Systems")
         self.assertEqual((lead.customer, lead.prospect_name, c.contact_email), (c, "", "ana@gps.com"))
+
+
+@override_settings(TMS_AI_ENABLED=True)
+class AiUsageTests(Base):
+    def test_usage_recorded_per_feature_and_page_for_management_only(self):
+        from datetime import datetime, timezone as dt_tz
+
+        from . import ai, ai_leads
+        from .models import AiUsage
+
+        usage = {"promptTokenCount": 10000, "candidatesTokenCount": 1000, "thoughtsTokenCount": 2000}
+
+        def caller(text, context, today, attachments=None, prompt=None, schema=None):
+            return LEAD_RESULT, usage
+
+        ai_leads.create_lead("Need a quote", self.op, caller=caller)
+        u = AiUsage.objects.get()
+        self.assertEqual((u.user, u.feature, u.input_tokens, u.output_tokens, u.thinking_tokens), (self.op, "LEAD", 10000, 1000, 2000))
+
+        ai.extract("CYMU2523606 delivered", self.op, project=self.project, caller=lambda *a, **k: (
+            {"summary": "", "unmatched": "", "loads": [], "new_project": {"is_new": False}}, usage))
+        self.assertEqual(AiUsage.objects.filter(feature="OPS_PASTE", user=self.op).count(), 1)
+
+        # $0.75 / $3.75 per 1M until 2026-12-31, then $1.50 / $7.50
+        self.assertAlmostEqual(ai.usage_cost(10000, 3000, datetime(2026, 10, 30).date()), 0.01875)
+        self.assertAlmostEqual(ai.usage_cost(10000, 3000, datetime(2027, 1, 1).date()), 0.0375)
+
+        AiUsage.objects.update(created_at=datetime(2026, 10, 15, 12, tzinfo=dt_tz.utc))
+        for who in (self.op, self.ap, self.nobody):
+            self.login(who)
+            self.assertEqual(self.client.get("/ai/usage/?month=2026-10").status_code, 403)
+        self.login(self.mgmt)
+        r = self.client.get("/ai/usage/?month=2026-10")
+        self.assertContains(r, "op@advtransolution.com")
+        self.assertContains(r, "询报价 · AI 整理询价")
+        self.assertContains(r, "$0.04")  # two calls x $0.01875
+        self.assertContains(self.client.get("/ai/usage/?month=bad"), "AI 用量")

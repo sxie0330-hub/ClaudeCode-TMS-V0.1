@@ -1,0 +1,43 @@
+{% extends "core/base.html" %}
+{% block title %}AI 用量{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'ai_list' %}">AI 识别</a> / AI 用量</div>
+<div class="head"><h1>AI 用量 · {{ month|date:"Y 年 n 月" }}</h1>
+  <div class="actions"><a class="btn sm" href="?month={{ prev|date:'Y-m' }}">← 上个月</a>
+    {% if next %}<a class="btn sm" href="?month={{ next|date:'Y-m' }}">下个月 →</a>{% endif %}</div></div>
+
+<div class="panel"><div class="body" style="display:flex;gap:28px;flex-wrap:wrap">
+  <div><div class="muted">调用次数</div><b style="font-size:1.4rem">{{ total.calls }}</b></div>
+  <div><div class="muted">输入 tokens</div><b style="font-size:1.4rem">{{ total.input|floatformat:"0g" }}</b></div>
+  <div><div class="muted">输出 + 思考 tokens</div><b style="font-size:1.4rem">{{ total.output|add:total.thinking|floatformat:"0g" }}</b></div>
+  <div><div class="muted">估算费用</div><b style="font-size:1.4rem">${{ total.cost|floatformat:2 }}</b></div>
+</div></div>
+
+<div class="panel"><header><h2>按人</h2></header><div class="tablewrap"><table class="t">
+  <thead><tr><th>同事</th><th class="num">次数</th><th class="num">输入</th><th class="num">输出</th><th class="num">思考</th><th class="num">估算费用</th><th>用了哪些功能</th></tr></thead>
+  <tbody>{% for who, u in by_user %}<tr><td><b>{{ who }}</b></td><td class="num">{{ u.calls }}</td><td class="num">{{ u.input|floatformat:"0g" }}</td>
+    <td class="num">{{ u.output|floatformat:"0g" }}</td><td class="num">{{ u.thinking|floatformat:"0g" }}</td><td class="num">${{ u.cost|floatformat:2 }}</td>
+    <td class="wrap" style="font-size:12.5px">{{ u.features|join:"、" }}</td></tr>
+  {% empty %}<tr><td colspan="7" class="muted">这个月没有 AI 调用</td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+<div class="panel"><header><h2>按功能</h2></header><div class="tablewrap"><table class="t">
+  <thead><tr><th>功能</th><th class="num">次数</th><th class="num">输入</th><th class="num">输出 + 思考</th><th class="num">平均每次</th><th class="num">估算费用</th></tr></thead>
+  <tbody>{% for name, u in by_feature %}<tr><td>{{ name }}</td><td class="num">{{ u.calls }}</td><td class="num">{{ u.input|floatformat:"0g" }}</td>
+    <td class="num">{{ u.output|add:u.thinking|floatformat:"0g" }}</td>
+    <td class="num">${{ u.avg|floatformat:3 }}</td>
+    <td class="num">${{ u.cost|floatformat:2 }}</td></tr>
+  {% empty %}<tr><td colspan="6" class="muted">—</td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+<div class="panel"><header><h2>最近 12 个月</h2></header><div class="tablewrap"><table class="t">
+  <thead><tr><th>月份</th><th class="num">次数</th><th class="num">输入</th><th class="num">输出 + 思考</th><th class="num">估算费用</th></tr></thead>
+  <tbody>{% for key, u in months %}<tr><td><a href="?month={{ key }}">{{ key }}</a></td><td class="num">{{ u.calls }}</td><td class="num">{{ u.input|floatformat:"0g" }}</td>
+    <td class="num">{{ u.output|add:u.thinking|floatformat:"0g" }}</td><td class="num">${{ u.cost|floatformat:2 }}</td></tr>
+  {% empty %}<tr><td colspan="5" class="muted">还没有记录</td></tr>{% endfor %}</tbody>
+</table></div></div>
+
+<p class="muted" style="font-size:12.5px">费用是按 Google 列表价估算的（{{ model }}，global 端点；现在每百万 token 输入 ${{ price_in }}、输出 ${{ price_out }}，思考按输出计；
+  价格表：{% for p in prices %}{{ p.0 }} 起 ${{ p.1 }} / ${{ p.2 }}{% if not forloop.last %}，{% endif %}{% endfor %}）。实际以 Google Cloud 账单为准。
+  运营 AI 识别和邮箱扫描有历史记录；询报价的“AI 整理询价”和“承运商回复整理”从 2026-10-30 开始记录。</p>
+{% endblock %}

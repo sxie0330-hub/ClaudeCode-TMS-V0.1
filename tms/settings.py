@@ -162,6 +162,13 @@ TMS_LFD_WARNING_DAYS = int(os.environ.get("TMS_LFD_WARNING_DAYS", "3"))
 TMS_AI_ENABLED = env_bool("TMS_AI_ENABLED", False)
 TMS_AI_MODEL = os.environ.get("TMS_AI_MODEL", "gemini-3.8-flash")
 TMS_AI_LOCATION = os.environ.get("TMS_AI_LOCATION", "global")
+# Gemini list prices, USD per 1M tokens (input, output incl. thinking), by start date. Used only for the
+# estimate on the AI usage page; the Google Cloud bill is the real number. Gemini 3.8 Flash on Vertex AI,
+# global endpoint: introductory price to 2026-12-31, then standard.
+TMS_AI_PRICES = [
+    ("2000-01-01", 0.75, 3.75),
+    ("2027-01-01", 1.50, 7.50),
+]
 TMS_AI_PROJECT = os.environ.get("TMS_AI_PROJECT", "")  # default: the project Cloud Run runs in
 TMS_AI_DAILY_LIMIT = int(os.environ.get("TMS_AI_DAILY_LIMIT", "200"))  # per user per 24 h
 # Shared secret for Cloud Scheduler calls to /tasks/… (daily mailbox scan).

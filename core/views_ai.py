@@ -124,3 +124,64 @@ def ai_list(request):
     if mine:
         qs = qs.filter(created_by=request.user)
     return render(request, "core/ai_list.html", {"items": qs[:100], "mine": mine, "enabled": ai.enabled()})
+
+
+# ---------------------------------------------------------------------------
+# AI usage (management only)
+# ---------------------------------------------------------------------------
+def ai_usage(request):
+    """Gemini tokens and estimated cost by person and by feature, for one month, plus the last 12 months."""
+    from datetime import date
+
+    from django.conf import settings
+    from django.utils import timezone
+
+    from .models import AiUsage
+    from .permissions import is_management
+
+    _need(is_management(request.user))
+    today = timezone.localdate()
+    try:
+        y, m = (int(x) for x in request.GET.get("month", "").split("-"))
+        month = date(y, m, 1)
+    except ValueError:
+        month = today.replace(day=1)
+    nxt = (month.replace(day=28) + timezone.timedelta(days=4)).replace(day=1)
+    prev = (month - timezone.timedelta(days=1)).replace(day=1)
+
+    def blank():
+        return {"calls": 0, "input": 0, "output": 0, "thinking": 0, "cost": 0.0}
+
+    def add(acc, r):
+        acc["calls"] += 1
+        acc["input"] += r.input_tokens
+        acc["output"] += r.output_tokens
+        acc["thinking"] += r.thinking_tokens
+        acc["cost"] += ai.usage_cost(r.input_tokens, r.output_tokens + r.thinking_tokens, timezone.localtime(r.created_at).date())
+
+    rows = AiUsage.objects.filter(created_at__date__gte=month, created_at__date__lt=nxt).select_related("user")
+    total, by_user, by_feature = blank(), {}, {}
+    labels = dict(AiUsage.Feature.choices)
+    for r in rows:
+        add(total, r)
+        who = r.user.get_full_name() or r.user.email if r.user else "（系统 / 已删除用户）"
+        add(by_user.setdefault(who, blank()), r)
+        add(by_feature.setdefault(labels.get(r.feature, r.feature), blank()), r)
+        by_user[who].setdefault("features", set()).add(labels.get(r.feature, r.feature))
+
+    year_start = (month.replace(day=1) - timezone.timedelta(days=330)).replace(day=1)
+    months = OrderedDict()
+    for r in AiUsage.objects.filter(created_at__date__gte=year_start, created_at__date__lt=nxt).only(
+            "created_at", "input_tokens", "output_tokens", "thinking_tokens"):
+        key = timezone.localtime(r.created_at).strftime("%Y-%m")
+        add(months.setdefault(key, blank()), r)
+    for u in by_feature.values():
+        u["avg"] = u["cost"] / u["calls"] if u["calls"] else 0
+    pin, pout = ai.price_on(today)
+    return render(request, "core/ai_usage.html", {
+        "month": month, "prev": prev, "next": nxt if nxt <= today.replace(day=1) else None, "total": total,
+        "by_user": sorted(by_user.items(), key=lambda kv: -kv[1]["cost"]),
+        "by_feature": sorted(by_feature.items(), key=lambda kv: -kv[1]["cost"]),
+        "months": sorted(months.items(), reverse=True), "model": settings.TMS_AI_MODEL, "price_in": pin, "price_out": pout,
+        "prices": settings.TMS_AI_PRICES,
+    })
