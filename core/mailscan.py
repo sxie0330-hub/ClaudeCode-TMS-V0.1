@@ -49,6 +49,14 @@ class ScanError(Exception):
     pass
 
 
+class QuotaError(ScanError):
+    """Gmail's per-user per-minute limit, still hit after waiting."""
+
+
+# Gmail limits calls per user per minute. When it says so, wait and retry (the window is one minute).
+QUOTA_WAITS = (5, 20, 40)
+
+
 # ---------------------------------------------------------------------------
 # Token storage and OAuth
 # ---------------------------------------------------------------------------
@@ -135,11 +143,26 @@ def _access_token(conn):
     return r.json()["access_token"]
 
 
+def _is_quota(r):
+    return r.status_code == 429 or (r.status_code == 403 and any(
+        k in r.text for k in ("rateLimitExceeded", "userRateLimitExceeded", "Quota exceeded", "RATE_LIMIT_EXCEEDED")))
+
+
 def _get(token, path, params=None):
-    r = requests.get(API + path, params=params, headers={"Authorization": f"Bearer {token}"}, timeout=30)
-    if r.status_code != 200:
-        raise ScanError(f"Gmail 返回错误 {r.status_code}：{r.text[:200]}")
-    return r.json()
+    for wait in (*QUOTA_WAITS, None):
+        r = requests.get(API + path, params=params, headers={"Authorization": f"Bearer {token}"}, timeout=30)
+        if r.status_code == 200:
+            return r.json()
+        if not _is_quota(r):
+            raise ScanError(f"Gmail 返回错误 {r.status_code}：{r.text[:200]}")
+        if wait is None:
+            raise QuotaError("Gmail 每分钟读取次数到上限（Google 对每个邮箱的限制），等了一分多钟还没恢复，剩下的下次扫描继续")
+        try:
+            wait = max(wait, min(int(r.headers.get("Retry-After", 0)), 60))
+        except ValueError:
+            pass
+        log.info("Gmail quota hit on %s, waiting %ss", path, wait)
+        time.sleep(wait)
 
 
 # ---------------------------------------------------------------------------
@@ -357,6 +380,23 @@ def find_and_extract(conn, text, project=None, caller=None):
 # ---------------------------------------------------------------------------
 # The scan
 # ---------------------------------------------------------------------------
+def _list_ids(token, idents, since, pterms, seen, ids):
+    """Append the ids of new matching messages to ids (in place, so a quota stop keeps what was found)."""
+    for q in _queries(idents, since, pterms):
+        page = None
+        while len(ids) < MAX_MESSAGES:
+            params = {"q": q, "maxResults": 100}
+            if page:
+                params["pageToken"] = page
+            res = _get(token, "/messages", params)
+            for m in res.get("messages", []):
+                if m["id"] not in seen and m["id"] not in ids:
+                    ids.append(m["id"])
+            page = res.get("nextPageToken")
+            if not page:
+                break
+
+
 def scan_connection(conn, caller=None, now=None):
     """Scan one mailbox. Returns (result text, complete). Raises ScanError on access problems.
 
@@ -373,24 +413,22 @@ def scan_connection(conn, caller=None, now=None):
     token = _access_token(conn)
 
     seen = set(conn.scanned.values_list("message_id", flat=True))
-    ids = []
-    for q in _queries(idents, since, pterms):
-        page = None
-        while len(ids) < MAX_MESSAGES:
-            params = {"q": q, "maxResults": 100}
-            if page:
-                params["pageToken"] = page
-            res = _get(token, "/messages", params)
-            for m in res.get("messages", []):
-                if m["id"] not in seen and m["id"] not in ids:
-                    ids.append(m["id"])
-            page = res.get("nextPageToken")
-            if not page:
-                break
+    ids, quota_hit = [], False
+    try:
+        _list_ids(token, idents, since, pterms, seen, ids)
+    except QuotaError:
+        quota_hit = True
 
-    by_project = {}
+    by_project, read = {}, 0
     for mid in ids[:MAX_MESSAGES]:
-        msg = read_message(token, mid)
+        if quota_hit:
+            break
+        try:
+            msg = read_message(token, mid)
+        except QuotaError:
+            quota_hit = True
+            break
+        read += 1
         hay = (msg["subject"] + "\n" + msg["text"]).upper()
         projects = set()
         for ident, pids in idents.items():
@@ -414,8 +452,13 @@ def scan_connection(conn, caller=None, now=None):
         msgs.sort(key=lambda m: m["date"])
         text = _messages_text(msgs)
         try:
+            docs = fetch_docs(token, msgs)
+        except QuotaError:
+            quota_hit = True
+            break  # leave the rest unmarked so the next run retries them
+        try:
             ext = ai.extract(text, conn.user, project=projects[pid], caller=caller, source=AiExtraction.Source.GMAIL,
-                             attachments=fetch_docs(token, msgs))
+                             attachments=docs)
         except ai.AiError as e:
             errors.append(f"{projects[pid].name}：{e}")
             continue  # leave these messages unmarked so the next run retries them
@@ -429,9 +472,11 @@ def scan_connection(conn, caller=None, now=None):
                                                     defaults={"subject": m["subject"], "extraction": ext})
     relevant = len({m["id"] for msgs in by_project.values() for m in msgs})
     result = f"读了 {relevant} 封相关邮件，{created} 个项目有更新待确认"
+    if quota_hit:
+        result += f"；Gmail 每分钟读取次数到上限（已读 {read} / {min(len(ids), MAX_MESSAGES)} 封），剩下的下次扫描自动继续"
     if errors:
         result += "；" + "；".join(errors)
-    return result[:300], not errors and len(ids) <= MAX_MESSAGES
+    return result[:300], not errors and not quota_hit and len(ids) <= MAX_MESSAGES
 
 
 def scan_all(caller=None):
