@@ -10,6 +10,7 @@ from .models import (
     CarrierQuoteLine,
     Charge,
     Customer,
+    GmailConnection,
     CustomerQuote,
     CustomerQuoteLine,
     Lead,
@@ -461,3 +462,28 @@ def customer_quote_lines_formset():
                  "section": forms.TextInput(attrs={"size": 14, "placeholder": "可空"}), "description": forms.TextInput(attrs={"size": 26}),
                  "quantity": forms.NumberInput(attrs={"style": "width:64px"}), "unit_cost": forms.NumberInput(attrs={"style": "width:100px"}),
                  "unit_price": forms.NumberInput(attrs={"style": "width:100px"}), "position": forms.NumberInput(attrs={"style": "width:52px"})})
+
+
+class MailScheduleForm(forms.ModelForm):
+    """Each person's own schedule and scope for the automatic mailbox scan."""
+
+    class Meta:
+        model = GmailConnection
+        fields = ["auto_scan", "scan_hour_1", "scan_hour_2", "scan_weekends", "scan_scope"]
+
+    def __init__(self, *args, user=None, **kwargs):
+        super().__init__(*args, **kwargs)
+        from .permissions import is_management
+
+        for f in ("scan_hour_1", "scan_hour_2"):
+            self.fields[f].widget.attrs["data-search"] = "off"  # a short list of hours: no search box
+        self.fields["scan_hour_2"].choices = [("", "不扫第二次")] + GmailConnection.HOURS
+        if not is_management(user):
+            self.fields["scan_scope"].choices = [c for c in self.fields["scan_scope"].choices if c[0] != GmailConnection.Scope.ALL]
+
+    def clean(self):
+        data = super().clean()
+        h1, h2 = data.get("scan_hour_1"), data.get("scan_hour_2")
+        if h1 is not None and h2 is not None and abs(h1 - h2) < 3:
+            self.add_error("scan_hour_2", "两次扫描至少间隔 3 小时，否则第二次几乎读不到新邮件")
+        return data

@@ -2530,7 +2530,23 @@
 "Step Deck tri-axle + 三轴车头（共 7 轴）": "Step Deck tri-axle + tri-axle tractor (7 axles total)",
 "Double Drop tri-axle 三轴双落（可拆鹅颈，30' 凹槽）": "Double Drop tri-axle (detachable gooseneck, 30' well)",
 "RGN 共 9 轴 65 吨级（三轴车头 + 2 轴 jeep + 2 轴 RGN + 2 轴 booster，Trail King / Cozad）": "RGN 9 axles total, 65-ton class (tri-axle tractor + 2-axle jeep + 2-axle RGN + 2-axle booster, Trail King / Cozad)",
-"4+4 共 8 轴（四轴车头 + 四轴挂车）": "4+4, 8 axles total (4-axle tractor + 4-axle trailer)"
+"4+4 共 8 轴（四轴车头 + 四轴挂车）": "4+4, 8 axles total (4-axle tractor + 4-axle trailer)",
+"在你设定的时间（洛杉矶时间，默认每天傍晚 5:00），TMS 只读地查看你的 Gmail：用": "At the times you choose (Los Angeles time; 5:00 pm every day by default), TMS reads your Gmail (read-only). It searches the new e-mails since the last scan for the container #, MBL and carrier load # of the",
+"扫描范围内在执行项目": "running projects in your scan scope",
+"的柜号、MBL、承运商单号（还没有柜号的项目用“项目编号 + 客户名”）搜索上次扫描之后的新邮件，Excel / CSV 附件也会读取， 没提到这些单号的邮件不会被打开。同一项目的邮件合并交给 AI 识别一次，结果放进": "(projects without containers yet: project # + customer name). Excel / CSV attachments are read too; e-mails that mention none of these numbers are never opened. E-mails of the same project go to AI once, together, and the result goes to",
+"我的扫描设置": "My scan settings",
+"每天自动扫描": "Scan automatically every day",
+"第一次": "First scan",
+"第二次（可不选）": "Second scan (optional)",
+"周末也扫描": "Also on weekends",
+"扫描范围": "Scan scope",
+"我负责的项目 + 工作台置顶的项目": "Projects I own + projects pinned to my workspace",
+"所有在执行项目（仅管理层）": "All running projects (management only)",
+"已保存扫描设置": "Scan settings saved",
+"两次扫描至少间隔 3 小时，否则第二次几乎读不到新邮件": "Leave at least 3 hours between the two scans, otherwise the second one finds almost nothing new",
+"上次扫描": "Last scan",
+"时间不够，剩余项目下次扫描继续": "Out of time; the remaining projects continue at the next scan",
+"不扫第二次": "No second scan"
 },
 "patterns": [
 [
@@ -3776,6 +3792,38 @@
 [
 "{} 把询价 {} 交给你负责",
 "{} assigned inquiry {} to you"
+],
+[
+"每天最多 2 次。每次只读上次扫描之后的新邮件，所以扫 2 次不会多读邮件， 只是同一个项目上午、下午都有新邮件时会多一次 AI 识别。同一封邮件同事的扫描已经交给 AI 识别过的，不会再识别一次。 每次最多识别 {} 个项目，其余下次继续。",
+"At most 2 scans a day. Each scan reads only the e-mails that arrived since the last one, so two scans do not read more mail; a project only costs one more AI reading when it gets new e-mail both before and after the second scan. An e-mail a colleague's scan already sent to AI is not read again. Each scan reads at most {} projects with AI; the rest wait for the next scan."
+],
+[
+"最近 {} 天你的邮件识别（自动扫描 + 按主题识别）： {} 次 AI 调用，估算约 ${}。",
+"Your e-mail reading in the last {} days (automatic scans + by subject): {} AI calls, about ${} estimated."
+],
+[
+"（{} 起）",
+"(since {})"
+],
+[
+"已读过 {} 封相关邮件",
+"{} related e-mails read so far"
+],
+[
+"扫描范围里没有在执行的项目（范围：{}）",
+"No running projects in the scan scope (scope: {})"
+],
+[
+"{} 封同事的扫描已经读过，没有重复交给 AI",
+"{} e-mails already read by a colleague's scan, not sent to AI again"
+],
+[
+"本次最多识别 {} 个项目，其余下次扫描继续",
+"this scan read at most {} projects with AI; the rest continue at the next scan"
+],
+[
+"{} 起",
+"since {}"
 ]
 ]
 }

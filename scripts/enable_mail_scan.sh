@@ -5,7 +5,7 @@ set -euo pipefail
 PROJECT=${PROJECT:-atsstms}
 REGION=${REGION:-us-central1}
 JOB=tms-scan-email
-SCHEDULE=${SCHEDULE:-"0 17 * * *"}   # every day 5:00 pm Los Angeles time (PDT/PST)
+SCHEDULE=${SCHEDULE:-"0 6-21 * * *"}   # every hour 6 am - 9 pm Los Angeles; each person picks their own scan hours in TMS
 
 gcloud config set project "$PROJECT" >/dev/null 2>&1
 NUMBER=$(gcloud projects describe "$PROJECT" --format='value(projectNumber)')
@@ -23,7 +23,7 @@ echo "2/4 部署新版本（约 3–5 分钟）…"
 gcloud run deploy tms --source . --region "$REGION" --quiet --timeout 600 \
   --update-secrets "TMS_TASK_KEY=tms-task-key:latest"
 
-echo "3/4 设置每天定时扫描（$SCHEDULE，洛杉矶时间）…"
+echo "3/4 设置每小时定时任务（$SCHEDULE，洛杉矶时间）…"
 if gcloud scheduler jobs describe "$JOB" --location "$REGION" >/dev/null 2>&1; then
   gcloud scheduler jobs update http "$JOB" --location "$REGION" --schedule "$SCHEDULE" --time-zone "America/Los_Angeles" \
     --uri "$SITE/tasks/scan-email/" --http-method POST --update-headers "X-TMS-Task-Key=$KEY" --attempt-deadline 600s >/dev/null

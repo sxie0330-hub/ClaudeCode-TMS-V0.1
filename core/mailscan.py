@@ -1,6 +1,7 @@
 """Daily mailbox scan: find e-mails about open Loads and let AI propose updates.
 
-Once a day (Cloud Scheduler → /tasks/scan-email/) for every connected mailbox:
+Cloud Scheduler calls /tasks/scan-email/ every hour from 6 am to 9 pm (Los Angeles). Each mailbox is scanned
+at the one or two hours its owner chose (see due()), for the projects in the scope they chose (scope_project_ids()):
   1. Collect the identifiers of open projects' Loads (container, MBL, carrier
      load numbers) and search Gmail for messages since the last scan that
      mention any of them. Messages that mention none are never opened.
@@ -27,11 +28,13 @@ from cryptography.fernet import Fernet, InvalidToken
 from django.conf import settings
 from django.core import signing
 from django.utils import timezone
+from zoneinfo import ZoneInfo
 
 from . import ai
 from .models import AiExtraction, GmailConnection, Project, ScannedMessage, Shipment, Status
 
 log = logging.getLogger(__name__)
+LA = ZoneInfo("America/Los_Angeles")
 
 SCOPE = "https://www.googleapis.com/auth/gmail.readonly"
 AUTH_URL = "https://accounts.google.com/o/oauth2/v2/auth"
@@ -42,6 +45,8 @@ MAX_MESSAGES = 200  # per mailbox per run
 MAX_CHARS_PER_MESSAGE = 6000
 TIME_BUDGET_SECONDS = 360  # plus one AI call (≤200 s) stays inside the 600 s request timeout
 IDS_PER_QUERY = 25
+MAX_AI_PER_RUN = 15  # projects sent to AI per mailbox per run; the rest wait for the next scan
+RUN_BUDGET_SECONDS = 300  # scan_all starts no new mailbox after this; the rest are picked up next hour
 MIN_ID_LEN = 6
 
 
@@ -168,11 +173,28 @@ def _get(token, path, params=None):
 # ---------------------------------------------------------------------------
 # What to look for
 # ---------------------------------------------------------------------------
-def open_loads():
-    """Loads of projects that are still running."""
-    return (Shipment.objects.exclude(status__in=[Status.CLOSED, Status.CANCELLED])
-            .filter(project__status__in=[Project.Status.PENDING, Project.Status.ACTIVE, Project.Status.DELIVERED])
-            .select_related("project", "master_bl").prefetch_related("legs"))
+def open_loads(project_ids=None):
+    """Loads of projects that are still running (only these projects when project_ids is given)."""
+    qs = (Shipment.objects.exclude(status__in=[Status.CLOSED, Status.CANCELLED])
+          .filter(project__status__in=[Project.Status.PENDING, Project.Status.ACTIVE, Project.Status.DELIVERED])
+          .select_related("project", "master_bl").prefetch_related("legs"))
+    return qs if project_ids is None else qs.filter(project_id__in=project_ids)
+
+
+def scope_project_ids(conn):
+    """Projects this mailbox is searched for: the owner's own projects, plus pinned ones, or all (management)."""
+    from .permissions import is_management
+
+    scope = conn.scan_scope
+    if scope == GmailConnection.Scope.ALL and is_management(conn.user):
+        return None
+    ids = set(Project.objects.filter(owners=conn.user).values_list("pk", flat=True))
+    if scope in (GmailConnection.Scope.MINE_PINNED, GmailConnection.Scope.ALL):
+        from . import widgets as W
+
+        board = W.get_layout(conn.user)
+        ids |= {x.get("config", {}).get("project") for x in board.layout if x.get("type") == "project"} - {None}
+    return ids
 
 
 def identifiers(loads):
@@ -188,8 +210,9 @@ def identifiers(loads):
     return out
 
 
-def open_projects():
-    return Project.objects.filter(status__in=[Project.Status.PENDING, Project.Status.ACTIVE, Project.Status.DELIVERED]).select_related("customer")
+def open_projects(project_ids=None):
+    qs = Project.objects.filter(status__in=[Project.Status.PENDING, Project.Status.ACTIVE, Project.Status.DELIVERED]).select_related("customer")
+    return qs if project_ids is None else qs.filter(pk__in=project_ids)
 
 
 def project_terms(projects):
@@ -311,7 +334,7 @@ def read_message(token, mid):
         body += "\n\n（未读取的附件：" + "、".join(unread[:20]) + "）"
     return {
         "id": mid, "internal": int(m.get("internalDate") or 0), "subject": headers.get("subject", "")[:300], "from": parseaddr(headers.get("from", ""))[1] or headers.get("from", ""),
-        "date": headers.get("date", ""), "text": body, "unread_attachments": unread, "docs": docs,
+        "date": headers.get("date", ""), "rfc_id": headers.get("message-id", "").strip()[:250], "text": body, "unread_attachments": unread, "docs": docs,
     }
 
 
@@ -428,11 +451,12 @@ def scan_connection(conn, caller=None, now=None):
     searches the same window again; messages already handled are skipped."""
     now = now or timezone.now()
     started = time.monotonic()
-    loads = list(open_loads())
+    pids = scope_project_ids(conn)
+    loads = list(open_loads(pids))
     idents = identifiers(loads)
-    pterms = project_terms(open_projects())
+    pterms = project_terms(open_projects(pids))
     if not idents and not pterms:
-        return "没有在执行的项目可对应", True
+        return ("没有在执行的项目可对应" if pids is None else "扫描范围里没有在执行的项目（范围：" + conn.get_scan_scope_display() + "）"), True
     since = conn.last_scan_at - timedelta(hours=1) if conn.last_scan_at else now - timedelta(days=FIRST_SCAN_DAYS)
     token = _access_token(conn)
 
@@ -443,7 +467,7 @@ def scan_connection(conn, caller=None, now=None):
     except QuotaError:
         quota_hit = True
 
-    by_project, read = {}, 0
+    by_project, read, skipped_dup = {}, 0, 0
     for mid in ids[:MAX_MESSAGES]:
         if quota_hit:
             break
@@ -461,17 +485,29 @@ def scan_connection(conn, caller=None, now=None):
         for pid, (code, word) in pterms.items():
             if re.search(rf"(?<!\d){code}(?!\d)", hay) and word in hay:
                 projects.add(pid)
-        if not projects:  # Gmail matched on something we don't count (e.g. a longer token); skip it
-            ScannedMessage.objects.get_or_create(connection=conn, message_id=mid, defaults={"subject": msg["subject"]})
+        if projects and msg.get("rfc_id"):
+            # the same e-mail in a colleague's mailbox: already read by AI for these projects, don't pay for it twice
+            done = set(ScannedMessage.objects.filter(rfc_id=msg["rfc_id"], extraction__project_id__in=projects)
+                       .exclude(connection=conn).values_list("extraction__project_id", flat=True))
+            if done:
+                skipped_dup += 1
+            projects -= done
+        if not projects:  # Gmail matched on something we don't count (e.g. a longer token), or a colleague's scan read it
+            ScannedMessage.objects.get_or_create(connection=conn, message_id=mid,
+                                                 defaults={"subject": msg["subject"], "rfc_id": msg.get("rfc_id", "")})
             continue
         for pid in projects:
             by_project.setdefault(pid, []).append(msg)
 
     created, errors = 0, []
     projects = {p.pk: p for p in Project.objects.filter(pk__in=by_project)}
-    for pid, msgs in by_project.items():
+    capped = False
+    for n, (pid, msgs) in enumerate(by_project.items()):
         if time.monotonic() - started > TIME_BUDGET_SECONDS:
-            errors.append("时间不够，剩余项目明天继续")
+            errors.append("时间不够，剩余项目下次扫描继续")
+            break
+        if n >= MAX_AI_PER_RUN:
+            capped = True
             break
         msgs.sort(key=lambda m: m["date"])
         text = _messages_text(msgs)
@@ -493,25 +529,51 @@ def scan_connection(conn, caller=None, now=None):
             created += 1
         for m in msgs:
             ScannedMessage.objects.update_or_create(connection=conn, message_id=m["id"],
-                                                    defaults={"subject": m["subject"], "extraction": ext})
+                                                    defaults={"subject": m["subject"], "extraction": ext, "rfc_id": m.get("rfc_id", "")})
     relevant = len({m["id"] for msgs in by_project.values() for m in msgs})
     result = f"读了 {relevant} 封相关邮件，{created} 个项目有更新待确认"
     if quota_hit:
         result += f"；Gmail 每分钟读取次数到上限（已读 {read} / {min(len(ids), MAX_MESSAGES)} 封），剩下的下次扫描自动继续"
+    if skipped_dup:
+        result += f"；{skipped_dup} 封同事的扫描已经读过，没有重复交给 AI"
+    if capped:
+        result += f"；本次最多识别 {MAX_AI_PER_RUN} 个项目，其余下次扫描继续"
     if errors:
         result += "；" + "；".join(errors)
-    return result[:300], not errors and not quota_hit and len(ids) <= MAX_MESSAGES
+    return result[:300], not errors and not quota_hit and not capped and len(ids) <= MAX_MESSAGES
 
 
-def scan_all(caller=None):
-    out = []
+def due(conn, now=None):
+    """Is this mailbox's next chosen scan time (Los Angeles) reached and not yet run?"""
+    if not conn.auto_scan:
+        return False
+    local = timezone.localtime(now or timezone.now(), LA)
+    if not conn.scan_weekends and local.weekday() >= 5:
+        return False
+    passed = [h for h in conn.scan_hours() if h <= local.hour]
+    if not passed:
+        return False
+    slot = local.replace(hour=passed[-1], minute=0, second=0, microsecond=0)
+    return not conn.last_auto_at or conn.last_auto_at < slot
+
+
+def scan_all(caller=None, now=None, force=False):
+    """The hourly run: scan the mailboxes that are due. force=True scans every mailbox (old daily behaviour, tests)."""
     from .permissions import can_edit_ops
 
-    for conn in GmailConnection.objects.filter(enabled=True).select_related("user"):
-        if not can_edit_ops(conn.user):  # e.g. 询报价-only: their mailbox is read on demand, not scanned daily
+    out, started = [], time.monotonic()
+    for conn in GmailConnection.objects.filter(enabled=True).select_related("user").order_by("last_auto_at", "pk"):
+        if not can_edit_ops(conn.user):  # e.g. 询报价-only: their mailbox is read on demand, not scanned on a schedule
             continue
-        now = timezone.now()
-        out.append(scan_one(conn, caller=caller, now=now))
+        if not force and not due(conn, now):
+            continue
+        if time.monotonic() - started > RUN_BUDGET_SECONDS:
+            out.append({"mailbox": conn.email, "deferred": True})  # still due: the next hourly run takes it
+            continue
+        t = now or timezone.now()
+        conn.last_auto_at = t
+        conn.save(update_fields=["last_auto_at"])
+        out.append(scan_one(conn, caller=caller, now=t))
     return out
 
 
