@@ -17,7 +17,7 @@ from reportlab.lib.units import inch
 from reportlab.platypus import Image, KeepTogether, Paragraph, SimpleDocTemplate, Spacer, Table, TableStyle
 
 from . import quotes, units
-from .bol import GREY, W, company_info, english, esc, s_base, s_cell, s_label, s_small, s_title, s_value, s_value_b
+from .bol import GREY, W, company_info, english, logo_image, esc, s_base, s_cell, s_label, s_small, s_title, s_value, s_value_b
 
 s_h = ParagraphStyle("qh", parent=s_base, fontName="Helvetica-Bold", fontSize=10.5, leading=13, spaceBefore=8, spaceAfter=3)
 s_r = ParagraphStyle("qr", parent=s_cell, alignment=TA_RIGHT)
@@ -58,7 +58,7 @@ def render(quote):
     width = doc.width
     story = []
 
-    logo = Image(str(co["logo_path"]), width=1.7 * inch, height=0.43 * inch) if co["logo_path"] else P(co["name"], s_title)
+    logo = logo_image(co["logo_path"]) if co["logo_path"] else P(co["name"], s_title)
     contact = " · ".join(x for x in [co["address"], co["phone"]] if x)
     head = Table([[
         [logo, P(co["name"], s_label), P(contact, s_small)] if contact else [logo, P(co["name"], s_label)],

@@ -47,7 +47,7 @@ def can_quote(user):
 
 SIDES = {
     Role.MANAGEMENT: {Charge.Side.AR, Charge.Side.AP},
-    Role.OP: {Charge.Side.AP},
+    Role.OP: set(),  # operations see no AR / AP money (management decision 2026-10-30)
     Role.AP: {Charge.Side.AP},
     Role.AR: {Charge.Side.AR},
 }

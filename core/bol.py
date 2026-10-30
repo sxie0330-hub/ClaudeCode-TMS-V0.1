@@ -97,6 +97,15 @@ def english(text, drop_lines=False):
     return re.sub(r"\n{3,}", "\n\n", out).strip()
 
 
+def logo_image(path, max_w=1.7 * inch, max_h=0.62 * inch):
+    """The company logo at its own proportions, fitted inside max_w x max_h."""
+    from reportlab.lib.utils import ImageReader
+
+    iw, ih = ImageReader(str(path)).getSize()
+    scale = min(max_w / iw, max_h / ih)
+    return Image(str(path), width=iw * scale, height=ih * scale)
+
+
 def company_info(project):
     """Name, address, phone and logo for the BOL header: ATS or PTT, from the project."""
     key = getattr(project, "company", None) or "ATS"
@@ -233,7 +242,7 @@ def build_page(ctx, blank_rows=3, blank_lines=2, attached=False):
 
     # --- Header ------------------------------------------------------------
     co = ctx["company"]
-    logo = Image(str(co["logo_path"]), width=1.7 * inch, height=0.43 * inch) if co["logo_path"] else P(co["name"], s_title)
+    logo = logo_image(co["logo_path"]) if co["logo_path"] else P(co["name"], s_title)
     company = " · ".join(x for x in [co["name"], co["address"], co["phone"]] if x)
     head = Table(
         [[
