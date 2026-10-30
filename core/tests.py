@@ -519,6 +519,19 @@ class PodUploadTests(Base):
         p = self.project
         return {"company": p.company, "customer": p.customer_id, "name": p.name, "detention_free_hours": "2", "manual_status": ""}
 
+    def test_new_project_notifies_owners(self):
+        from .models import Notification
+
+        self.login(self.mgmt)
+        r = self.client.post("/projects/new/", {"company": "ATS", "customer": self.customer.pk, "name": "New lane",
+                                                "detention_free_hours": "2", "manual_status": "", "owners": [self.op.pk, self.mgmt.pk]})
+        self.assertEqual(r.status_code, 302)
+        p = Project.objects.get(name="New lane")
+        n = Notification.objects.get(user=self.op)
+        self.assertIn(p.number, n.text)
+        self.assertEqual(n.url, p.get_absolute_url())
+        self.assertFalse(Notification.objects.filter(user=self.mgmt).exists())  # not to yourself
+
     def test_bulk_upload_waive_and_permissions(self):
         s2 = Shipment.objects.create(customer=self.customer, project=self.project, container_number="CYMU2524990", consignee=self.site)
         self.login(self.ap)

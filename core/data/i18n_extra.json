@@ -79,6 +79,22 @@
 [
 "已过 LFD {} 天，尚未提柜",
 "past LFD {} days, not picked up yet"
+],
+[
+"{} 新建项目 {}，交给你负责",
+"{} created project {} and assigned it to you"
+],
+[
+"{} 把项目 {} 交给你负责",
+"{} assigned project {} to you"
+],
+[
+"{} 新建询价 {}，交给你负责",
+"{} created inquiry {} and assigned it to you"
+],
+[
+"{} 把询价 {} 交给你负责",
+"{} assigned inquiry {} to you"
 ]
 ]
 }
