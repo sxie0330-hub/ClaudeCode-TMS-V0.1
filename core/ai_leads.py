@@ -140,7 +140,7 @@ def _context():
     }, ensure_ascii=False)
 
 
-def _run(text, docs, prompt, schema, context, caller):
+def _run(text, docs, prompt, schema, context, caller, user=None, feature="LEAD"):
     text = (text or "").strip()
     kept, skipped = ai.limit_docs([d for d in (docs or []) if d.get("data")])
     if not text and not kept:
@@ -151,7 +151,8 @@ def _run(text, docs, prompt, schema, context, caller):
     kwargs = {"prompt": prompt, "schema": schema}
     if kept:
         kwargs["attachments"] = kept
-    result, _usage = (caller or ai.call_gemini)(body, context, timezone.localdate(), **kwargs)
+    result, usage = (caller or ai.call_gemini)(body, context, timezone.localdate(), **kwargs)
+    ai.record_usage(user, feature, usage)
     return result, [d["name"] for d in kept], skipped
 
 
@@ -160,7 +161,7 @@ def create_lead(text, user, docs=None, caller=None, source=Lead.Source.EMAIL):
     """Read an inquiry and create the Lead with its lanes and cargo. Returns (lead, problems)."""
     if not ai.enabled():
         raise ai.AiError("AI 识别没有开启")
-    r, read, skipped = _run(text, docs, LEAD_PROMPT, LEAD_SCHEMA, _context(), caller)
+    r, read, skipped = _run(text, docs, LEAD_PROMPT, LEAD_SCHEMA, _context(), caller, user=user, feature="LEAD")
     problems = [f"没有读取（太大或太多）：{'、'.join(skipped)}"] if skipped else []
     customer_name = ai._s(r.get("customer"), 120)
     company = r.get("company") if r.get("company") in Company.values else Company.ATS
@@ -232,14 +233,14 @@ def cargo_from_ai(lead, c, lanes, problems):
         hazmat=str(c.get("hazmat")).lower() == "true", notes=ai._s(c.get("notes"), 255), **vals)
 
 
-def read_reply(lead, text, docs=None, caller=None):
+def read_reply(lead, text, docs=None, caller=None, user=None):
     """Carrier reply -> Draft list of quotes for a person to check. Nothing is saved here."""
     if not ai.enabled():
         raise ai.AiError("AI 识别没有开启")
     from .quotes import scope_lines
 
     context = _context() + f"\n\n这条询价（{lead.number}）的需求：\n" + (scope_lines(lead) or lead.summary)
-    r, read, skipped = _run(text, docs, REPLY_PROMPT, REPLY_SCHEMA, context, caller)
+    r, read, skipped = _run(text, docs, REPLY_PROMPT, REPLY_SCHEMA, context, caller, user=user, feature="REPLY")
     lanes = list(lead.lanes.all())
     quotes = []
     for q in r.get("quotes") or []:

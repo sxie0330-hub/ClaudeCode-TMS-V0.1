@@ -56,6 +56,7 @@ urlpatterns = [
     path("notifications/poll/", views.notification_poll, name="notification_poll"),
     path("tools/import/", views.import_upload, name="import_upload"),
     path("ai/", views_ai.ai_list, name="ai_list"),
+    path("ai/usage/", views_ai.ai_usage, name="ai_usage"),
     path("ai/new/", views_ai.ai_new, name="ai_new"),
     path("ai/<int:pk>/", views_ai.ai_review, name="ai_review"),
     path("ai/<int:pk>/apply/", views_ai.ai_apply, name="ai_apply"),

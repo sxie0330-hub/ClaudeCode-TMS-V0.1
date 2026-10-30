@@ -635,6 +635,37 @@ def call_gemini(email_text, context, today, attachments=None, prompt=None, schem
 
 
 # ---------------------------------------------------------------------------
+# Usage log
+# ---------------------------------------------------------------------------
+def record_usage(user, feature, usage):
+    """Store the token counts of one Gemini call (usageMetadata). Never fails the caller."""
+    from .models import AiUsage
+
+    usage = usage or {}
+    try:
+        AiUsage.objects.create(
+            user=user if getattr(user, "pk", None) else None, feature=feature, model_name=settings.TMS_AI_MODEL,
+            input_tokens=int(usage.get("promptTokenCount") or 0), output_tokens=int(usage.get("candidatesTokenCount") or 0),
+            thinking_tokens=int(usage.get("thoughtsTokenCount") or 0))
+    except Exception:  # noqa: BLE001
+        log.exception("could not record AI usage")
+
+
+def price_on(day):
+    """(input, output) USD per 1M tokens on this date."""
+    rate = settings.TMS_AI_PRICES[0]
+    for row in settings.TMS_AI_PRICES:
+        if day.isoformat() >= row[0]:
+            rate = row
+    return rate[1], rate[2]
+
+
+def usage_cost(input_tokens, output_tokens, day):
+    pin, pout = price_on(day)
+    return (input_tokens * pin + output_tokens * pout) / 1_000_000
+
+
+# ---------------------------------------------------------------------------
 # Extraction
 # ---------------------------------------------------------------------------
 def extract(email_text, user, project=None, shipment=None, caller=None, source=AiExtraction.Source.PASTE, attachments=None):
@@ -672,6 +703,7 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
         model_name=settings.TMS_AI_MODEL, summary=str(result.get("summary", ""))[:1000],
         raw_result=result, usage=usage or {},
     )
+    record_usage(user, "OPS_GMAIL" if source == AiExtraction.Source.GMAIL else "OPS_PASTE", usage)
     unmatched = [str(result.get("unmatched") or "").strip()]
     if skipped_docs:
         unmatched.append("附件太大或太多，没有读取：" + "、".join(skipped_docs))

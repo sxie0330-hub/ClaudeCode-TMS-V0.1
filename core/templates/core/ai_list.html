@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% block title %}AI 识别{% endblock %}
 {% block content %}
-<div class="head"><h1>AI 识别记录</h1>
+<div class="head"><h1>AI 识别记录</h1>{% if perm.mgmt %}<a class="btn sm" href="{% url 'ai_usage' %}" style="margin-left:8px">AI 用量</a>{% endif %}
   <div class="actions">
     <a class="btn" href="?all={% if mine %}1{% else %}0{% endif %}">{% if mine %}看全部人的{% else %}只看我的{% endif %}</a>
     <a class="btn" href="{% url 'mail_settings' %}">邮箱自动扫描</a>

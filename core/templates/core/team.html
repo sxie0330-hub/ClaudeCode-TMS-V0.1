@@ -1,7 +1,7 @@
 {% extends "core/base.html" %}
 {% block title %}团队{% endblock %}
 {% block content %}
-<div class="head"><h1>团队与权限</h1><div class="actions"><a class="btn" href="{% url 'import_upload' %}">导入数据</a></div></div>
+<div class="head"><h1>团队与权限</h1><div class="actions"><a class="btn" href="{% url 'ai_usage' %}">AI 用量</a><a class="btn" href="{% url 'import_upload' %}">导入数据</a></div></div>
 <div class="intro">同事第一次用公司 Google 账号登录后会出现在这里（管理层会收到通知），勾选角色后保存即可使用，对方会收到通知。<b>一个人可以有多个角色</b>，权限取并集。<br>
   <b>管理层</b>：全部；<b>操作 OP</b>：编辑运输信息 + 看/改应付；<b>应付 AP</b>：只读运输信息 + 看/改应付；<b>应收 AR</b>：只读运输信息 + 看/改应收（看不到应付）；
   <b>询报价 / 销售</b>：询价、承运商报价、客户报价（含询价阶段成本），只读运输信息。</div>

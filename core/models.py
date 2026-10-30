@@ -1116,6 +1116,27 @@ class Lead(SoftDeleteModel):
         return self.status in self.OPEN
 
 
+class AiUsage(models.Model):
+    """Tokens used by one Gemini call, for the AI usage page (management only)."""
+
+    class Feature(models.TextChoices):
+        OPS_PASTE = "OPS_PASTE", "运营 · 手动 AI 识别"
+        OPS_GMAIL = "OPS_GMAIL", "运营 · 邮箱扫描 / 按主题识别"
+        LEAD = "LEAD", "询报价 · AI 整理询价"
+        REPLY = "REPLY", "询报价 · 承运商回复整理"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(default=timezone.now, db_index=True)
+    feature = models.CharField(max_length=10, choices=Feature.choices)
+    model_name = models.CharField(max_length=80, blank=True)
+    input_tokens = models.PositiveIntegerField(default=0)
+    output_tokens = models.PositiveIntegerField(default=0, help_text="AI 写出的结果")
+    thinking_tokens = models.PositiveIntegerField(default=0, help_text="模型思考，按输出计费")
+
+    class Meta:
+        ordering = ["-created_at"]
+
+
 class TrailerType(models.Model):
     """Equipment library for the OOG screen: deck height, deck length and combination tare weight.
     Defaults come from manufacturer spec sheets; the team edits them to match the fleets they use."""
