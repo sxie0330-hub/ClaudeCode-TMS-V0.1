@@ -1246,6 +1246,52 @@ class MailScanTests(Base):
         ext = AiExtraction.objects.get(source=AiExtraction.Source.GMAIL)
         self.assertEqual(ext.status, AiExtraction.State.DONE)
 
+    def test_gmail_quota_waits_and_retries(self):
+        from unittest import mock
+
+        from . import mailscan
+
+        quota = mock.Mock(status_code=403, headers={}, text='{"error": {"code": 403, "message": "Quota exceeded for quota metric \'Total Query Cost\'"}}')
+        ok = mock.Mock(status_code=200, headers={}, text="{}")
+        ok.json.return_value = {"messages": []}
+        with mock.patch.object(mailscan.requests, "get", side_effect=[quota, quota, ok]), \
+             mock.patch.object(mailscan.time, "sleep") as sleep:
+            self.assertEqual(mailscan._get("t", "/messages"), {"messages": []})
+        self.assertEqual([c.args[0] for c in sleep.call_args_list], [5, 20])
+        with mock.patch.object(mailscan.requests, "get", return_value=quota), mock.patch.object(mailscan.time, "sleep"):
+            with self.assertRaises(mailscan.QuotaError):
+                mailscan._get("t", "/messages")
+        other = mock.Mock(status_code=403, headers={}, text="insufficientPermissions")
+        with mock.patch.object(mailscan.requests, "get", return_value=other), mock.patch.object(mailscan.time, "sleep") as sleep:
+            with self.assertRaises(mailscan.ScanError):
+                mailscan._get("t", "/messages")
+        sleep.assert_not_called()
+
+    def test_quota_stop_keeps_progress_and_window(self):
+        from unittest import mock
+
+        from . import mailscan
+        from .models import ScannedMessage
+
+        inbox = self.inbox
+
+        def read(tok, mid):
+            if mid == "m2":
+                raise mailscan.QuotaError("limit")
+            return inbox[mid]
+
+        with mock.patch.object(mailscan, "_access_token", return_value="a-tok"), \
+             mock.patch.object(mailscan, "_get", side_effect=self.fake_get), \
+             mock.patch.object(mailscan, "read_message", side_effect=read):
+            res = mailscan.scan_one(self.conn, caller=lambda *a: ({"summary": "", "unmatched": "", "new_project": {"is_new": False},
+                                                                   "loads": []}, {}))
+        self.assertIn("每分钟读取次数到上限", res["result"])
+        self.assertNotIn("error", res)
+        self.conn.refresh_from_db()
+        self.assertIsNone(self.conn.last_scan_at)  # same window next time
+        self.assertEqual(self.conn.last_error, "")
+        self.assertEqual(set(ScannedMessage.objects.values_list("message_id", flat=True)), {"m1"})  # m1 handled, m2 retried
+
     def test_ai_failure_keeps_window_and_retries(self):
         from unittest import mock
 
