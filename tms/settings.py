@@ -48,6 +48,7 @@ MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
+    "core.i18n.LanguageMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
@@ -141,20 +142,50 @@ TMS_PASSWORD_LOGIN = env_bool("TMS_PASSWORD_LOGIN", DEBUG)
 
 # --- Company info printed on documents -------------------------------------
 TMS_COMPANY_NAME = os.environ.get("TMS_COMPANY_NAME", "Advantage Transport Solution Inc")
-TMS_COMPANY_ADDRESS = os.environ.get("TMS_COMPANY_ADDRESS", "")
-TMS_COMPANY_PHONE = os.environ.get("TMS_COMPANY_PHONE", "")
+TMS_COMPANY_ADDRESS = os.environ.get("TMS_COMPANY_ADDRESS") or "18645 E Gale Ave Suite 238, City of Industry, CA 91748"
+TMS_COMPANY_PHONE = os.environ.get("TMS_COMPANY_PHONE") or "(909) 343-7040"
 # Header printed on BOLs, per project company (Project.company). ATS uses the
 # TMS_COMPANY_* values above. Logos: core/static/core/logo.jpg (ATS) and
 # core/static/core/logo-ptt.png or .jpg (PTT, optional; without it the name is printed).
 TMS_DOC_COMPANIES = {
-    "ATS": {"name": TMS_COMPANY_NAME, "address": TMS_COMPANY_ADDRESS, "phone": TMS_COMPANY_PHONE, "logo": "logo.jpg"},
+    "ATS": {"name": TMS_COMPANY_NAME, "address": TMS_COMPANY_ADDRESS, "phone": TMS_COMPANY_PHONE, "logo": "logo.jpg",
+            # Carrier invoicing (company "Carrier Invoice Submission Guidelines")
+            "ap_email": "invoices@advtransolution.com",
+            "statements_to": ["leo@advtransolution.com", "amanda@advtransolution.com", "invoices@advtransolution.com"],
+            "ap_contact": "Leo Lai – Accounts Payable, Leo@advtransolution.com / (626) 297-1667"},
     "PTT": {
         "name": os.environ.get("TMS_PTT_NAME") or "Pacific Transload and Transport",
         "address": os.environ.get("TMS_PTT_ADDRESS", ""),
         "phone": os.environ.get("TMS_PTT_PHONE", ""),
         "logo": "logo-ptt",
+        "ap_email": "invoices@pacifictandt.com",
+        "statements_to": ["raymond@pacifictandt.com", "andrew@pacifictandt.com", "invoices@pacifictandt.com"],
+        "ap_contact": "Raymond – Accounts Payable, Raymond@pacifictandt.com",
     },
 }
+# Rate Confirmation to carriers (core/ratecon.py). English. A starting point: have it reviewed and edit here.
+# Payment terms on the rate agreement; {days} comes from the agreement (default Net 30).
+TMS_RATECON_PAYMENT_TERMS = "Net {days} days from Party A's receipt of a complete and correct invoice package as described in this agreement."
+TMS_RATECON_TERMS = [
+    "Party B is an independent contractor and performs every load under its own operating authority, equipment and drivers. "
+    "No re-brokering, co-brokering, assigning or interlining; a violation voids the rate and Party B remains liable for the load.",
+    "No volume commitment. Party A tenders loads at its sole discretion, one load at a time. Any volume, truck count, schedule or "
+    "forecast mentioned in this agreement or in any discussion is an estimate only and is not a commitment by Party A.",
+    "Each load is confirmed by Party A's written load tender (e-mail). Party B confirms acceptance of each load in writing. "
+    "Party A may assign any load to another carrier at any time without liability to Party B.",
+    "The rate in this agreement is fixed for its term. Any change in rate, accessorial or service must be agreed in writing by "
+    "Party A before the affected load is dispatched; a change sent after dispatch does not apply.",
+    "If Party B cannot cover a tendered load, does not meet the schedule, or changes its rate, Party A may reduce or stop tendering "
+    "loads and may terminate this agreement at any time by written notice, without liability.",
+    "Party B keeps in force at least USD 1,000,000 auto liability and USD 100,000 cargo insurance (higher if the shipper requires) "
+    "and provides a current certificate before the first pickup.",
+    "Party B is liable for loss, damage or delay of the cargo from pickup to delivery as provided by 49 U.S.C. 14706 (Carmack). "
+    "Any exception must be noted on the BOL / delivery receipt and reported to Party A the same day.",
+    "Party B loads, secures and transports the freight in compliance with FMCSA rules, including 49 CFR 393 cargo securement, and "
+    "follows every permit condition and escort requirement on oversize / overweight loads.",
+    "Party B and its drivers will not contact Party A's customer, shipper or consignee about rates or future business, except as "
+    "needed to carry out a load.",
+]
 TMS_LFD_WARNING_DAYS = int(os.environ.get("TMS_LFD_WARNING_DAYS", "3"))
 
 # --- AI email reading (Gemini on Vertex AI, see core/ai.py) ----------------

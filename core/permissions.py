@@ -45,6 +45,12 @@ def can_quote(user):
     return bool(roles_of(user) & {Role.MANAGEMENT, Role.OP, Role.RFQ})
 
 
+def can_manage_rates(user):
+    """Carrier rate agreements: management, AP and operations (OP issue them to carriers, management decision 2026-10-30).
+    OP still sees no other AP amounts."""
+    return bool(roles_of(user) & {Role.MANAGEMENT, Role.OP, Role.AP})
+
+
 SIDES = {
     Role.MANAGEMENT: {Charge.Side.AR, Charge.Side.AP},
     Role.OP: set(),  # operations see no AR / AP money (management decision 2026-10-30)

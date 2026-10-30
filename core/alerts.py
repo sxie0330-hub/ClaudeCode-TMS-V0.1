@@ -259,6 +259,28 @@ def r_permits(ctx):
                   lambda ls: f"{len(ls)} 个 Load 许可证 / 护送未确认" if len(ls) > 1 else f"{_load_label(ls[0])} 许可证 / 护送未确认")
 
 
+@rule(key="permit_expiry", category="开工前检查 · 没确认就会延误", label="许可证会在送达前过期", why="过期许可证上路会被罚款、扣车",
+      level="urgent", threshold=2, unit="天内过期")
+def r_permit_expiry(ctx):
+    from .models import LegPermit
+
+    horizon = ctx.today + timedelta(days=ctx.n)
+    rows = (LegPermit.objects.filter(leg__shipment__in=ctx.loads(), leg__actual_delivery__isnull=True, status=LegPermit.State.ISSUED,
+                                     valid_to__isnull=False)
+            .select_related("leg__shipment__project"))
+    out = []
+    for p in rows:
+        leg = p.leg
+        due = leg.scheduled_delivery or horizon
+        if p.valid_to < min(due, horizon) or p.valid_to < due:
+            s = leg.shipment
+            out.append(ctx.alert("permit_expiry", f"p{p.pk}", "许可证",
+                                 f"{_load_label(s)} {p.state} 许可证 {p.valid_to:%m-%d} 到期" + (
+                                     f"，计划 {leg.scheduled_delivery:%m-%d} 才送达" if leg.scheduled_delivery and p.valid_to < leg.scheduled_delivery else ""),
+                                 f"{_proj(s)} · 第 {leg.sequence} 段 · 需要延期或重新申请", s.get_absolute_url() + "#leg", s.project))
+    return out
+
+
 @rule(key="bol", category="开工前检查 · 没确认就会延误", label="BOL 缺关键信息（UN 编号、重量、收货联系人）", why="危险品单据不全会被拒收",
       level="today", threshold=2, unit="天前")
 def r_bol(ctx):
@@ -411,6 +433,49 @@ def r_pod_upload(ctx):
                   lambda ls: f"{_proj(ls[0])} · 上传后点“POD 已上传”")
 
 
+@rule(key="ratecon_missing", category="开工前检查 · 没确认就会延误", label="已派承运商、快提货了，还没出运价协议", why="没有签回的运价协议，运价和开票方式容易起纠纷",
+      level="today", threshold=2, unit="天内提货", side="RATES")
+def r_ratecon_missing(ctx):
+    from .models import RateAgreement
+
+    horizon = ctx.today + timedelta(days=ctx.n)
+    issued = set(RateAgreement.objects.filter(version__gt=0).values_list("project_id", "carrier_id"))
+    legs = (Leg.objects.filter(shipment__in=ctx.loads(), carrier__isnull=False, actual_pickup__isnull=True, shipment__project__isnull=False,
+                               scheduled_pickup__isnull=False, scheduled_pickup__lte=horizon)
+            .select_related("shipment__project", "carrier"))
+    out, seen = [], set()
+    for leg in legs:
+        key = (leg.shipment.project_id, leg.carrier_id)
+        if key in issued or key in seen:
+            continue
+        seen.add(key)
+        p = leg.shipment.project
+        out.append(ctx.alert("ratecon_missing", f"{key[0]}-{key[1]}", "运价", f"{p.name}：{leg.carrier} 还没有运价协议",
+                             f"{leg.scheduled_pickup:%m-%d} 起提货 · 在项目页“承运商运价协议”新建并出具", p.get_absolute_url() + "#rates", p))
+    return out
+
+
+@rule(key="carrier_coi", category="开工前检查 · 没确认就会延误", label="在用承运商的保险快到期 / 已过期", why="保险过期还派车，出事故或货损没有保障",
+      level="urgent", threshold=30, unit="天内到期")
+def r_carrier_coi(ctx):
+    horizon = ctx.today + timedelta(days=ctx.n)
+    legs = Leg.objects.filter(shipment__in=ctx.loads(), carrier__isnull=False, actual_delivery__isnull=True).select_related("carrier")
+    seen, out = set(), []
+    for leg in legs:
+        c = leg.carrier
+        if c.pk in seen or c.kind not in c.COMPLIANCE_KINDS:
+            continue
+        seen.add(c.pk)
+        due = [(label, d) for label, d in (("汽车责任险", c.auto_insurance_expires), ("货物险", c.cargo_insurance_expires)) if d and d <= horizon]
+        if not due:
+            continue
+        label, d = min(due, key=lambda x: x[1])
+        text = f"{c.name} {label}已过期（{d:%m-%d}）" if d < ctx.today else f"{c.name} {label} {d:%m-%d} 到期"
+        out.append(ctx.alert("carrier_coi", f"c{c.pk}", "承运商", text, "请资质专员更新 COI，并在承运商资料里改到期日",
+                             c.get_absolute_url(), None, level="urgent" if d < ctx.today else None))
+    return out
+
+
 @rule(key="extra_charges", category="回款与利润", label="承运商额外费用待审批 / 有争议", why="防重复付款", level="urgent", side="AP")
 def r_extra(ctx):
     qs = Charge.objects.filter(shipment__in=ctx.loads(), side="AP", charge_type__in=ACCESSORIAL, state__in=[Charge.State.OPEN, Charge.State.DISPUTED])
@@ -473,6 +538,10 @@ RULE_MAP = {r.key: r for r in RULES}
 def rule_allowed(r, user):
     if r.side == "MARGIN":
         return can_see_margin(user)
+    if r.side == "RATES":
+        from .permissions import can_manage_rates
+
+        return can_manage_rates(user)
     if r.side:
         return r.side in visible_sides(user)
     return True

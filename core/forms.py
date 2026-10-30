@@ -15,6 +15,9 @@ from .models import (
     Lead,
     LeadCargo,
     LeadLane,
+    LegPermit,
+    RateAgreement,
+    RateLine,
     TrailerType,
     Leg,
     Location,
@@ -90,7 +93,9 @@ class CustomerForm(BaseForm):
 class CarrierForm(BaseForm):
     class Meta:
         model = Carrier
-        fields = ["name", "code", "kind", "scac", "mc_number", "dot_number", "contact_name", "contact_phone", "contact_email", "dispatch_notes"]
+        fields = ["name", "code", "kind", "scac", "mc_number", "dot_number", "contact_name", "contact_phone", "contact_email", "dispatch_notes",
+                  "compliance_link", "auto_insurance_expires", "cargo_insurance_expires", "w9_on_file", "authority_checked_on",
+                  "compliance_notes"]
 
 
 class LocationForm(BaseForm):
@@ -168,6 +173,42 @@ class ShipmentDocsForm(BaseForm):
         model = Shipment
         fields = ["pod_received", "pod_check", "pod_link", "photos_link", "inspection_link", "other_docs_link",
                   "empty_return_due", "empty_return_date", "empty_return_location"]
+
+
+class RateAgreementForm(BaseForm):
+    class Meta:
+        model = RateAgreement
+        fields = ["origin", "destination", "commodity", "equipment", "capacity", "valid_from", "valid_until", "free_hours",
+                  "payment_days", "requirements", "invoice_instructions", "notes"]
+        widgets = {"requirements": forms.Textarea(attrs={"rows": 8}), "invoice_instructions": forms.Textarea(attrs={"rows": 3}),
+                   "notes": forms.Textarea(attrs={"rows": 3})}
+
+
+def rate_lines_formset():
+    return forms.inlineformset_factory(
+        RateAgreement, RateLine, fields=["charge_type", "description", "unit_price", "unit", "optional"], extra=2, can_delete=True,
+        widgets={"description": forms.TextInput(attrs={"size": 44}), "unit_price": forms.NumberInput(attrs={"style": "width:110px"})})
+
+
+class LegPermitForm(BaseForm):
+    class Meta:
+        model = LegPermit
+        fields = ["state", "status", "permit_number", "valid_from", "valid_to", "escorts", "escorts_booked", "link", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+
+    def clean_state(self):
+        from .oog import STATES
+
+        code = (self.cleaned_data.get("state") or "").strip().upper()
+        if code not in STATES:
+            raise forms.ValidationError("请填两位州代码，如 TX")
+        return code
+
+    def clean(self):
+        data = super().clean()
+        if data.get("valid_from") and data.get("valid_to") and data["valid_to"] < data["valid_from"]:
+            self.add_error("valid_to", "有效期止早于有效期起")
+        return data
 
 
 class MasterBLForm(BaseForm):

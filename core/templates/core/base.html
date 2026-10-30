@@ -37,6 +37,7 @@
       <a href="{% url 'notifications' %}" class="all">全部通知 →</a>
     </div>
   </div>
+  {% if request.COOKIES.tms_lang == 'en' %}<a class="lang" href="{% url 'set_language' 'zh' %}" title="切换到中文">中文</a>{% else %}<a class="lang" href="{% url 'set_language' 'en' %}" title="Switch to English">EN</a>{% endif %}
   <span class="who">{{ user.get_full_name|default:user.email|default:user.username }} · {{ role_label }}</span>
   <form method="post" action="{% url 'account_logout' %}" class="inline">{% csrf_token %}<button class="sm" type="submit">退出</button></form>
 </div>

@@ -1,0 +1,18 @@
+{% extends "core/base.html" %}
+{% block title %}新建运价协议{% endblock %}
+{% block content %}
+<div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{{ p.get_absolute_url }}">{{ p.name }}</a> / 新建运价协议</div>
+<div class="head"><h1>新建运价协议</h1></div>
+<div class="panel"><div class="body">
+  {% if en %}<p>One per project and carrier, covering every Load tendered to it on this lane. The rate is pre-filled from {% if p.leads.exists %}this carrier's quote in the RFQ{% else %}what this project already pays the carrier (AP){% endif %}; you can change it afterwards.</p>
+  {% else %}<p>一个项目、一家承运商一份，覆盖这条线路上派给它的所有 Load。运价从{% if p.leads.exists %}询报价里这家承运商的报价{% else %}这个项目已经记的付款费用（AP）{% endif %}带出，之后可以改。</p>{% endif %}
+  <form method="post" class="form" style="max-width:520px">{% csrf_token %}
+    <label>承运商</label>
+    <select name="carrier" required data-search>
+      {% if used %}<optgroup label="这个项目在用的">{% for c in used %}<option value="{{ c.pk }}" {% if pre == c.pk|stringformat:"s" %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</optgroup>{% endif %}
+      <optgroup label="全部承运商">{% for c in carriers %}<option value="{{ c.pk }}" {% if pre == c.pk|stringformat:"s" and not used %}selected{% endif %}>{{ c.name }}</option>{% endfor %}</optgroup>
+    </select>
+    <p style="margin-top:10px"><button class="primary" type="submit">带出运价并编辑</button> <a class="btn" href="{{ p.get_absolute_url }}">取消</a></p>
+  </form>
+</div></div>
+{% endblock %}

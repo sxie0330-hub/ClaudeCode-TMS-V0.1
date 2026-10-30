@@ -2311,3 +2311,206 @@ class AiUsageTests(Base):
         self.assertContains(r, "询报价 · AI 整理询价")
         self.assertContains(r, "$0.04")  # two calls x $0.01875
         self.assertContains(self.client.get("/ai/usage/?month=bad"), "AI 用量")
+
+
+class RateAgreementTests(Base):
+    def make(self, who=None):
+        self.login(who or self.op)
+        r = self.client.post(f"/projects/{self.project.pk}/rates/new/", {"carrier": self.carrier.pk})
+        from .models import RateAgreement
+
+        a = RateAgreement.objects.get(project=self.project, carrier=self.carrier)
+        self.assertRedirects(r, f"/rates/{a.pk}/edit/", fetch_redirect_response=False)
+        return a
+
+    def test_one_agreement_per_project_carrier_prefilled_and_op_allowed(self):
+        from .models import Note
+        from . import ratecon
+
+        for who in (self.ar, self.nobody):
+            self.login(who)
+            self.assertEqual(self.client.get(f"/projects/{self.project.pk}/rates/new/").status_code, 403)
+        a = self.make(self.op)  # operations issue rate agreements
+        self.assertTrue(a.number.startswith(f"RA-{self.project.number}-"))
+        base = [ln for ln in a.lines.all() if not ln.optional]
+        self.assertEqual([(ln.charge_type, ln.unit_price, ln.unit) for ln in base], [("LINEHAUL", Decimal("6543.00"), "TRUCK")])
+        self.assertTrue(a.lines.filter(charge_type="DETENTION", optional=True).exists())
+        self.assertIn("check-in / check-out", a.requirements)
+        page = self.client.get(f"/rates/{a.pk}/")
+        self.assertContains(page, "6,543.00")
+        self.assertContains(page, "invoices@advtransolution.com")
+        self.assertNotContains(page, "9,100")
+        pdf = self.client.get(f"/rates/{a.pk}/pdf/")
+        self.assertTrue(pdf.content.startswith(b"%PDF"))
+        a.refresh_from_db()
+        self.assertEqual(a.version, 1)
+        self.assertTrue(Note.objects.filter(project=self.project, text__contains="出具运价协议").exists())
+        ctx = ratecon.context(a, self.op)
+        text = " ".join(str(f.text) if hasattr(f, "text") else "" for f in ratecon.build(ctx))
+        self.assertIn("does not commit to any number of loads", text)
+        self.assertIn("GPS or ELD", text)
+        self.assertIn("Leo Lai", text)
+        to, subject, body = ratecon.email_draft(ctx)
+        self.assertIn(a.number, subject)
+        self.assertNotIn("Trina", subject + body + text)
+        self.assertContains(self.client.get(self.s.get_absolute_url()), a.number)
+        self.assertContains(self.client.get(self.project.get_absolute_url()), a.number)
+        # OP still sees no other AP money
+        self.assertNotContains(self.client.get(self.s.get_absolute_url()), "6,543")
+
+    def test_ptt_invoicing_contacts(self):
+        from . import ratecon
+
+        self.project.company = "PTT"
+        self.project.save()
+        a = self.make()
+        lines = " ".join(ratecon.invoicing_lines(ratecon.context(a, self.op)))
+        self.assertIn("invoices@pacifictandt.com", lines)
+        self.assertIn("raymond@pacifictandt.com, andrew@pacifictandt.com", lines)
+        self.assertNotIn("advtransolution", lines)
+
+    def test_edit_lines(self):
+        a = self.make()
+        a.lines.all().delete()
+        fs = {"lines-TOTAL_FORMS": "1", "lines-INITIAL_FORMS": "0", "lines-MIN_NUM_FORMS": "0", "lines-MAX_NUM_FORMS": "1000",
+              "lines-0-charge_type": "LINEHAUL", "lines-0-description": "All-in", "lines-0-unit_price": "24000",
+              "lines-0-unit": "TRUCK"}
+        r = self.client.post(f"/rates/{a.pk}/edit/", {"origin": "Carson, CA", "destination": "Nokesville, VA",
+                                                     "capacity": "Carrier states up to 3 trucks per day", "free_hours": "2", "payment_days": "30",
+                                                     "requirements": "Bring 4 straps", **fs})
+        self.assertRedirects(r, f"/rates/{a.pk}/", fetch_redirect_response=False)
+        a.refresh_from_db()
+        self.assertEqual(a.per_truck, Decimal("24000"))
+        from . import ratecon
+
+        self.assertIn("Net 30 days", " ".join(ratecon.invoicing_lines(ratecon.context(a, self.op))))
+        a.payment_days = 45
+        a.save()
+        self.assertIn("Net 45 days", " ".join(ratecon.invoicing_lines(ratecon.context(a, self.op))))
+
+
+class RateConAlertTests(Base):
+    def test_missing_agreement_reminds_rate_roles(self):
+        from . import alerts
+        from .models import RateAgreement
+
+        self.project.owners.add(self.op, self.mgmt)
+        self.leg.scheduled_pickup = date.today() + timedelta(days=1)
+        self.leg.save()
+        self.assertIn("ratecon_missing", {a.rule for a in alerts.collect(self.mgmt)})
+        self.assertIn("ratecon_missing", {a.rule for a in alerts.collect(self.op)})  # OP issues rate agreements
+        self.assertNotIn("ratecon_missing", {a.rule for a in alerts.collect(self.ar)})
+        a = RateAgreement.objects.create(project=self.project, carrier=self.carrier, origin="A", destination="B")
+        self.assertIn("ratecon_missing", {x.rule for x in alerts.collect(self.mgmt)})  # a draft is not enough
+        RateAgreement.objects.filter(pk=a.pk).update(version=1)
+        self.assertNotIn("ratecon_missing", {x.rule for x in alerts.collect(self.mgmt)})
+
+
+class CarrierComplianceTests(Base):
+    def test_record_alert_and_ratecon_warning(self):
+        from . import alerts, ratecon
+
+        self.project.owners.add(self.op)
+        c = self.carrier
+        self.assertIn("还没收到 W-9", c.compliance_problems())
+        self.assertNotIn("carrier_coi", {a.rule for a in alerts.collect(self.op)})  # no dates recorded: no alarm noise
+        c.auto_insurance_expires = date.today() - timedelta(days=1)
+        c.cargo_insurance_expires = date.today() + timedelta(days=200)
+        c.save()
+        a = [x for x in alerts.collect(self.op) if x.rule == "carrier_coi"]
+        self.assertEqual(len(a), 1)
+        self.assertIn("汽车责任险已过期", a[0].title)
+        from .models import RateAgreement
+
+        ra = RateAgreement.objects.create(project=self.project, carrier=c, origin="A", destination="B")
+        ctx = ratecon.context(ra, self.ap)
+        self.assertTrue(any("汽车责任险已于" in p for p in ratecon.problems(ctx)), ratecon.problems(ctx))
+        self.login(self.op)
+        r = self.client.get(c.get_absolute_url())
+        self.assertContains(r, "资质记录")
+        self.assertContains(r, "汽车责任险已于")
+        self.assertContains(self.client.get("/data/carrier/"), "资质")
+
+
+class PermitTrackingTests(Base):
+    def test_permit_rows_sync_leg_and_expiry_alert(self):
+        from . import alerts
+        from .models import LegPermit
+
+        self.project.owners.add(self.op)
+        leg = self.leg
+        leg.scheduled_pickup = date.today() + timedelta(days=1)
+        leg.scheduled_delivery = date.today() + timedelta(days=4)
+        leg.save()
+        self.login(self.op)
+        self.client.post(f"/shipments/{self.s.pk}/legs/{leg.pk}/permits/new/",
+                         {"state": "nj", "status": "NEEDED", "escorts": "1 rear escort"})
+        p = LegPermit.objects.get(leg=leg)
+        leg.refresh_from_db()
+        self.assertEqual((p.state, leg.permits_required, leg.permits_confirmed), ("NJ", True, False))
+        self.assertIn("permits", {a.rule for a in alerts.collect(self.op)})
+        # issued but escort not booked: still open
+        p.status, p.permit_number, p.valid_to = "ISSUED", "NJ-123", date.today() + timedelta(days=2)
+        p.save()
+        leg.refresh_from_db()
+        self.assertFalse(leg.permits_confirmed)
+        p.escorts_booked = True
+        p.save()
+        leg.refresh_from_db()
+        self.assertTrue(leg.permits_confirmed)
+        self.assertNotIn("permits", {a.rule for a in alerts.collect(self.op)})
+        a = [x for x in alerts.collect(self.op) if x.rule == "permit_expiry"]
+        self.assertEqual(len(a), 1)  # expires before the planned delivery
+        self.assertIn("NJ 许可证", a[0].title)
+        r = self.client.get(self.s.get_absolute_url())
+        self.assertContains(r, "NJ-123")
+        self.assertContains(r, "已全部确认")
+        self.assertEqual(self.client.get(f"/rows/permit/{p.pk}/edit/").status_code, 200)
+
+    def test_prefill_from_oog_screen(self):
+        from .models import CargoLine, LegPermit
+
+        self.yard.state, self.site.state = "NJ", "MA"
+        self.yard.save()
+        self.site.save()
+        CargoLine.objects.create(shipment=self.s, description="Transformer", handling_qty=1, weight_lbs=Decimal("150000"),
+                                 length_ft=Decimal("28"), width_ft=Decimal("12"), height_ft=Decimal("13"))
+        self.login(self.op)
+        self.client.post(f"/shipments/{self.s.pk}/legs/{self.leg.pk}/permits/prefill/")
+        states = set(LegPermit.objects.filter(leg=self.leg).values_list("state", flat=True))
+        self.assertEqual(states, {"NJ", "MA"})
+        p = LegPermit.objects.get(leg=self.leg, state="NJ")
+        self.assertIn("超宽", p.notes)
+        self.leg.refresh_from_db()
+        self.assertTrue(self.leg.permits_required)
+        self.client.post(f"/shipments/{self.s.pk}/legs/{self.leg.pk}/permits/prefill/")  # again: nothing duplicated
+        self.assertEqual(LegPermit.objects.filter(leg=self.leg).count(), 2)
+
+
+class LanguageTests(Base):
+    def test_switch_to_english_and_back(self):
+        self.login(self.mgmt)
+        zh = self.client.get("/").content.decode()
+        self.assertIn("我的工作台", zh)
+        r = self.client.get("/lang/en/?next=/projects/")
+        self.assertRedirects(r, "/projects/", fetch_redirect_response=False)
+        self.assertEqual(self.client.cookies["tms_lang"].value, "en")
+        en = self.client.get("/").content.decode()
+        self.assertIn("My workspace", en)
+        self.assertNotIn("我的工作台", en)
+        self.assertIn('lang="en"', en)
+        load = self.client.get(self.s.get_absolute_url()).content.decode()
+        self.assertIn("Leg", load)
+        self.assertIn("Holyoke", load)  # data stays as typed
+        self.client.get("/lang/zh/")
+        self.assertIn("我的工作台", self.client.get("/").content.decode())
+
+    def test_language_page_is_public_and_next_is_safe(self):
+        r = self.client.get("/lang/en/?next=https://evil.example.com/")
+        self.assertRedirects(r, "/", fetch_redirect_response=False)
+
+    def test_translate_keeps_unknown_chinese_intact(self):
+        from . import i18n
+
+        self.assertEqual(i18n.translate("环世"), "环世")  # a name: never split into single characters
+        self.assertEqual(i18n.translate("保存"), "Save")

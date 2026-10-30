@@ -7,7 +7,7 @@ from .permissions import has_access
 
 INVISIBLE = re.compile(r"[\u200b-\u200f\u2060\ufeff\u00a0\s]+")
 
-PUBLIC_PREFIXES = ("/accounts/", "/static/", "/healthz", "/health/", "/tasks/", "/dev-login/", "/admin/login/")
+PUBLIC_PREFIXES = ("/lang/", "/accounts/", "/static/", "/healthz", "/health/", "/tasks/", "/dev-login/", "/admin/login/")
 
 
 class RequireLoginMiddleware:

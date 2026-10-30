@@ -26,6 +26,7 @@ from .forms import (
     ChargeForm,
     CustomerForm,
     LegForm,
+    LegPermitForm,
     LocationForm,
     TrailerTypeForm,
     MasterBLForm,
@@ -42,6 +43,9 @@ from .models import (
     Charge,
     Customer,
     Leg,
+    LegPermit,
+    RateAgreement,
+    RateLine,
     Location,
     TrailerType,
     MasterBL,
@@ -59,6 +63,7 @@ from .permissions import (
     can_edit_ops,
     can_edit_shipment_ops,
     can_see_margin,
+    can_manage_rates,
     can_see_side,
     is_management,
     visible_sides,
@@ -254,7 +259,10 @@ def shipment_detail(request, pk):
         return sum((c.amount for c in rows if c.state != Charge.State.VOID), Decimal("0"))
 
     yard_stays = list(s.yard_stays.select_related("yard"))
-    legs = list(s.legs.select_related("origin", "destination", "carrier"))
+    legs = list(s.legs.select_related("origin", "destination", "carrier").prefetch_related("permits"))
+    agreements = {a.carrier_id: a for a in RateAgreement.objects.filter(project_id=s.project_id)} if s.project_id else {}
+    for leg in legs:
+        leg.rate_agreement = agreements.get(leg.carrier_id)
     free = s.project.detention_free_hours if s.project else Decimal("2")
     rate = s.project.detention_rate if s.project else None
     waits = []
@@ -302,6 +310,7 @@ def shipment_detail(request, pk):
         "can_edit": can_edit_shipment_ops(user, s),
         "can_edit_docs": can_edit_ops(user),
         "can_edit_ar": can_see_side(user, "AR"),
+        "can_rates": can_manage_rates(user),
         "can_edit_ap": can_see_side(user, "AP"),
     })
 
@@ -489,6 +498,7 @@ CHILDREN = {
     "cargo": (CargoLine, CargoLineForm, "货物明细"),
     "unit": (Unit, UnitForm, "设备序列号"),
     "yard": (YardStay, YardStayForm, "堆场停留"),
+    "permit": (LegPermit, LegPermitForm, "许可证"),
 }
 
 
@@ -546,6 +556,67 @@ def child_delete(request, kind, cid):
     return _confirm_delete(request, obj, f"删除{label}", url, url)
 
 
+# --- permits (per leg, per state) ----------------------------------------------
+def permit_create(request, pk, lid):
+    s = get_object_or_404(Shipment, pk=pk)
+    leg = get_object_or_404(Leg, pk=lid, shipment=s)
+    _need(can_edit_shipment_ops(request.user, s))
+    if request.method == "POST":
+        form = LegPermitForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.leg = leg
+            obj.save()
+            messages.success(request, f"已添加 {obj.state} 许可证")
+            return redirect(reverse("shipment_detail", args=[pk]) + "#leg")
+    else:
+        form = LegPermitForm(initial={"state": request.GET.get("state", "")})
+    return _form_page(request, form, f"{s.number} · 第 {leg.sequence} 段 · 添加许可证", s.get_absolute_url())
+
+
+def _leg_screen(leg):
+    """OOG screen for one leg, from its origin / destination states and the Load's cargo lines."""
+    from types import SimpleNamespace
+
+    from . import oog
+
+    s = leg.shipment
+    o, d = leg.origin, leg.destination
+    lane = SimpleNamespace(
+        origin=o.full_address if o else "", destination=d.full_address if d else "",
+        origin_state=oog.state_from_text(f", {o.state}") or oog.state_from_text(o.state or "") if o else "",
+        destination_state=oog.state_from_text(f", {d.state}") or oog.state_from_text(d.state or "") if d else "",
+        via_states=" ".join(p.state for p in leg.permits.all()), trucks=1, trailer_id=None, trailer=None)
+    cargo = [SimpleNamespace(qty=1, weight_lbs=c.weight_lbs, length_ft=c.length_ft, width_ft=c.width_ft, height_ft=c.height_ft,
+                             divisible=False, hazmat=c.hazmat, description=c.description) for c in s.cargo_lines.all()]
+    return oog.screen_lane(lane, cargo, list(TrailerType.objects.filter(active=True)))
+
+
+@require_POST
+def permit_prefill(request, pk, lid):
+    """Add a 待办理 permit row for every route state the OOG screen says needs one (escorts / police / limits in the notes)."""
+    s = get_object_or_404(Shipment, pk=pk)
+    leg = get_object_or_404(Leg, pk=lid, shipment=s)
+    _need(can_edit_shipment_ops(request.user, s))
+    res = _leg_screen(leg)
+    have = {p.state for p in leg.permits.all()}
+    added = []
+    for r in res["rows"]:
+        if r["state"] == "US" or r["state"] in have or not r["permits"]:
+            continue
+        LegPermit.objects.create(
+            leg=leg, state=r["state"], escorts="；".join(r["escorts"] + r["police"])[:255],
+            notes="\n".join(r["permits"] + r["superload"] + r["survey"] + r["travel"][:1]))
+        added.append(r["state"])
+    if added:
+        Leg.objects.filter(pk=leg.pk).update(permits_required=True)
+        messages.success(request, f"按 OOG 初筛加了 {'、'.join(added)} 的许可证（待办理）。途经州请自己补上，再点一次会按新的路线补齐")
+    else:
+        msg = "；".join(res["warnings"]) or "OOG 初筛认为这些州不需要许可证"
+        messages.info(request, f"没有新增：{msg}")
+    return redirect(reverse("shipment_detail", args=[pk]) + "#leg")
+
+
 # --- charges ---------------------------------------------------------------
 def charge_create(request, pk, side):
     s = get_object_or_404(Shipment, pk=pk)
@@ -596,6 +667,75 @@ def shipment_bol(request, pk):
     pdf = render_bols([ctx])
     _note(s, request.user, f"生成 BOL {ctx['bol_number']}" + (f"（第 {leg.sequence} 段 {leg.get_kind_display()}）" if leg else ""), kind=Note.Kind.BOL)
     return _pdf(pdf, f"BOL-{ctx['bol_number']}.pdf")
+
+
+# ---------------------------------------------------------------------------
+# Carrier rate agreement (rate confirmation) per project and carrier. Shows carrier rates: AP-visible roles only.
+# ---------------------------------------------------------------------------
+def _rates_allowed(user):
+    from .permissions import can_manage_rates
+
+    _need(can_manage_rates(user))
+
+
+def rate_agreement_new(request, pk):
+    from . import ratecon
+
+    p = get_object_or_404(Project, pk=pk)
+    _rates_allowed(request.user)
+    used = Carrier.objects.filter(legs__shipment__project=p).distinct()
+    if request.method == "POST":
+        carrier = get_object_or_404(Carrier, pk=request.POST.get("carrier"))
+        data, lines = ratecon.prefill(p, carrier)
+        a = RateAgreement.objects.create(project=p, carrier=carrier, created_by=request.user, **data)
+        for ln in lines:
+            RateLine.objects.create(agreement=a, **ln)
+        messages.success(request, f"已按{'询报价' if p.leads.exists() else '已有费用'}带出运价，请核对后保存")
+        return redirect("rate_agreement_edit", a.pk)
+    return render(request, "core/rate_new.html", {"p": p, "used": used, "carriers": Carrier.objects.all(),
+                                                  "pre": request.GET.get("carrier", "")})
+
+
+def rate_agreement(request, pk):
+    from . import quotes, ratecon
+
+    a = get_object_or_404(RateAgreement.objects.select_related("project", "carrier"), pk=pk)
+    _rates_allowed(request.user)
+    ctx = ratecon.context(a, request.user)
+    to, subject, body = ratecon.email_draft(ctx)
+    return render(request, "core/rate_agreement.html", {"a": a, "ctx": ctx, "problems": ratecon.problems(ctx), "to": to,
+                                                        "invoicing": ratecon.invoicing_lines(ctx),
+                                                        "subject": subject, "body": body, "gmail": quotes.gmail_compose_url(to, subject, body)})
+
+
+def rate_agreement_edit(request, pk):
+    from .forms import RateAgreementForm, rate_lines_formset
+
+    a = get_object_or_404(RateAgreement, pk=pk)
+    _rates_allowed(request.user)
+    FS = rate_lines_formset()
+    form = RateAgreementForm(request.POST or None, instance=a)
+    fs = FS(request.POST or None, instance=a)
+    if request.method == "POST" and form.is_valid() and fs.is_valid():
+        form.save()
+        fs.save()
+        messages.success(request, "已保存")
+        return redirect(a)
+    return render(request, "core/lead_formset.html", {"title": f"运价协议 {a.number} · {a.carrier}", "form": form, "fs": fs,
+                                                      "kind": "rate", "cancel_url": a.get_absolute_url(), "back": "返回协议"})
+
+
+def rate_agreement_pdf(request, pk):
+    from . import ratecon
+
+    a = get_object_or_404(RateAgreement.objects.select_related("project", "carrier"), pk=pk)
+    _rates_allowed(request.user)
+    ctx = ratecon.context(a, request.user)
+    pdf = ratecon.render(ctx)
+    RateAgreement.objects.filter(pk=a.pk).update(version=ctx["version"], issued_at=timezone.now())
+    _note(None, request.user, f"出具运价协议 {a.number}（{a.carrier}，第 {ctx['version']} 版）"
+          + (f"，每车 ${ctx['per_truck']:,.2f}" if ctx["per_truck"] else ""), project=a.project)
+    return _pdf(pdf, f"RateConfirmation-{a.number}.pdf")
 
 
 @require_POST
@@ -695,6 +835,10 @@ def project_detail(request, pk):
         "money": money,
         "kpi": kpi,
         "milestones": _milestones(p, loads),
+        "can_rates": can_manage_rates(user),
+        "rate_agreements": list(p.rate_agreements.select_related("carrier").prefetch_related("lines")) if can_manage_rates(user) else [],
+        "carriers_missing": list(Carrier.objects.filter(legs__shipment__project=p).exclude(rate_agreements__project=p).distinct())
+        if can_manage_rates(user) else [],
         "alerts": alert_engine.collect(user, project=p),
         "timeline": audit.project_timeline(p, can_revert=is_management(user)),
         "note_form": NoteForm(),
@@ -808,7 +952,7 @@ def project_bulk_shipments(request, pk):
 # ---------------------------------------------------------------------------
 MASTER = {
     "customer": (Customer, CustomerForm, "客户", ["name", "code", "contact_name", "contact_phone"]),
-    "carrier": (Carrier, CarrierForm, "承运商", ["name", "code", "kind", "scac", "contact_name", "contact_phone"]),
+    "carrier": (Carrier, CarrierForm, "承运商", ["name", "code", "kind", "scac", "contact_name", "contact_phone", "compliance_status"]),
     "location": (Location, LocationForm, "地址", ["code", "name", "kind", "full_address", "contact_phone"]),
     "trailer": (TrailerType, TrailerTypeForm, "车型", ["name", "deck_height_in", "deck_length_ft", "trailer_tare_lbs",
                                                       "tractor_tare_lbs", "rated_capacity_lbs", "sort", "active"]),
@@ -827,7 +971,8 @@ def master_list(request, kind):
             cond |= Q(**{f"{f}__icontains": q})
         qs = qs.filter(cond)
     page = Paginator(qs, 100).get_page(request.GET.get("page"))
-    headers = [model._meta.get_field(c).verbose_name if c != "full_address" else "地址" for c in cols]
+    computed = {"full_address": "地址", "compliance_status": "资质"}
+    headers = [computed[c] if c in computed else model._meta.get_field(c).verbose_name for c in cols]
     def cell(o, c):
         v = o.get_kind_display() if c == "kind" else getattr(o, c)
         return ("是" if v else "否") if isinstance(v, bool) else v
@@ -840,8 +985,10 @@ def master_list(request, kind):
 def master_detail(request, kind, pk):
     model, _, label, _ = MASTER[kind]
     obj = get_object_or_404(model, pk=pk)
-    fields = [(f.verbose_name, obj._get_FIELD_display(f) if f.choices else getattr(obj, f.name)) for f in model._meta.fields
-              if f.name not in ("id", "is_deleted", "created_at", "updated_at")]
+    def shown(f):
+        v = obj._get_FIELD_display(f) if f.choices else getattr(obj, f.name)
+        return ("是" if v else "否") if isinstance(v, bool) else v
+    fields = [(f.verbose_name, shown(f)) for f in model._meta.fields if f.name not in ("id", "is_deleted", "created_at", "updated_at")]
     related = []
     if kind == "customer":
         related = [("项目", obj.projects.all()[:100]), ("最近 Load", obj.shipments.select_related("project")[:100])]
@@ -850,7 +997,9 @@ def master_detail(request, kind, pk):
     elif kind == "location":
         related = [("最近 Load（收货地）", Shipment.objects.filter(consignee=obj)[:100])]
     can_edit = is_management(request.user) if kind == "trailer" else can_edit_ops(request.user)
+    problems = obj.compliance_problems() if kind == "carrier" else []
     return render(request, "core/master_detail.html", {"kind": kind, "label": label, "obj": obj, "fields": fields, "related": related,
+                                                       "problems": problems,
                                                        "can_edit": can_edit})
 
 
@@ -1004,3 +1153,17 @@ class DevLoginView(auth_views.LoginView):
         if not settings.TMS_PASSWORD_LOGIN:
             raise Http404
         return super().dispatch(request, *args, **kwargs)
+
+
+def set_language(request, code):
+    """One-click switch between Chinese and English; remembered for a year in this browser."""
+    from django.utils.http import url_has_allowed_host_and_scheme
+
+    from .i18n import COOKIE
+
+    nxt = request.GET.get("next") or request.META.get("HTTP_REFERER") or "/"
+    if not url_has_allowed_host_and_scheme(nxt, allowed_hosts={request.get_host()}, require_https=request.is_secure()):
+        nxt = "/"
+    resp = redirect(nxt)
+    resp.set_cookie(COOKIE, "en" if code == "en" else "zh", max_age=365 * 24 * 3600, samesite="Lax")
+    return resp

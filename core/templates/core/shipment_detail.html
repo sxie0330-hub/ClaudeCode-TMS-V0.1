@@ -72,7 +72,7 @@
     <div class="actions">{% if can_edit %}<a class="btn sm" href="{% url 'child_create' s.pk 'leg' %}">+ 添加运输段</a>{% endif %}</div>
   </header>
   <div class="tablewrap"><table class="t">
-    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th><th></th></tr></thead>
+    <thead><tr><th>#</th><th>类型</th><th>起点 → 终点</th><th>承运商</th><th>Load#</th><th>司机/车</th><th>计划提货</th><th>实际提货</th><th>计划送达</th><th>实际送达</th><th>跟踪</th><th>BOL</th>{% if can_rates %}<th>运价协议</th>{% endif %}<th></th></tr></thead>
     <tbody>
     {% for l in legs %}
       <tr>
@@ -88,10 +88,26 @@
         <td>{{ l.actual_delivery|dash }}</td>
         <td>{% if l.tracking_url %}<a href="{{ l.tracking_url }}" target="_blank" rel="noopener">跟踪</a>{% endif %}</td>
         <td><a href="{% url 'shipment_bol' s.pk %}?leg={{ l.pk }}" target="_blank">{{ l.effective_bol_number }}</a></td>
+        {% if can_rates %}<td>{% if l.rate_agreement %}<a href="{{ l.rate_agreement.get_absolute_url }}">{{ l.rate_agreement.number }}</a>{% if not l.rate_agreement.version %} <small class="lfd-warn">未出具</small>{% endif %}{% elif l.carrier_id and s.project_id %}<a href="{% url 'rate_agreement_new' s.project_id %}?carrier={{ l.carrier_id }}">新建</a>{% else %}—{% endif %}</td>{% endif %}
         <td>{% if can_edit %}<a href="{% url 'child_edit' 'leg' l.pk %}">编辑</a> · <a href="{% url 'child_delete' 'leg' l.pk %}">删除</a>{% endif %}</td>
       </tr>
-      {% if l.notes %}<tr><td></td><td colspan="12" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}
-    {% empty %}<tr><td colspan="13" class="muted">还没有运输段。例如：①拖柜 码头→堆场 ②OTR 堆场→现场。</td></tr>{% endfor %}
+      {% if l.notes %}<tr><td></td><td colspan="13" class="wrap muted">{{ l.notes }}</td></tr>{% endif %}
+      {% with ps=l.permits.all %}{% if l.permits_required or ps %}<tr class="permits"><td></td><td colspan="13">
+        <b>许可证 / 护送</b>
+        {% if l.permits_confirmed %}<span class="b b-DELIVERED">已全部确认</span>{% else %}<span class="b b-HOLD">未全部确认</span>{% endif %}
+        {% if can_edit %}<span style="margin-left:8px"><a href="{% url 'permit_create' s.pk l.pk %}">+ 添加</a> ·
+          <form class="inline" method="post" action="{% url 'permit_prefill' s.pk l.pk %}">{% csrf_token %}<button class="sm" type="submit">按 OOG 初筛带出</button></form></span>{% endif %}
+        {% if ps %}<table class="t" style="margin-top:4px"><thead><tr><th>州</th><th>状态</th><th>许可证号</th><th>有效期</th><th>护送 / 警车</th><th>备注</th><th></th></tr></thead><tbody>
+        {% for p in ps %}<tr><td><b>{{ p.state }}</b></td>
+          <td><span class="b {% if p.done %}b-DELIVERED{% elif p.status == 'APPLIED' %}b-TRANSIT{% else %}b-HOLD{% endif %}">{{ p.get_status_display }}</span></td>
+          <td>{% if p.link %}<a href="{{ p.link }}" target="_blank" rel="noopener">{{ p.permit_number|default:"打开" }}</a>{% else %}{{ p.permit_number|default:"—" }}{% endif %}</td>
+          <td>{{ p.valid_from|date:"m-d"|default:"" }}{% if p.valid_from or p.valid_to %} → {% endif %}{{ p.valid_to|date:"m-d"|default:"" }}{% if not p.valid_from and not p.valid_to %}—{% endif %}</td>
+          <td class="wrap" style="max-width:280px">{{ p.escorts|default:"—" }}{% if p.escorts %} · {% if p.escorts_booked %}<span style="color:var(--ok)">已订</span>{% else %}<span class="lfd-warn">未订</span>{% endif %}{% endif %}</td>
+          <td class="wrap muted" style="max-width:320px;font-size:12.5px">{{ p.notes|linebreaksbr }}</td>
+          <td>{% if can_edit %}<a href="{% url 'child_edit' 'permit' p.pk %}">改</a> · <a href="{% url 'child_delete' 'permit' p.pk %}">删</a>{% endif %}</td></tr>
+        {% endfor %}</tbody></table>{% else %}<span class="muted" style="margin-left:8px">还没有许可证记录</span>{% endif %}
+      </td></tr>{% endif %}{% endwith %}
+    {% empty %}<tr><td colspan="14" class="muted">还没有运输段。例如：①拖柜 码头→堆场 ②OTR 堆场→现场。</td></tr>{% endfor %}
     </tbody>
   </table></div>
 </div>

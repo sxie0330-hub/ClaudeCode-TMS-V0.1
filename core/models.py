@@ -144,14 +144,56 @@ class Carrier(SoftDeleteModel):
     contact_phone = models.CharField("电话", max_length=60, blank=True)
     contact_email = models.EmailField("邮箱", blank=True)
     dispatch_notes = models.TextField("调度备注", blank=True, help_text="设备、能力、常跑线路等操作信息")
+    # Compliance record only: the documents live in Google Drive and a specialist keeps them.
+    compliance_link = models.URLField("资质文件夹（Google Drive）", max_length=500, blank=True)
+    auto_insurance_expires = models.DateField("汽车责任险到期", null=True, blank=True)
+    cargo_insurance_expires = models.DateField("货物险到期", null=True, blank=True)
+    w9_on_file = models.BooleanField("W-9 已收", default=False)
+    authority_checked_on = models.DateField("运输资质（MC / DOT）核实日期", null=True, blank=True,
+                                            help_text="在 FMCSA 上查过运营资质有效的日期")
+    compliance_notes = models.CharField("资质备注", max_length=255, blank=True)
 
     history = HistoricalRecords()
+
+    COMPLIANCE_KINDS = ("DRAYAGE", "OTR", "HEAVY", "LTL", "BROKER")
+    COI_WARNING_DAYS = 30
 
     class Meta:
         ordering = ["name"]
 
     def __str__(self):
         return self.code or self.name
+
+    def compliance_problems(self, today=None):
+        """Chinese lines for what is expired, expiring or missing; trucking carriers only."""
+        if self.kind not in self.COMPLIANCE_KINDS:
+            return []
+        today = today or timezone.localdate()
+        out = []
+        for label, d in (("汽车责任险", self.auto_insurance_expires), ("货物险", self.cargo_insurance_expires)):
+            if d is None:
+                out.append(f"没有记录{label}到期日")
+            elif d < today:
+                out.append(f"{label}已于 {d:%Y-%m-%d} 过期")
+            elif (d - today).days <= self.COI_WARNING_DAYS:
+                out.append(f"{label} {d:%Y-%m-%d} 到期（还有 {(d - today).days} 天）")
+        if not self.w9_on_file:
+            out.append("还没收到 W-9")
+        if not self.authority_checked_on:
+            out.append("运输资质（MC / DOT）还没核实")
+        return out
+
+    @property
+    def compliance_status(self):
+        if self.kind not in self.COMPLIANCE_KINDS:
+            return "—"
+        n = len(self.compliance_problems())
+        return "齐全" if not n else f"{n} 项待处理"
+
+    @property
+    def insurance_expired(self):
+        today = timezone.localdate()
+        return any(d and d < today for d in (self.auto_insurance_expires, self.cargo_insurance_expires))
 
     def get_absolute_url(self):
         return reverse("master_detail", args=["carrier", self.pk])
@@ -774,6 +816,71 @@ class YardStay(SoftDeleteModel):
         return out
 
 
+class LegPermit(models.Model):
+    """One state's oversize / overweight permit for a leg. The permit file itself stays wherever the team keeps it."""
+
+    class State(models.TextChoices):
+        NEEDED = "NEEDED", "待办理"
+        APPLIED = "APPLIED", "已申请"
+        ISSUED = "ISSUED", "已批"
+        NOT_NEEDED = "NOT_NEEDED", "不需要"
+
+    leg = models.ForeignKey(Leg, on_delete=models.CASCADE, related_name="permits")
+    state = models.CharField("州", max_length=2, help_text="两位州代码，如 TX")
+    status = models.CharField("状态", max_length=10, choices=State.choices, default=State.NEEDED)
+    permit_number = models.CharField("许可证号", max_length=60, blank=True)
+    valid_from = models.DateField("有效期起", null=True, blank=True)
+    valid_to = models.DateField("有效期止", null=True, blank=True)
+    escorts = models.CharField("护送 / 警车要求", max_length=255, blank=True, help_text="如：前后各 1 辆护送车；超过 16' 需州警")
+    escorts_booked = models.BooleanField("护送已订好", default=False)
+    link = models.URLField("许可证文件链接", max_length=500, blank=True)
+    notes = models.TextField("备注 / 通行限制", blank=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["leg", "id"]
+
+    def __str__(self):
+        return f"{self.state} {self.get_status_display()}"
+
+    @property
+    def shipment(self):
+        return self.leg.shipment
+
+    @property
+    def shipment_id(self):
+        return self.leg.shipment_id
+
+    @property
+    def done(self):
+        return self.status == self.State.NOT_NEEDED or (
+            self.status == self.State.ISSUED and (self.escorts_booked or not self.escorts.strip()))
+
+    def save(self, *args, **kwargs):
+        self.state = (self.state or "").strip().upper()
+        super().save(*args, **kwargs)
+        sync_leg_permits(self.leg)
+
+    def delete(self, *args, **kwargs):
+        leg = self.leg
+        out = super().delete(*args, **kwargs)
+        sync_leg_permits(leg)
+        return out
+
+
+def sync_leg_permits(leg):
+    """permits_required / permits_confirmed on the leg follow its permit rows (when it has any)."""
+    rows = list(leg.permits.all())
+    if not rows:
+        return
+    required = any(r.status != LegPermit.State.NOT_NEEDED for r in rows)
+    confirmed = all(r.done for r in rows)
+    if (leg.permits_required, leg.permits_confirmed) != (required or leg.permits_required, confirmed):
+        Leg.objects.filter(pk=leg.pk).update(permits_required=required or leg.permits_required, permits_confirmed=confirmed)
+        leg.permits_required, leg.permits_confirmed = required or leg.permits_required, confirmed
+
+
 class Charge(SoftDeleteModel):
     class Side(models.TextChoices):
         AR = "AR", "应收 AR"
@@ -834,6 +941,78 @@ class Charge(SoftDeleteModel):
     def save(self, *args, **kwargs):
         self.amount = (self.quantity or 0) * (self.unit_price or 0)
         super().save(*args, **kwargs)
+
+
+
+class RateAgreement(models.Model):
+    """What we pay one carrier on one project (lane, equipment, capacity, rate per truck, accessorials) and how
+    the carrier invoices our AP team. One document for all the project's loads with that carrier; a new version
+    only when the deal changes."""
+
+    project = models.ForeignKey(Project, on_delete=models.CASCADE, related_name="rate_agreements", verbose_name="项目")
+    carrier = models.ForeignKey(Carrier, on_delete=models.PROTECT, related_name="rate_agreements", verbose_name="承运商")
+    number = models.CharField("协议号", max_length=30, unique=True, editable=False)
+    origin = models.CharField("起点", max_length=160, help_text="如 Carson, CA / Port of Long Beach")
+    destination = models.CharField("终点", max_length=160, help_text="如 Nokesville, VA")
+    commodity = models.CharField("货物", max_length=255, blank=True)
+    equipment = models.CharField("车型", max_length=80, blank=True)
+    capacity = models.CharField("乙方可提供的运力（仅记录，不构成甲方承诺）", max_length=255, blank=True,
+                                help_text="如：Carrier states it can cover up to 3 trucks per day。协议里会写明甲方不承诺任何货量")
+    valid_from = models.DateField("有效期起", null=True, blank=True)
+    valid_until = models.DateField("有效期止", null=True, blank=True, help_text="留空 = 直到项目结束")
+    free_hours = models.DecimalField("免费等待（小时）", max_digits=4, decimal_places=1, default=Decimal("2"))
+    payment_days = models.PositiveSmallIntegerField("付款天数（Net）", default=30, help_text="收到完整发票资料后多少天付款，默认 Net 30")
+    requirements = models.TextField("甲方要求乙方（英文，印在协议上）", blank=True,
+                                    help_text="一行一条。新建时带出标准要求，可按项目增删")
+    invoice_instructions = models.TextField("补充开票说明（英文，可不填）", blank=True,
+                                            help_text="标准开票要求按公司（ATS / PTT）自动印出，这里只写这个项目额外的要求")
+    notes = models.TextField("其他条件（英文，印在协议上）", blank=True)
+    version = models.PositiveSmallIntegerField("版本", default=0, editable=False)
+    issued_at = models.DateTimeField("最近出具", null=True, blank=True, editable=False)
+    created_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL, related_name="+", editable=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["project", "carrier__name", "id"]
+
+    def __str__(self):
+        return f"{self.number} {self.carrier}"
+
+    def save(self, *args, **kwargs):
+        if not self.number:
+            n = RateAgreement.objects.filter(project=self.project).count() + 1
+            while RateAgreement.objects.filter(number=f"RA-{self.project.number}-{n}").exists():
+                n += 1
+            self.number = f"RA-{self.project.number}-{n}"
+        super().save(*args, **kwargs)
+
+    def get_absolute_url(self):
+        return reverse("rate_agreement", args=[self.pk])
+
+    @property
+    def per_truck(self):
+        return sum((ln.unit_price for ln in self.lines.all() if ln.unit == RateLine.Unit.TRUCK and not ln.optional), Decimal("0"))
+
+
+class RateLine(models.Model):
+    class Unit(models.TextChoices):
+        TRUCK = "TRUCK", "每车"
+        HOUR = "HOUR", "每小时"
+        DAY = "DAY", "每天"
+        EACH = "EACH", "每次"
+        FLAT = "FLAT", "总价"
+
+    agreement = models.ForeignKey(RateAgreement, on_delete=models.CASCADE, related_name="lines")
+    charge_type = models.CharField("费用类型", max_length=12, choices=Charge.Type.choices, default=Charge.Type.LINEHAUL)
+    description = models.CharField("说明（英文）", max_length=255, blank=True)
+    unit_price = models.DecimalField("单价 (USD)", max_digits=12, decimal_places=2, default=Decimal("0"))
+    unit = models.CharField("单位", max_length=5, choices=Unit.choices, default=Unit.TRUCK)
+    optional = models.BooleanField("视情况发生", default=False, help_text="如 Detention、TONU：需事先书面批准才可开票")
+
+    class Meta:
+        ordering = ["agreement", "optional", "id"]
 
 
 class Note(models.Model):

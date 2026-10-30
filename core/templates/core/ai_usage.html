@@ -37,7 +37,10 @@
   {% empty %}<tr><td colspan="5" class="muted">还没有记录</td></tr>{% endfor %}</tbody>
 </table></div></div>
 
-<p class="muted" style="font-size:12.5px">费用是按 Google 列表价估算的（{{ model }}，global 端点；现在每百万 token 输入 ${{ price_in }}、输出 ${{ price_out }}，思考按输出计；
+{% if en %}<p class="muted" style="font-size:12.5px">Costs are estimated from Google's list prices ({{ model }}, global endpoint; now per million tokens: input ${{ price_in }}, output ${{ price_out }}, thinking billed as output;
+  price table: {% for p in prices %}from {{ p.0 }} ${{ p.1 }} / ${{ p.2 }}{% if not forloop.last %}, {% endif %}{% endfor %}). The Google Cloud bill is the real number.
+  Operations AI reading and mailbox scan have history; RFQ inquiry intake and carrier reply reading are recorded from 2026-10-30.</p>
+{% else %}<p class="muted" style="font-size:12.5px">费用是按 Google 列表价估算的（{{ model }}，global 端点；现在每百万 token 输入 ${{ price_in }}、输出 ${{ price_out }}，思考按输出计；
   价格表：{% for p in prices %}{{ p.0 }} 起 ${{ p.1 }} / ${{ p.2 }}{% if not forloop.last %}，{% endif %}{% endfor %}）。实际以 Google Cloud 账单为准。
-  运营 AI 识别和邮箱扫描有历史记录；询报价的“AI 整理询价”和“承运商回复整理”从 2026-10-30 开始记录。</p>
+  运营 AI 识别和邮箱扫描有历史记录；询报价的“AI 整理询价”和“承运商回复整理”从 2026-10-30 开始记录。</p>{% endif %}
 {% endblock %}
