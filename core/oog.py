@@ -368,7 +368,9 @@ def screen_lane(lane, cargo, trailers):
         res["warnings"].append("车型库里没有可用车型")
         return res
     if not trailer.complete:
-        res["warnings"].append(f"{trailer.name} 缺板高 / 长度 / 自重，请先在车型库补齐")
+        missing = [label for label, v in (("板高", trailer.deck_height_in), ("可装长度", trailer.deck_length_ft),
+                                          ("自重", trailer.combo_tare_lbs)) if v is None]
+        res["warnings"].append(f"{trailer.name} 缺{'、'.join(missing)}，请在车型库补齐")
     L = loaded(trailer, load)
     res.update(trailer=trailer, reason=reason, loaded=L, rows=[check_state(s, L, trailer, load["divisible"]) for s in states])
     res["permit"] = needs_permit(res)

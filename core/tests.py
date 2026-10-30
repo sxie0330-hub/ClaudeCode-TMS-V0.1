@@ -124,7 +124,10 @@ class AccessTests(Base):
         for user in (self.ap, self.op):
             self.login(user)
             page = self.client.get(self.s.get_absolute_url()).content.decode()
-            self.assertIn("6,543.00", page)
+            if user == self.ap:
+                self.assertIn("6,543.00", page)
+            else:
+                self.assertNotIn("6,543", page)  # operations see no AP either
             self.assertNotIn("9,100", page)
             self.assertNotIn("毛利", page)
 
@@ -251,7 +254,7 @@ class BolTests(Base):
                                               "PTT": {"name": "PTT Test Co", "address": "1 Main St", "phone": "", "logo": "logo-ptt"}}):
             ctx = bol_context(self.s, self.leg)
             self.assertEqual(ctx["company"]["name"], "PTT Test Co")
-            self.assertIsNone(ctx["company"]["logo_path"])
+            self.assertEqual(ctx["company"]["logo_path"].name, "logo-ptt.png")
             self.login(self.ap)
             r = self.client.get(reverse("shipment_bol", args=[self.s.pk]))
             self.assertTrue(r.content.startswith(b"%PDF"))
@@ -318,13 +321,13 @@ class TeamTests(Base):
         self.assertEqual(self.nobody.profile.role_set, {"OP", "RFQ"})
         n = Notification.objects.get(user=self.nobody)
         self.assertIn("操作 OP、询报价 / 销售", n.text)
-        # OP + RFQ: can edit operations and quote, sees AP (from OP) but never AR, not management.
+        # OP + RFQ: can edit operations and quote, sees no AR / AP money, not management.
         from .permissions import can_edit_ops, can_quote, is_management, visible_sides
 
         u = get_user_model().objects.get(pk=self.nobody.pk)
         self.assertTrue(can_edit_ops(u) and can_quote(u))
         self.assertFalse(is_management(u))
-        self.assertEqual(visible_sides(u), {"AP"})
+        self.assertEqual(visible_sides(u), set())
         # The notice pops up once on the next page, then shows as unread in the bell.
         self.login(u)
         r = self.client.get(reverse("shipment_list"))
@@ -2029,7 +2032,7 @@ class LeadFlowTests(Base):
 
         r = run("Savannah, GA", "Seneca, SC")
         self.assertEqual(r["trailer"].key, "axle8_4x4")
-        self.assertTrue(any("缺自重" in w for w in r["warnings"]))
+        self.assertTrue(any("缺板高、可装长度" in w for w in r["warnings"]))  # weights now known, deck still missing
 
         eight = TrailerType.objects.get(key="axle8_4x4")
         eight.deck_height_in, eight.deck_length_ft, eight.trailer_tare_lbs, eight.tractor_tare_lbs = 24, 30, 20000, 22000

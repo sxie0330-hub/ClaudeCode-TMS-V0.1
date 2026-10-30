@@ -149,7 +149,7 @@ TMS_COMPANY_PHONE = os.environ.get("TMS_COMPANY_PHONE", "")
 TMS_DOC_COMPANIES = {
     "ATS": {"name": TMS_COMPANY_NAME, "address": TMS_COMPANY_ADDRESS, "phone": TMS_COMPANY_PHONE, "logo": "logo.jpg"},
     "PTT": {
-        "name": os.environ.get("TMS_PTT_NAME", "PTT"),
+        "name": os.environ.get("TMS_PTT_NAME") or "Pacific Transload and Transport",
         "address": os.environ.get("TMS_PTT_ADDRESS", ""),
         "phone": os.environ.get("TMS_PTT_PHONE", ""),
         "logo": "logo-ptt",
