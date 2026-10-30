@@ -26,6 +26,7 @@ from .forms import (
     ChargeForm,
     CustomerForm,
     LegForm,
+    LegPermitForm,
     LocationForm,
     TrailerTypeForm,
     MasterBLForm,
@@ -42,6 +43,7 @@ from .models import (
     Charge,
     Customer,
     Leg,
+    LegPermit,
     Location,
     TrailerType,
     MasterBL,
@@ -254,7 +256,7 @@ def shipment_detail(request, pk):
         return sum((c.amount for c in rows if c.state != Charge.State.VOID), Decimal("0"))
 
     yard_stays = list(s.yard_stays.select_related("yard"))
-    legs = list(s.legs.select_related("origin", "destination", "carrier"))
+    legs = list(s.legs.select_related("origin", "destination", "carrier").prefetch_related("permits"))
     free = s.project.detention_free_hours if s.project else Decimal("2")
     rate = s.project.detention_rate if s.project else None
     waits = []
@@ -489,6 +491,7 @@ CHILDREN = {
     "cargo": (CargoLine, CargoLineForm, "货物明细"),
     "unit": (Unit, UnitForm, "设备序列号"),
     "yard": (YardStay, YardStayForm, "堆场停留"),
+    "permit": (LegPermit, LegPermitForm, "许可证"),
 }
 
 
@@ -544,6 +547,67 @@ def child_delete(request, kind, cid):
     _need(can_edit_shipment_ops(request.user, obj.shipment))
     url = obj.shipment.get_absolute_url()
     return _confirm_delete(request, obj, f"删除{label}", url, url)
+
+
+# --- permits (per leg, per state) ----------------------------------------------
+def permit_create(request, pk, lid):
+    s = get_object_or_404(Shipment, pk=pk)
+    leg = get_object_or_404(Leg, pk=lid, shipment=s)
+    _need(can_edit_shipment_ops(request.user, s))
+    if request.method == "POST":
+        form = LegPermitForm(request.POST)
+        if form.is_valid():
+            obj = form.save(commit=False)
+            obj.leg = leg
+            obj.save()
+            messages.success(request, f"已添加 {obj.state} 许可证")
+            return redirect(reverse("shipment_detail", args=[pk]) + "#leg")
+    else:
+        form = LegPermitForm(initial={"state": request.GET.get("state", "")})
+    return _form_page(request, form, f"{s.number} · 第 {leg.sequence} 段 · 添加许可证", s.get_absolute_url())
+
+
+def _leg_screen(leg):
+    """OOG screen for one leg, from its origin / destination states and the Load's cargo lines."""
+    from types import SimpleNamespace
+
+    from . import oog
+
+    s = leg.shipment
+    o, d = leg.origin, leg.destination
+    lane = SimpleNamespace(
+        origin=o.full_address if o else "", destination=d.full_address if d else "",
+        origin_state=oog.state_from_text(f", {o.state}") or oog.state_from_text(o.state or "") if o else "",
+        destination_state=oog.state_from_text(f", {d.state}") or oog.state_from_text(d.state or "") if d else "",
+        via_states=" ".join(p.state for p in leg.permits.all()), trucks=1, trailer_id=None, trailer=None)
+    cargo = [SimpleNamespace(qty=1, weight_lbs=c.weight_lbs, length_ft=c.length_ft, width_ft=c.width_ft, height_ft=c.height_ft,
+                             divisible=False, hazmat=c.hazmat, description=c.description) for c in s.cargo_lines.all()]
+    return oog.screen_lane(lane, cargo, list(TrailerType.objects.filter(active=True)))
+
+
+@require_POST
+def permit_prefill(request, pk, lid):
+    """Add a 待办理 permit row for every route state the OOG screen says needs one (escorts / police / limits in the notes)."""
+    s = get_object_or_404(Shipment, pk=pk)
+    leg = get_object_or_404(Leg, pk=lid, shipment=s)
+    _need(can_edit_shipment_ops(request.user, s))
+    res = _leg_screen(leg)
+    have = {p.state for p in leg.permits.all()}
+    added = []
+    for r in res["rows"]:
+        if r["state"] == "US" or r["state"] in have or not r["permits"]:
+            continue
+        LegPermit.objects.create(
+            leg=leg, state=r["state"], escorts="；".join(r["escorts"] + r["police"])[:255],
+            notes="\n".join(r["permits"] + r["superload"] + r["survey"] + r["travel"][:1]))
+        added.append(r["state"])
+    if added:
+        Leg.objects.filter(pk=leg.pk).update(permits_required=True)
+        messages.success(request, f"按 OOG 初筛加了 {'、'.join(added)} 的许可证（待办理）。途经州请自己补上，再点一次会按新的路线补齐")
+    else:
+        msg = "；".join(res["warnings"]) or "OOG 初筛认为这些州不需要许可证"
+        messages.info(request, f"没有新增：{msg}")
+    return redirect(reverse("shipment_detail", args=[pk]) + "#leg")
 
 
 # --- charges ---------------------------------------------------------------

@@ -818,6 +818,71 @@ class YardStay(SoftDeleteModel):
         return out
 
 
+class LegPermit(models.Model):
+    """One state's oversize / overweight permit for a leg. The permit file itself stays wherever the team keeps it."""
+
+    class State(models.TextChoices):
+        NEEDED = "NEEDED", "待办理"
+        APPLIED = "APPLIED", "已申请"
+        ISSUED = "ISSUED", "已批"
+        NOT_NEEDED = "NOT_NEEDED", "不需要"
+
+    leg = models.ForeignKey(Leg, on_delete=models.CASCADE, related_name="permits")
+    state = models.CharField("州", max_length=2, help_text="两位州代码，如 TX")
+    status = models.CharField("状态", max_length=10, choices=State.choices, default=State.NEEDED)
+    permit_number = models.CharField("许可证号", max_length=60, blank=True)
+    valid_from = models.DateField("有效期起", null=True, blank=True)
+    valid_to = models.DateField("有效期止", null=True, blank=True)
+    escorts = models.CharField("护送 / 警车要求", max_length=255, blank=True, help_text="如：前后各 1 辆护送车；超过 16' 需州警")
+    escorts_booked = models.BooleanField("护送已订好", default=False)
+    link = models.URLField("许可证文件链接", max_length=500, blank=True)
+    notes = models.TextField("备注 / 通行限制", blank=True)
+
+    history = HistoricalRecords()
+
+    class Meta:
+        ordering = ["leg", "id"]
+
+    def __str__(self):
+        return f"{self.state} {self.get_status_display()}"
+
+    @property
+    def shipment(self):
+        return self.leg.shipment
+
+    @property
+    def shipment_id(self):
+        return self.leg.shipment_id
+
+    @property
+    def done(self):
+        return self.status == self.State.NOT_NEEDED or (
+            self.status == self.State.ISSUED and (self.escorts_booked or not self.escorts.strip()))
+
+    def save(self, *args, **kwargs):
+        self.state = (self.state or "").strip().upper()
+        super().save(*args, **kwargs)
+        sync_leg_permits(self.leg)
+
+    def delete(self, *args, **kwargs):
+        leg = self.leg
+        out = super().delete(*args, **kwargs)
+        sync_leg_permits(leg)
+        return out
+
+
+def sync_leg_permits(leg):
+    """permits_required / permits_confirmed on the leg follow its permit rows (when it has any)."""
+    rows = list(leg.permits.all())
+    if not rows:
+        return
+    required = any(r.status != LegPermit.State.NOT_NEEDED for r in rows)
+    confirmed = all(r.done for r in rows)
+    if (leg.permits_required, leg.permits_confirmed) != (required or leg.permits_required, confirmed):
+        Leg.objects.filter(pk=leg.pk).update(permits_required=required or leg.permits_required, permits_confirmed=confirmed)
+        leg.permits_required, leg.permits_confirmed = required or leg.permits_required, confirmed
+
+
 class Charge(SoftDeleteModel):
     class Side(models.TextChoices):
         AR = "AR", "应收 AR"

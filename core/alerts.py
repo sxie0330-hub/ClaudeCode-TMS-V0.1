@@ -259,6 +259,28 @@ def r_permits(ctx):
                   lambda ls: f"{len(ls)} 个 Load 许可证 / 护送未确认" if len(ls) > 1 else f"{_load_label(ls[0])} 许可证 / 护送未确认")
 
 
+@rule(key="permit_expiry", category="开工前检查 · 没确认就会延误", label="许可证会在送达前过期", why="过期许可证上路会被罚款、扣车",
+      level="urgent", threshold=2, unit="天内过期")
+def r_permit_expiry(ctx):
+    from .models import LegPermit
+
+    horizon = ctx.today + timedelta(days=ctx.n)
+    rows = (LegPermit.objects.filter(leg__shipment__in=ctx.loads(), leg__actual_delivery__isnull=True, status=LegPermit.State.ISSUED,
+                                     valid_to__isnull=False)
+            .select_related("leg__shipment__project"))
+    out = []
+    for p in rows:
+        leg = p.leg
+        due = leg.scheduled_delivery or horizon
+        if p.valid_to < min(due, horizon) or p.valid_to < due:
+            s = leg.shipment
+            out.append(ctx.alert("permit_expiry", f"p{p.pk}", "许可证",
+                                 f"{_load_label(s)} {p.state} 许可证 {p.valid_to:%m-%d} 到期" + (
+                                     f"，计划 {leg.scheduled_delivery:%m-%d} 才送达" if leg.scheduled_delivery and p.valid_to < leg.scheduled_delivery else ""),
+                                 f"{_proj(s)} · 第 {leg.sequence} 段 · 需要延期或重新申请", s.get_absolute_url() + "#leg", s.project))
+    return out
+
+
 @rule(key="bol", category="开工前检查 · 没确认就会延误", label="BOL 缺关键信息（UN 编号、重量、收货联系人）", why="危险品单据不全会被拒收",
       level="today", threshold=2, unit="天前")
 def r_bol(ctx):

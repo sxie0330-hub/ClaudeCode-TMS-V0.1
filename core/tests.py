@@ -2378,3 +2378,58 @@ class CarrierComplianceTests(Base):
         self.assertContains(r, "资质记录")
         self.assertContains(r, "汽车责任险已于")
         self.assertContains(self.client.get("/data/carrier/"), "资质")
+
+
+class PermitTrackingTests(Base):
+    def test_permit_rows_sync_leg_and_expiry_alert(self):
+        from . import alerts
+        from .models import LegPermit
+
+        self.project.owners.add(self.op)
+        leg = self.leg
+        leg.scheduled_pickup = date.today() + timedelta(days=1)
+        leg.scheduled_delivery = date.today() + timedelta(days=4)
+        leg.save()
+        self.login(self.op)
+        self.client.post(f"/shipments/{self.s.pk}/legs/{leg.pk}/permits/new/",
+                         {"state": "nj", "status": "NEEDED", "escorts": "1 rear escort"})
+        p = LegPermit.objects.get(leg=leg)
+        leg.refresh_from_db()
+        self.assertEqual((p.state, leg.permits_required, leg.permits_confirmed), ("NJ", True, False))
+        self.assertIn("permits", {a.rule for a in alerts.collect(self.op)})
+        # issued but escort not booked: still open
+        p.status, p.permit_number, p.valid_to = "ISSUED", "NJ-123", date.today() + timedelta(days=2)
+        p.save()
+        leg.refresh_from_db()
+        self.assertFalse(leg.permits_confirmed)
+        p.escorts_booked = True
+        p.save()
+        leg.refresh_from_db()
+        self.assertTrue(leg.permits_confirmed)
+        self.assertNotIn("permits", {a.rule for a in alerts.collect(self.op)})
+        a = [x for x in alerts.collect(self.op) if x.rule == "permit_expiry"]
+        self.assertEqual(len(a), 1)  # expires before the planned delivery
+        self.assertIn("NJ 许可证", a[0].title)
+        r = self.client.get(self.s.get_absolute_url())
+        self.assertContains(r, "NJ-123")
+        self.assertContains(r, "已全部确认")
+        self.assertEqual(self.client.get(f"/rows/permit/{p.pk}/edit/").status_code, 200)
+
+    def test_prefill_from_oog_screen(self):
+        from .models import CargoLine, LegPermit
+
+        self.yard.state, self.site.state = "NJ", "MA"
+        self.yard.save()
+        self.site.save()
+        CargoLine.objects.create(shipment=self.s, description="Transformer", handling_qty=1, weight_lbs=Decimal("150000"),
+                                 length_ft=Decimal("28"), width_ft=Decimal("12"), height_ft=Decimal("13"))
+        self.login(self.op)
+        self.client.post(f"/shipments/{self.s.pk}/legs/{self.leg.pk}/permits/prefill/")
+        states = set(LegPermit.objects.filter(leg=self.leg).values_list("state", flat=True))
+        self.assertEqual(states, {"NJ", "MA"})
+        p = LegPermit.objects.get(leg=self.leg, state="NJ")
+        self.assertIn("超宽", p.notes)
+        self.leg.refresh_from_db()
+        self.assertTrue(self.leg.permits_required)
+        self.client.post(f"/shipments/{self.s.pk}/legs/{self.leg.pk}/permits/prefill/")  # again: nothing duplicated
+        self.assertEqual(LegPermit.objects.filter(leg=self.leg).count(), 2)

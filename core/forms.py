@@ -15,6 +15,7 @@ from .models import (
     Lead,
     LeadCargo,
     LeadLane,
+    LegPermit,
     TrailerType,
     Leg,
     Location,
@@ -170,6 +171,27 @@ class ShipmentDocsForm(BaseForm):
         model = Shipment
         fields = ["pod_received", "pod_check", "pod_link", "photos_link", "inspection_link", "other_docs_link",
                   "empty_return_due", "empty_return_date", "empty_return_location"]
+
+
+class LegPermitForm(BaseForm):
+    class Meta:
+        model = LegPermit
+        fields = ["state", "status", "permit_number", "valid_from", "valid_to", "escorts", "escorts_booked", "link", "notes"]
+        widgets = {"notes": forms.Textarea(attrs={"rows": 3})}
+
+    def clean_state(self):
+        from .oog import STATES
+
+        code = (self.cleaned_data.get("state") or "").strip().upper()
+        if code not in STATES:
+            raise forms.ValidationError("请填两位州代码，如 TX")
+        return code
+
+    def clean(self):
+        data = super().clean()
+        if data.get("valid_from") and data.get("valid_to") and data["valid_to"] < data["valid_from"]:
+            self.add_error("valid_to", "有效期止早于有效期起")
+        return data
 
 
 class MasterBLForm(BaseForm):
