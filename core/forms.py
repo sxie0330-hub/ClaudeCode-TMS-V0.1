@@ -115,6 +115,18 @@ class ProjectForm(BaseForm):
         self.fields["owners"].queryset = get_user_model().objects.filter(is_active=True).order_by("first_name", "email")
         self.fields["owners"].label_from_instance = lambda u: u.get_full_name() or u.email or u.username
 
+    def clean_manual_status(self):
+        status = self.cleaned_data.get("manual_status")
+        if status == Project.Status.DONE and self.instance.pk and self.instance.status != Project.Status.DONE:
+            from .models import Status
+
+            missing = [x.container_number or x.number for x in self.instance.shipments.exclude(status=Status.CANCELLED) if not x.pod_done]
+            if missing:
+                raise forms.ValidationError(
+                    f"还有 {len(missing)} 个 Load 的 POD 没确认上传（{'、'.join(missing[:10])}{'…' if len(missing) > 10 else ''}），"
+                    "项目不能完结。请先在 Load 上点“POD 已上传”，或由管理层设为无需 POD")
+        return status
+
 
 class ShipmentForm(BaseForm):
     mbl_number = forms.CharField(label="MBL/HBL/Booking#", max_length=40, required=False, help_text="同一 MBL 的柜子会自动关联到同一提单")

@@ -31,7 +31,8 @@
   {% if see_margin %}<div class="kpi"><div class="kl">毛利</div><div class="kv" style="color:var(--ok)">{{ money.margin|money }}{% if kpi.pct is not None %} <small>{{ kpi.pct|floatformat:1 }}%</small>{% endif %}</div></div>{% endif %}
   {% if kpi.extra is not None %}<div class="kpi"><div class="kl">附加费用</div><div class="kv">{{ kpi.extra|money }}</div></div>{% endif %}
   <div class="kpi"><div class="kl">送达</div><div class="kv">{{ kpi.delivered }} / {{ kpi.n }}</div></div>
-  <div class="kpi {% if kpi.delivered and kpi.pod < kpi.delivered %}kpi-bad{% endif %}"><div class="kl">POD 已收</div><div class="kv">{{ kpi.pod }} / {{ kpi.n }}</div></div>
+  <div class="kpi {% if kpi.delivered and kpi.pod_done < kpi.delivered %}kpi-bad{% endif %}"><div class="kl">POD 已上传</div><div class="kv">{{ kpi.pod_done }} / {{ kpi.n }}</div>
+    {% if kpi.pod != kpi.pod_done %}<small class="muted">邮件里已收 {{ kpi.pod }}</small>{% endif %}</div>
 </section>
 
 <div class="panel" id="milestones">
@@ -58,7 +59,7 @@
 <div class="panel">
   <header><h2>Load（{{ shipments|length }}）</h2>
     <small class="muted">{% if p.default_shipper %}{{ p.default_shipper.full_address|default:p.default_shipper }}{% endif %}{% if p.default_consignee %} → {{ p.default_consignee.full_address|default:p.default_consignee }}{% endif %}</small>
-    <div class="actions"><button class="sm" type="submit">为勾选的生成 BOL</button><a class="btn sm" href="{% url 'shipment_export' %}?project={{ p.pk }}&status=">导出 CSV</a></div></header>
+    <div class="actions"><button class="sm" type="submit">为勾选的生成 BOL</button>{% if perm.edit_ops %}<button class="sm" type="submit" formaction="{% url 'bulk_pod_uploaded' %}" formtarget="_self">勾选的 POD 已上传</button>{% endif %}<a class="btn sm" href="{% url 'shipment_export' %}?project={{ p.pk }}&status=">导出 CSV</a></div></header>
   <div class="tablewrap"><table class="t">
     <thead><tr><th><input type="checkbox" id="all" aria-label="全选"></th><th>柜号</th><th>Load#</th><th>承运商单号</th><th>承运商 / 司机</th><th>状态</th><th>实际提货</th><th>实际送达</th><th>POD</th>
       {% if see_ar %}<th class="num">售价</th>{% endif %}{% if see_ap %}<th class="num">成本</th>{% endif %}{% if see_margin %}<th class="num">毛利</th>{% endif %}</tr></thead>
@@ -73,7 +74,7 @@
         <td><span class="b b-{{ s.status }}">{{ s.get_status_display }}</span></td>
         <td>{{ s.picked_up_on|date:"m-d"|default:"—" }}</td>
         <td>{{ s.delivered_on|date:"m-d"|default:"—" }}</td>
-        <td>{% if s.pod_received %}<span style="color:var(--ok)">{{ s.pod_received|date:"m-d" }}</span>{% elif s.delivered_on %}<span class="lfd-warn">未收</span>{% else %}—{% endif %}</td>
+        <td>{% with st=s.pod_state %}{% if st == 'UPLOADED' %}<span style="color:var(--ok)">已上传 {{ s.pod_uploaded_at|date:"m-d" }}</span>{% elif st == 'WAIVED' %}<span class="muted">无需</span>{% elif st == 'RECEIVED' %}<span class="lfd-warn">已收 {{ s.pod_received|date:"m-d" }} · 待上传</span>{% elif s.delivered_on %}<span class="lfd-warn">未收</span>{% else %}—{% endif %}{% endwith %}</td>
         {% if see_ar %}<td class="num">{{ s.ar|money }}</td>{% endif %}{% if see_ap %}<td class="num">{{ s.ap|money }}</td>{% endif %}{% if see_margin %}<td class="num">{{ s.margin|money }}</td>{% endif %}
       </tr>
     {% endwith %}{% empty %}<tr><td colspan="12" class="muted">还没有 Load</td></tr>{% endfor %}

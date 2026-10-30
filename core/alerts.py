@@ -393,10 +393,22 @@ def _delivered_before(ctx, days):
 
 @rule(key="pod", category="回款与利润", label="已送达，POD 还没收到", why="没有 POD 开不了票", level="urgent", threshold=2, unit="天后")
 def r_pod(ctx):
-    items = [s for s in _delivered_before(ctx, ctx.n) if not s.pod_received]
+    items = [s for s in _delivered_before(ctx, ctx.n) if not s.pod_received and not s.pod_done]
     return _group(ctx, "pod", "POD", items,
                   lambda ls: f"{len(ls)} 个 Load 已送达，POD 还没收到" if len(ls) > 1 else f"{_load_label(ls[0])} 已送达 {(ctx.today - ls[0].delivered_on).days} 天，POD 还没收到",
                   lambda ls: f"{_proj(ls[0])} · 影响开票")
+
+
+@rule(key="pod_upload", category="回款与利润", label="POD 已收到，还没核对上传", why="POD 没上传，Load 不能结案、项目不能完结、财务开不了票",
+      level="urgent", threshold=1, unit="天后")
+def r_pod_upload(ctx):
+    cutoff = ctx.today - timedelta(days=ctx.n)
+    items = [s for s in ctx.loads().filter(status__in=[Status.DELIVERED, Status.CLOSED], pod_received__isnull=False,
+                                           pod_received__lte=cutoff, pod_uploaded_at__isnull=True, pod_waived_reason="")
+             .select_related("project").prefetch_related("legs", "charges")]
+    return _group(ctx, "pod_upload", "POD", items,
+                  lambda ls: f"{len(ls)} 个 Load 的 POD 已收到，还没核对上传" if len(ls) > 1 else f"{_load_label(ls[0])} 的 POD 已收到，还没核对上传",
+                  lambda ls: f"{_proj(ls[0])} · 上传后点“POD 已上传”")
 
 
 @rule(key="extra_charges", category="回款与利润", label="承运商额外费用待审批 / 有争议", why="防重复付款", level="urgent", side="AP")

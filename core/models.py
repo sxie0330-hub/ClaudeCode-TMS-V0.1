@@ -446,6 +446,12 @@ class Shipment(SoftDeleteModel):
     pod_link = models.URLField("POD 链接", max_length=500, blank=True)
     pod_received = models.DateField("POD 收到日期", null=True, blank=True)
     pod_check = models.CharField("POD 审核", max_length=10, choices=PodCheck.choices, blank=True)
+    # Person-confirmed: the POD has been checked and filed where the customer wants it (OneDrive, portal…).
+    pod_uploaded_at = models.DateTimeField("POD 已上传", null=True, blank=True, editable=False)
+    pod_uploaded_by = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, blank=True, on_delete=models.SET_NULL,
+                                        related_name="+", editable=False)
+    pod_waived_reason = models.CharField("无需 POD 的原因", max_length=255, blank=True, editable=False,
+                                         help_text="管理层设置；有值即视为无需 POD")
     empty_return_due = models.DateField("还空期限", null=True, blank=True, help_text="Per Diem / 车架免费期最后一天")
     photos_link = models.URLField("照片链接", max_length=500, blank=True)
     inspection_link = models.URLField("检验报告链接", max_length=500, blank=True)
@@ -485,6 +491,19 @@ class Shipment(SoftDeleteModel):
             self.project.refresh_status()
 
     # -- status ------------------------------------------------------------
+    @property
+    def pod_state(self):
+        """WAIVED / UPLOADED / RECEIVED (seen, not yet filed) / MISSING."""
+        if self.pod_waived_reason:
+            return "WAIVED"
+        if self.pod_uploaded_at:
+            return "UPLOADED"
+        return "RECEIVED" if self.pod_received else "MISSING"
+
+    @property
+    def pod_done(self):
+        return self.pod_state in ("WAIVED", "UPLOADED")
+
     def compute_status(self):
         if self.manual_status:
             return self.manual_status
