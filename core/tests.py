@@ -32,6 +32,7 @@ class Base(TestCase):
         cls.carrier = Carrier.objects.create(name="KD Trucking", code="KD")
         cls.project = Project.objects.create(customer=cls.customer, name="Holyoke", cargo_description="Energy Storage System",
                                              un_number="UN3536", hazard_class="9", default_consignee=cls.site)
+        cls.project.owners.add(cls.op)  # OP only sees projects they own
 
     def setUp(self):
         self.s = Shipment.objects.create(customer=self.customer, project=self.project, container_number="cymu2523606", consignee=self.site)
@@ -546,6 +547,38 @@ class PodUploadTests(Base):
         self.assertEqual(self.project.status, Project.Status.DONE)
         self.login(self.ap)
         self.assertEqual(self.client.post(f"/projects/{self.project.pk}/close/").status_code, 403)
+
+    def test_op_sees_only_owned_projects_and_their_loads(self):
+        other = Project.objects.create(customer=self.customer, name="Someone else's lane")
+        s2 = Shipment.objects.create(customer=self.customer, project=other, container_number="TGHU1234567", consignee=self.site)
+        leg2 = Leg.objects.create(shipment=s2, sequence=1, origin=self.yard, destination=self.site, carrier=self.carrier)
+        ap2 = Charge.objects.create(shipment=s2, side="AP", charge_type="LINEHAUL", unit_price=Decimal("100"), carrier=self.carrier)
+        self.login(self.op)
+        for url in [f"/projects/{other.pk}/", f"/projects/{other.pk}/edit/", f"/shipments/{s2.pk}/", f"/shipments/{s2.pk}/bol.pdf",
+                    f"/rows/leg/{leg2.pk}/edit/", f"/charges/{ap2.pk}/edit/", f"/projects/{other.pk}/rates/new/"]:
+            self.assertEqual(self.client.get(url).status_code, 404, url)
+        self.assertNotContains(self.client.get("/projects/"), "Someone else")
+        self.assertNotContains(self.client.get("/loads/"), "TGHU1234567")
+        self.assertNotContains(self.client.get("/search/?q=TGHU1234567"), f"/shipments/{s2.pk}/")
+        self.assertNotContains(self.client.get("/search/suggest/?q=TGHU12"), f"/shipments/{s2.pk}/")
+        self.assertNotContains(self.client.get("/shipments/export.csv"), "TGHU1234567")
+        self.assertEqual(self.client.get(f"/projects/{self.project.pk}/").status_code, 200)  # own project
+        other.owners.add(self.op)  # covering for a colleague: add them as owner
+        self.assertEqual(self.client.get(f"/shipments/{s2.pk}/").status_code, 200)
+        other.owners.remove(self.op)
+        for u in (self.mgmt, self.ap, self.ar):
+            self.login(u)
+            self.assertEqual(self.client.get(f"/projects/{other.pk}/").status_code, 200)
+            self.assertContains(self.client.get("/loads/"), "TGHU1234567")
+
+    def test_creator_is_default_owner(self):
+        self.login(self.op)
+        r = self.client.get("/projects/new/")
+        self.assertEqual(r.context["form"].initial.get("owners"), [self.op.pk])
+        self.client.post("/projects/new/", {"company": "ATS", "customer": self.customer.pk, "name": "No owner ticked",
+                                            "detention_free_hours": "2", "manual_status": ""})
+        p = Project.objects.get(name="No owner ticked")
+        self.assertEqual(list(p.owners.all()), [self.op])
 
     def test_new_project_notifies_owners(self):
         from .models import Notification

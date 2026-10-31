@@ -93,6 +93,10 @@ class Ctx:
             return qs.filter(project=self.project)
         if self.scope == "mine":
             qs = qs.filter(project__owners=self.user)
+        elif self.user is not None:
+            from .permissions import visible_loads
+
+            qs = visible_loads(self.user, qs)
         return qs
 
     def projects(self):
@@ -101,6 +105,10 @@ class Ctx:
             return qs.filter(pk=self.project.pk)
         if self.scope == "mine":
             qs = qs.filter(owners=self.user)
+        elif self.user is not None:
+            from .permissions import visible_projects
+
+            qs = visible_projects(self.user, qs)
         return qs
 
     def legs(self):

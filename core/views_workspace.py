@@ -13,7 +13,7 @@ from django.views.decorators.http import require_POST
 from . import alerts as alert_engine
 from . import widgets as W
 from .models import AlertSetting, AlertSnooze, Carrier, Charge, Customer, CustomRule, Location, Project, Shipment, Status
-from .permissions import visible_sides
+from .permissions import visible_loads, visible_projects, visible_sides
 
 
 # --------------------------------------------------------------------------
@@ -92,7 +92,7 @@ def widget_config(request, wid):
     return render(request, "core/widget_config.html", {
         "w": w, "meta": meta, "cfg": cfg,
         "columns": W.PROJECT_COLUMNS, "statuses": Project.Status.choices,
-        "projects": Project.objects.exclude(status__in=[Project.Status.CANCELLED]).order_by("-created_at")[:200],
+        "projects": visible_projects(request.user, Project.objects.exclude(status__in=[Project.Status.CANCELLED])).order_by("-created_at")[:200],
     })
 
 
@@ -237,9 +237,13 @@ def parse_query(q):
     return filters, " ".join(words)
 
 
-def search_loads(q, limit=50):
+def search_loads(q, limit=50, user=None):
+    from .permissions import visible_loads
+
     filters, text = parse_query(q)
     qs = Shipment.objects.select_related("project", "customer", "master_bl")
+    if user is not None:
+        qs = visible_loads(user, qs)
     if text:
         qs = qs.filter(
             Q(number__icontains=text) | Q(container_number__icontains=text) | Q(master_bl__number__icontains=text)
@@ -266,8 +270,12 @@ def search_loads(q, limit=50):
     return qs.distinct()[:limit], filters, text
 
 
-def search_projects(text, filters, limit=10):
+def search_projects(text, filters, limit=10, user=None):
+    from .permissions import visible_projects
+
     qs = Project.objects.select_related("customer")
+    if user is not None:
+        qs = visible_projects(user, qs)
     if text:
         qs = qs.filter(Q(name__icontains=text) | Q(number__icontains=text) | Q(monday_item_id__icontains=text)
                        | Q(customer__name__icontains=text) | Q(notes__icontains=text) | Q(terms__icontains=text))
@@ -284,9 +292,9 @@ def suggest(request):
     q = request.GET.get("q", "").strip()
     if len(q) < 2:
         return JsonResponse({"groups": []})
-    loads, filters, text = search_loads(q, limit=6)
+    loads, filters, text = search_loads(q, limit=6, user=request.user)
     groups = []
-    projects = list(search_projects(text, filters, 4)) if (text or filters.keys() & {"customer", "company", "project"}) else []
+    projects = list(search_projects(text, filters, 4, user=request.user)) if (text or filters.keys() & {"customer", "company", "project"}) else []
     if projects:
         groups.append({"label": "项目", "items": [
             {"title": p.name, "sub": f"{p.customer.name} · {p.company} · {p.get_status_display()}", "url": p.get_absolute_url(), "tag": "项目"}
@@ -308,7 +316,7 @@ def suggest(request):
         if locs:
             groups.append({"label": "地址", "items": [{"title": l.code, "sub": l.full_address, "url": l.get_absolute_url(), "tag": "地址"} for l in locs]})
         sides = visible_sides(request.user)
-        inv = Charge.objects.filter(invoice_number__icontains=text, side__in=sides).select_related("shipment")[:3]
+        inv = Charge.objects.filter(invoice_number__icontains=text, side__in=sides, shipment__in=visible_loads(request.user)).select_related("shipment")[:3]
         if inv:
             groups.append({"label": "发票", "items": [
                 {"title": c.invoice_number, "sub": f"{c.side} · {c.shipment.container_number or c.shipment.number}",

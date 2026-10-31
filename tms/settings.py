@@ -57,6 +57,7 @@ MIDDLEWARE = [
     "allauth.account.middleware.AccountMiddleware",
     "simple_history.middleware.HistoryRequestMiddleware",
     "core.middleware.RequireLoginMiddleware",
+    "core.middleware.ProjectAccessMiddleware",
 ]
 
 ROOT_URLCONF = "tms.urls"

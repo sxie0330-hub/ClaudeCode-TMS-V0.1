@@ -10,7 +10,7 @@ from django.views.decorators.http import require_POST
 from . import ai, mailscan
 from .forms import MailScheduleForm
 from .models import AiExtraction, GmailConnection, Project
-from .permissions import can_edit_ops, can_quote
+from .permissions import can_edit_ops, can_quote, visible_projects
 from .views import _need
 
 
@@ -39,7 +39,7 @@ def mail_settings(request):
             return redirect("mail_settings")
     else:
         form = MailScheduleForm(instance=conn, user=request.user) if conn else None
-    projects = Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")
+    projects = visible_projects(request.user, Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED])).order_by("-created_at")
     recent = AiExtraction.objects.filter(source=AiExtraction.Source.GMAIL, created_by=request.user).select_related("project")[:20]
     return render(request, "core/mail.html", {
         "conn": conn, "recent": recent, "ai_enabled": ai.enabled(), "projects": projects if conn else [],
@@ -106,7 +106,7 @@ def mail_find(request):
     if not conn or not ai.enabled():
         return redirect("mail_settings")
     pid = request.POST.get("project", "")
-    project = Project.objects.filter(pk=pid).first() if pid.isdigit() else None
+    project = visible_projects(request.user).filter(pk=pid).first() if pid.isdigit() else None
     try:
         ext, n = mailscan.find_and_extract(conn, request.POST.get("q", ""), project=project)
     except (mailscan.ScanError, Exception) as e:  # noqa: BLE001
