@@ -766,7 +766,7 @@ def _pdf(data, filename):
 # projects
 # ---------------------------------------------------------------------------
 def project_list(request):
-    qs = visible_projects(request.user, Project.objects.select_related("customer").prefetch_related("owners"))
+    qs = Project.with_progress(visible_projects(request.user, Project.objects.select_related("customer").prefetch_related("owners")))
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(number__icontains=q) | Q(monday_item_id__icontains=q) | Q(customer__name__icontains=q))

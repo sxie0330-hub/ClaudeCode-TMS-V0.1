@@ -345,7 +345,60 @@ class Project(SoftDeleteModel):
 
     @property
     def status_label(self):
-        return "POD 已齐 · 待确认完结" if self.ready_to_close else self.get_status_display()
+        if self.ready_to_close:
+            return "POD 已齐 · 待确认完结"
+        if self.status == self.Status.PENDING and not self.progress["n_loads"]:
+            return "待执行 · 还没有 Load"
+        return self.get_status_display()
+
+    # -- dates and progress taken from the Loads (with_progress() annotates them for lists) --------
+    PROGRESS_KEYS = ("n_loads", "n_picked", "n_delivered", "a_pick", "p_pick", "a_del", "p_del")
+
+    @classmethod
+    def with_progress(cls, qs):
+        from django.db.models import Count, Max, Min, Q
+
+        live = Q(shipments__is_deleted=False) & ~Q(shipments__status=Status.CANCELLED)
+        return qs.annotate(
+            n_loads=Count("shipments", filter=live, distinct=True),
+            n_picked=Count("shipments", filter=live & Q(shipments__status__in=[Status.IN_TRANSIT, Status.IN_YARD, Status.DELIVERED, Status.CLOSED]), distinct=True),
+            n_delivered=Count("shipments", filter=live & Q(shipments__status__in=[Status.DELIVERED, Status.CLOSED]), distinct=True),
+            a_pick=Min("shipments__legs__actual_pickup", filter=live),
+            p_pick=Min("shipments__legs__scheduled_pickup", filter=live),
+            a_del=Max("shipments__legs__actual_delivery", filter=live),
+            p_del=Max("shipments__legs__scheduled_delivery", filter=live),
+        )
+
+    @property
+    def progress(self):
+        if not hasattr(self, "_progress"):
+            if all(hasattr(self, k) for k in self.PROGRESS_KEYS):
+                self._progress = {k: getattr(self, k) for k in self.PROGRESS_KEYS}
+            elif not self.pk:
+                self._progress = dict.fromkeys(self.PROGRESS_KEYS, None) | {"n_loads": 0, "n_picked": 0, "n_delivered": 0}
+            else:
+                self._progress = Project.with_progress(Project.all_objects.filter(pk=self.pk)).values(*self.PROGRESS_KEYS)[0]
+        return self._progress
+
+    @property
+    def shown_start(self):
+        """(date, planned?) — the date typed on the project, else the first actual pickup, else the first planned one."""
+        g = self.progress
+        if self.start_date:
+            return self.start_date, False
+        if g["a_pick"]:
+            return g["a_pick"], False
+        return (g["p_pick"], True) if g["p_pick"] else (None, False)
+
+    @property
+    def shown_end(self):
+        """(date, planned?) — the date typed on the project, else the last delivery once all are delivered, else the last planned one."""
+        g = self.progress
+        if self.end_date:
+            return self.end_date, False
+        if g["n_loads"] and g["n_delivered"] == g["n_loads"] and g["a_del"]:
+            return g["a_del"], False
+        return (g["p_del"], True) if g["p_del"] else (None, False)
 
 
 class Milestone(models.Model):

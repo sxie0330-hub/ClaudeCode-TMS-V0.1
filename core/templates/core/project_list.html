@@ -1,4 +1,5 @@
 {% extends "core/base.html" %}
+{% load tms %}
 {% block title %}项目{% endblock %}
 {% block content %}
 <div class="head"><h1>项目</h1><span class="muted">{{ page.paginator.count }} 个</span>
@@ -14,13 +15,14 @@
   <button type="submit">筛选</button>
 </form>
 <div class="panel"><div class="tablewrap"><table class="t">
-  <thead><tr><th>项目</th><th>编号</th><th>公司</th><th>客户</th><th>状态</th><th>负责人</th><th>开始 → 结束</th><th>Monday ID</th></tr></thead>
+  <thead><tr><th>项目</th><th>编号</th><th>公司</th><th>客户</th><th>状态</th><th>负责人</th><th>Load 进度</th><th>开始 → 结束</th><th>Monday ID</th></tr></thead>
   <tbody>
   {% for p in page %}<tr><td><a href="{{ p.get_absolute_url }}"><b>{{ p.name }}</b></a></td><td>{{ p.number }}</td><td>{{ p.company }}</td>
     <td>{{ p.customer.name }}</td><td><span class="b b-P{% if p.ready_to_close %}READY{% else %}{{ p.status }}{% endif %}">{{ p.status_label }}</span></td>
     <td>{% for u in p.owners.all %}{{ u.get_full_name|default:u.email }}{% if not forloop.last %}、{% endif %}{% empty %}<span class="lfd-warn">未指定</span>{% endfor %}</td>
-    <td>{{ p.start_date|default:"—" }} → {{ p.end_date|default:"—" }}</td><td>{{ p.monday_item_id|default:"—" }}</td></tr>
-  {% empty %}<tr><td colspan="8" class="muted">没有项目</td></tr>{% endfor %}
+    <td>{% with g=p.progress %}{% if g.n_loads %}提 {{ g.n_picked }}/{{ g.n_loads }} · 送 {{ g.n_delivered }}/{{ g.n_loads }}{% else %}<span class="muted">—</span>{% endif %}{% endwith %}</td>
+    <td>{{ p.shown_start|pdate }} → {{ p.shown_end|pdate }}</td><td>{{ p.monday_item_id|default:"—" }}</td></tr>
+  {% empty %}<tr><td colspan="9" class="muted">没有项目</td></tr>{% endfor %}
   </tbody>
 </table></div></div>
 {% endblock %}

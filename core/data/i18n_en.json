@@ -2555,7 +2555,10 @@
 "全部送达、POD 已齐，项目待确认完结": "All delivered and PODs complete: project waiting to be closed",
 "不完结，项目一直挂在执行中，统计和工作台都不准": "Until it is closed the project stays open and the numbers and workspace are off",
 "全部送达、POD 已齐，可以确认完结": "All delivered and PODs complete: ready to close",
-"在项目页点“确认完结”": "click \"Confirm complete\" on the project page"
+"在项目页点“确认完结”": "click \"Confirm complete\" on the project page",
+"待执行 · 还没有 Load": "Pending · no Loads yet",
+"Load 进度": "Load progress",
+"来自 Load 的计划日期": "Planned date from the Loads"
 },
 "patterns": [
 [
@@ -3841,6 +3844,14 @@
 [
 "项目 {} 已完结",
 "Project {} closed"
+],
+[
+"提 {}/{} · 送 {}/{}",
+"Picked up {}/{} · delivered {}/{}"
+],
+[
+"计划 {}",
+"planned {}"
 ]
 ]
 }
