@@ -580,6 +580,29 @@ class PodUploadTests(Base):
         p = Project.objects.get(name="No owner ticked")
         self.assertEqual(list(p.owners.all()), [self.op])
 
+    def test_dates_and_progress_from_loads(self):
+        from datetime import date
+
+        empty = Project.objects.create(customer=self.customer, name="Nothing yet")
+        self.assertEqual(empty.status_label, "待执行 · 还没有 Load")
+        self.assertEqual(empty.shown_start, (None, False))
+        p = self.project  # one Load, one leg, no dates typed on the project
+        self.leg.scheduled_pickup, self.leg.scheduled_delivery = date(2026, 11, 2), date(2026, 11, 6)
+        self.leg.save()
+        p = Project.objects.get(pk=p.pk)
+        self.assertEqual((p.shown_start, p.shown_end), ((date(2026, 11, 2), True), (date(2026, 11, 6), True)))
+        self.leg.actual_pickup = date(2026, 11, 3)
+        self.leg.save()
+        p = Project.with_progress(Project.objects.filter(pk=p.pk)).get()
+        self.assertEqual(p.shown_start, (date(2026, 11, 3), False))  # actual beats planned
+        self.assertEqual(p.shown_end, (date(2026, 11, 6), True))  # not all delivered: planned end
+        p.start_date = date(2026, 10, 30)
+        self.assertEqual(p.shown_start, (date(2026, 10, 30), False))  # typed date wins
+        self.login(self.mgmt)
+        r = self.client.get("/projects/")
+        self.assertContains(r, "提 1/1 · 送 0/1")
+        self.assertContains(r, "计划 2026-11-06")
+
     def test_new_project_notifies_owners(self):
         from .models import Notification
 

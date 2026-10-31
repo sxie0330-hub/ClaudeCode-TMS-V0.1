@@ -24,7 +24,7 @@
   <span>公司 <b>{{ p.get_company_display }}</b></span>
   <span>负责人 {% for u in p.owners.all %}<b>{{ u.get_full_name|default:u.email }}</b>{% if not forloop.last %}、{% endif %}{% empty %}<b class="lfd-warn">未指定</b>{% if perm.edit_ops %} <a href="{% url 'project_edit' p.pk %}">指定</a>{% endif %}{% endfor %}</span>
   {% if p.monday_item_id %}<span>Monday <b>{{ p.monday_item_id }}</b></span>{% endif %}
-  <span>{{ p.start_date|default:"—" }} → {{ p.end_date|default:"—" }}</span>
+  <span>{{ p.shown_start|pdate }} → {{ p.shown_end|pdate }}</span>
   {% if p.cargo_description %}<span>货物 <b>{{ p.cargo_description }}</b></span>{% endif %}
 </div>
 

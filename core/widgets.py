@@ -135,10 +135,7 @@ def _project_rows(user, config):
     qs = visible_projects(user, Project.objects.filter(status__in=statuses).select_related("customer").prefetch_related("owners"))
     if config.get("scope", "mine") == "mine":
         qs = qs.filter(owners=user)
-    qs = qs.annotate(
-        n_loads=Count("shipments", filter=Q(shipments__is_deleted=False) & ~Q(shipments__status=Status.CANCELLED), distinct=True),
-        n_delivered=Count("shipments", filter=Q(shipments__is_deleted=False, shipments__status__in=[Status.DELIVERED, Status.CLOSED]), distinct=True),
-        n_picked=Count("shipments", filter=Q(shipments__is_deleted=False, shipments__status__in=[Status.IN_TRANSIT, Status.IN_YARD, Status.DELIVERED, Status.CLOSED]), distinct=True),
+    qs = Project.with_progress(qs).annotate(
         n_pod=Count("shipments", filter=Q(shipments__is_deleted=False, shipments__pod_received__isnull=False), distinct=True),
     ).order_by("end_date", "-created_at")[:50]
     projects = list(qs)
@@ -158,7 +155,7 @@ def _project_rows(user, config):
             "p": p,
             "cells": {
                 "number": p.number, "name": p.name, "customer": p.customer.name, "company": p.company,
-                "status": p.status_label, "start": p.start_date, "end": p.end_date,
+                "status": p.status_label, "start": p.shown_start, "end": p.shown_end,
                 "owners": ", ".join((u.get_full_name() or u.email or u.username) for u in p.owners.all()) or "未指定",
                 "monday": p.monday_item_id, "loads": p.n_loads,
                 "picked": f"{p.n_picked}/{p.n_loads}", "delivered": f"{p.n_delivered}/{p.n_loads}",
