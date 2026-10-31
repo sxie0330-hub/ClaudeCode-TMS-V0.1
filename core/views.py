@@ -66,6 +66,8 @@ from .permissions import (
     can_manage_rates,
     can_see_side,
     is_management,
+    visible_loads,
+    visible_projects,
     visible_sides,
 )
 
@@ -184,7 +186,7 @@ def _with_money(qs, user):
 # shipments
 # ---------------------------------------------------------------------------
 def shipment_list(request):
-    qs = Shipment.objects.select_related("customer", "project", "master_bl", "consignee")
+    qs = visible_loads(request.user, Shipment.objects.select_related("customer", "project", "master_bl", "consignee"))
     # Prefetches run only for the 50 rows of the page actually rendered.
     qs = _shipment_filters(request, qs).prefetch_related("legs__carrier", "legs__origin", "legs__destination")
     page = Paginator(qs, PAGE_SIZE).get_page(request.GET.get("page"))
@@ -196,7 +198,7 @@ def shipment_list(request):
         "rows": rows,
         "statuses": Status.choices,
         "customers": Customer.objects.all(),
-        "projects": Project.objects.filter(status__in=OPEN_PROJECT).select_related("customer"),
+        "projects": visible_projects(request.user, Project.objects.filter(status__in=OPEN_PROJECT).select_related("customer")),
         "services": Shipment.Service.choices,
         "querystring": params.urlencode(),
         "g": request.GET,
@@ -207,7 +209,7 @@ def shipment_list(request):
 
 
 def shipment_export(request):
-    qs = _shipment_filters(request, Shipment.objects.select_related("customer", "project", "master_bl", "consignee", "shipper"))
+    qs = _shipment_filters(request, visible_loads(request.user, Shipment.objects.select_related("customer", "project", "master_bl", "consignee", "shipper")))
     qs = _with_money(qs, request.user).prefetch_related("legs__carrier", "units")
     resp = HttpResponse(content_type="text/csv; charset=utf-8")
     resp["Content-Disposition"] = f'attachment; filename="shipments-{timezone.localdate()}.csv"'
@@ -335,7 +337,7 @@ def _add_default_cargo(shipment):
 
 def shipment_create(request):
     _need(can_edit_ops(request.user))
-    project = Project.objects.filter(pk=request.GET.get("project")).first()
+    project = visible_projects(request.user).filter(pk=request.GET.get("project")).first()
     if request.method == "POST":
         form = ShipmentForm(request.POST)
         if form.is_valid():
@@ -461,7 +463,7 @@ def shipment_pod(request, pk):
 @require_POST
 def bulk_pod_uploaded(request):
     _need(can_edit_ops(request.user))
-    shipments = list(Shipment.objects.filter(pk__in=request.POST.getlist("ids")).order_by("number"))
+    shipments = list(visible_loads(request.user).filter(pk__in=request.POST.getlist("ids")).order_by("number"))
     back = request.META.get("HTTP_REFERER") or reverse("shipment_list")
     if not shipments:
         messages.error(request, "请先勾选 Load")
@@ -741,7 +743,7 @@ def rate_agreement_pdf(request, pk):
 @require_POST
 def bulk_bol(request):
     ids = request.POST.getlist("ids")
-    shipments = list(Shipment.objects.filter(pk__in=ids).order_by("number"))
+    shipments = list(visible_loads(request.user).filter(pk__in=ids).order_by("number"))
     if not shipments:
         messages.error(request, "请先勾选 Load")
         return redirect(request.META.get("HTTP_REFERER") or reverse("shipment_list"))
@@ -764,7 +766,7 @@ def _pdf(data, filename):
 # projects
 # ---------------------------------------------------------------------------
 def project_list(request):
-    qs = Project.objects.select_related("customer").prefetch_related("owners")
+    qs = visible_projects(request.user, Project.objects.select_related("customer").prefetch_related("owners"))
     q = request.GET.get("q", "").strip()
     if q:
         qs = qs.filter(Q(name__icontains=q) | Q(number__icontains=q) | Q(monday_item_id__icontains=q) | Q(customer__name__icontains=q))
@@ -878,11 +880,15 @@ def _project_money(project, user):
 
 def project_create(request):
     _need(can_edit_ops(request.user))
-    initial = {"customer": request.GET.get("customer")} if request.GET.get("customer") else None
+    initial = {"owners": [request.user.pk]}  # the person creating it owns it unless they choose otherwise
+    if request.GET.get("customer"):
+        initial["customer"] = request.GET.get("customer")
     if request.method == "POST":
         form = ProjectForm(request.POST)
         if form.is_valid():
             p = form.save()
+            if not p.owners.exists():
+                p.owners.add(request.user)
             from .notify import notify
 
             notify(p.owners.all(), f"{request.user.get_full_name() or request.user.email} 新建项目 {p.number} {p.name}，交给你负责",
@@ -1015,9 +1021,9 @@ def master_detail(request, kind, pk):
     if kind == "customer":
         related = [("项目", obj.projects.all()[:100]), ("最近 Load", obj.shipments.select_related("project")[:100])]
     elif kind == "carrier":
-        related = [("最近运输段", Leg.objects.filter(carrier=obj).select_related("shipment", "origin", "destination").order_by("-id")[:100])]
+        related = [("最近运输段", Leg.objects.filter(carrier=obj, shipment__in=visible_loads(request.user)).select_related("shipment", "origin", "destination").order_by("-id")[:100])]
     elif kind == "location":
-        related = [("最近 Load（收货地）", Shipment.objects.filter(consignee=obj)[:100])]
+        related = [("最近 Load（收货地）", visible_loads(request.user, Shipment.objects.filter(consignee=obj))[:100])]
     can_edit = is_management(request.user) if kind == "trailer" else can_edit_ops(request.user)
     problems = obj.compliance_problems() if kind == "carrier" else []
     return render(request, "core/master_detail.html", {"kind": kind, "label": label, "obj": obj, "fields": fields, "related": related,
@@ -1043,15 +1049,15 @@ def search(request):
     q = request.GET.get("q", "").strip()
     results = {}
     if len(q) >= 2:
-        loads, filters, text = search_loads(q, limit=100)
+        loads, filters, text = search_loads(q, limit=100, user=request.user)
         results["Load"] = list(loads)
-        results["项目"] = list(search_projects(text, filters, 30))
+        results["项目"] = list(search_projects(text, filters, 30, user=request.user))
         if text and not filters:
             results["客户"] = Customer.objects.filter(Q(name__icontains=text) | Q(code__icontains=text))[:20]
             results["承运商"] = Carrier.objects.filter(Q(name__icontains=text) | Q(code__icontains=text) | Q(mc_number__icontains=text))[:20]
             results["地址"] = Location.objects.filter(Q(code__icontains=text) | Q(name__icontains=text) | Q(address__icontains=text))[:20]
             sides = visible_sides(request.user)
-            results["费用（发票号）"] = Charge.objects.filter(invoice_number__icontains=text, side__in=sides).select_related("shipment")[:20]
+            results["费用（发票号）"] = Charge.objects.filter(invoice_number__icontains=text, side__in=sides, shipment__in=visible_loads(request.user)).select_related("shipment")[:20]
     hits = [(k, v) for k, v in results.items() if len(v)]
     if len(hits) == 1 and len(hits[0][1]) == 1:
         return redirect(hits[0][1][0] if hits[0][0] != "费用（发票号）" else hits[0][1][0].shipment)

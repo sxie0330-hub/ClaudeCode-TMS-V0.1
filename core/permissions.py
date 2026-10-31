@@ -1,10 +1,10 @@
 """Who may see and do what.
 
   管理层 MGMT : everything, incl. both AR and AP, margin, unlock, revert, users
-  操作 OP     : edit operations + master data, see/edit AP
+  操作 OP     : edit operations + master data; sees only the projects they own (and their Loads)
   应付 AP     : read operations, see/edit AP
   应收 AR     : read operations, see/edit AR — never sees AP
-  询报价 RFQ  : inquiries and quotes (incl. RFQ-stage costs); read operations
+  询报价 RFQ  : inquiries and quotes (incl. RFQ-stage costs); read operations of the projects they own
 
 A person may hold several roles; they get the union of what each allows.
 
@@ -85,3 +85,42 @@ def can_edit_shipment_ops(user, shipment):
     if not can_edit_ops(user):
         return False
     return not shipment.is_locked or is_management(user)
+
+
+# ---------------------------------------------------------------------------
+# Which projects (and their Loads) a person sees
+# ---------------------------------------------------------------------------
+SEE_ALL_PROJECTS = {Role.MANAGEMENT, Role.AP, Role.AR}
+
+
+def sees_all_projects(user):
+    """管理层 / 应付 / 应收 see every project; 操作 and 询报价 only the projects they own.
+    A colleague covering for someone is added as an owner of that project."""
+    return bool(roles_of(user) & SEE_ALL_PROJECTS)
+
+
+def visible_projects(user, qs=None):
+    from .models import Project
+
+    qs = Project.objects.all() if qs is None else qs
+    if sees_all_projects(user):
+        return qs
+    return qs.filter(pk__in=Project.all_objects.filter(owners=user).values("pk"))
+
+
+def visible_loads(user, qs=None):
+    """Loads of the projects this person sees, plus Loads that belong to no project."""
+    from django.db.models import Q
+
+    from .models import Project, Shipment
+
+    qs = Shipment.objects.all() if qs is None else qs
+    if sees_all_projects(user):
+        return qs
+    return qs.filter(Q(project_id__in=Project.all_objects.filter(owners=user).values("pk")) | Q(project__isnull=True))
+
+
+def can_see_project(user, project):
+    if project is None or sees_all_projects(user):
+        return True
+    return project.owners.filter(pk=user.pk).exists()

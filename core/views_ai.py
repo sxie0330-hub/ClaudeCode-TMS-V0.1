@@ -7,7 +7,7 @@ from django.views.decorators.http import require_POST
 
 from . import ai
 from .models import AiChange, AiExtraction, CargoLine, Carrier, Company, Customer, Location, Project, Shipment
-from .permissions import can_edit_ops
+from .permissions import can_edit_ops, visible_projects
 from .views import _need
 
 
@@ -61,7 +61,7 @@ def ai_review(request, pk):
     return render(request, "core/ai_review.html", {
         "ext": ext, "groups": groups, "pgroups": pgroups, "pending": any(c.status == AiChange.State.PENDING for c in changes),
         "props": open_props, "prop_total": len(props), "created": created,
-        "open_projects": Project.objects.exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")[:200] if open_props else [],
+        "open_projects": visible_projects(request.user, Project.objects).exclude(status__in=[Project.Status.DONE, Project.Status.CANCELLED]).order_by("-created_at")[:200] if open_props else [],
         "loc_data": list(Location.objects.values("code", "name", "address", "city", "state", "postal_code")) if open_props else [],
         "customer_names": list(Customer.objects.values_list("name", flat=True)) if open_props else [],
         "carrier_names": list(Carrier.objects.values_list("name", flat=True)) if open_props else [],

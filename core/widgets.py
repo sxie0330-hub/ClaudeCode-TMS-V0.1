@@ -103,8 +103,22 @@ def clean_layout(user, layout):
 # --------------------------------------------------------------------------
 # Data for each widget
 # --------------------------------------------------------------------------
+def _visible_loads(user):
+    from .permissions import visible_loads
+
+    return visible_loads(user)
+
+
+def _visible_projects(user):
+    from .permissions import visible_projects
+
+    return visible_projects(user)
+
+
 def _loads(user, scope="mine"):
-    qs = Shipment.objects.exclude(status__in=[Status.CLOSED, Status.CANCELLED])
+    from .permissions import visible_loads
+
+    qs = visible_loads(user, Shipment.objects.exclude(status__in=[Status.CLOSED, Status.CANCELLED]))
     if scope == "mine":
         qs = qs.filter(project__owners=user)
     return qs
@@ -116,7 +130,9 @@ def _project_rows(user, config):
     cols = [c for c in cols if not (c == "ar" and "AR" not in sides) and not (c == "ap" and "AP" not in sides)
             and not (c == "margin" and not can_see_margin(user))]
     statuses = config.get("statuses") or ["PENDING", "ACTIVE", "DELIVERED"]
-    qs = Project.objects.filter(status__in=statuses).select_related("customer").prefetch_related("owners")
+    from .permissions import visible_projects
+
+    qs = visible_projects(user, Project.objects.filter(status__in=statuses).select_related("customer").prefetch_related("owners"))
     if config.get("scope", "mine") == "mine":
         qs = qs.filter(owners=user)
     qs = qs.annotate(
@@ -176,7 +192,7 @@ def widget_data(user, w, todo=None):
     if kind == "my_projects":
         return _project_rows(user, cfg)
     if kind == "project":
-        p = Project.objects.filter(pk=cfg.get("project")).first()
+        p = _visible_projects(user).filter(pk=cfg.get("project")).first()
         if not p:
             return {"missing": True}
         loads = list(p.shipments.exclude(status=Status.CANCELLED).prefetch_related("legs"))
@@ -191,7 +207,7 @@ def widget_data(user, w, todo=None):
         return data
     if kind == "watched_loads":
         ids = cfg.get("loads") or []
-        return {"loads": list(Shipment.objects.filter(pk__in=ids).select_related("project").prefetch_related("legs__carrier"))}
+        return {"loads": list(_visible_loads(user).filter(pk__in=ids).select_related("project").prefetch_related("legs__carrier"))}
     if kind == "lfd":
         qs = _loads(user, scope).filter(lfd__lte=today + timedelta(days=settings.TMS_LFD_WARNING_DAYS), status__in=alert_engine.NOT_PICKED)
         return {"count": qs.count(), "items": list(qs.order_by("lfd")[:5]), "link": _link(scope, lfd="soon", sort="lfd"),
@@ -229,7 +245,7 @@ def widget_data(user, w, todo=None):
                 "link": _link(scope, ar="open")}
     if kind == "margin_month":
         start = today.replace(day=1)
-        loads = Shipment.objects.filter(legs__actual_delivery__gte=start, status__in=[Status.DELIVERED, Status.CLOSED]).distinct()
+        loads = _visible_loads(user).filter(legs__actual_delivery__gte=start, status__in=[Status.DELIVERED, Status.CLOSED]).distinct()
         agg = Charge.objects.filter(shipment__in=loads).exclude(state=Charge.State.VOID).values("side").annotate(t=Sum("amount"))
         m = {r["side"]: r["t"] or Decimal("0") for r in agg}
         ar, ap = m.get("AR", Decimal("0")), m.get("AP", Decimal("0"))
@@ -247,7 +263,7 @@ def widget_data(user, w, todo=None):
 
         q = QueryDict(cfg.get("query", ""), mutable=False)
         req = type("R", (), {"GET": q})()
-        qs = _shipment_filters(req, Shipment.objects.select_related("project", "customer").prefetch_related("legs__carrier"))
+        qs = _shipment_filters(req, _visible_loads(user).select_related("project", "customer").prefetch_related("legs__carrier"))
         limit = {"M": 3, "L": 7, "W": 4, "XL": 10}.get(w["size"], 5)
         from django.urls import reverse
 
