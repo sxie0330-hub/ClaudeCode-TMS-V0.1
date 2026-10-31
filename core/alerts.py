@@ -529,6 +529,15 @@ def r_no_owner(ctx):
                         p.get_absolute_url(), p)
 
 
+@rule(key="project_close", category="回款与利润", label="全部送达、POD 已齐，项目待确认完结", why="不完结，项目一直挂在执行中，统计和工作台都不准",
+      level="week")
+def r_project_close(ctx):
+    for p in ctx.projects().filter(status=Project.Status.DELIVERED).prefetch_related("shipments"):
+        if not p.pods_missing():
+            yield ctx.alert("project_close", p.pk, "完结", "全部送达、POD 已齐，可以确认完结", f"{p.name} · 在项目页点“确认完结”",
+                            p.get_absolute_url(), p)
+
+
 RULE_MAP = {r.key: r for r in RULES}
 
 

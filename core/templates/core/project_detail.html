@@ -5,9 +5,12 @@
 <div class="muted" style="font-size:13px;margin-bottom:6px"><a href="{% url 'home' %}">我的工作台</a> / <a href="{% url 'project_list' %}">项目</a> / {{ p.number }}</div>
 <div class="head">
   <h1>{{ p.name }}</h1>
-  <span class="b b-P{{ p.status }}">{{ p.get_status_display }}</span>
+  <span class="b b-P{% if p.ready_to_close %}READY{% else %}{{ p.status }}{% endif %}">{{ p.status_label }}</span>
   <div class="actions">
     <form method="post" action="{% url 'pin_project' p.pk %}" class="inline">{% csrf_token %}<button>置顶到工作台</button></form>
+    {% if perm.edit_ops and p.ready_to_close %}
+      <form method="post" action="{% url 'project_close' p.pk %}" class="inline" onsubmit="return confirm('全部 Load 已送达、POD 已齐。确认项目完结？');">{% csrf_token %}<button class="primary">确认完结</button></form>
+    {% endif %}
     {% if perm.edit_ops %}
       <a class="btn" href="{% url 'ai_new' %}?project={{ p.pk }}">粘贴邮件 · AI 识别</a>
       <a class="btn" href="{% url 'project_edit' p.pk %}">编辑项目</a>

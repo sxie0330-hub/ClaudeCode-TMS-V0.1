@@ -142,7 +142,7 @@ def _project_rows(user, config):
             "p": p,
             "cells": {
                 "number": p.number, "name": p.name, "customer": p.customer.name, "company": p.company,
-                "status": p.get_status_display(), "start": p.start_date, "end": p.end_date,
+                "status": p.status_label, "start": p.start_date, "end": p.end_date,
                 "owners": ", ".join((u.get_full_name() or u.email or u.username) for u in p.owners.all()) or "未指定",
                 "monday": p.monday_item_id, "loads": p.n_loads,
                 "picked": f"{p.n_picked}/{p.n_loads}", "delivered": f"{p.n_delivered}/{p.n_loads}",

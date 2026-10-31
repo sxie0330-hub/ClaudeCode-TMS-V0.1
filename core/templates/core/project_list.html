@@ -17,7 +17,7 @@
   <thead><tr><th>项目</th><th>编号</th><th>公司</th><th>客户</th><th>状态</th><th>负责人</th><th>开始 → 结束</th><th>Monday ID</th></tr></thead>
   <tbody>
   {% for p in page %}<tr><td><a href="{{ p.get_absolute_url }}"><b>{{ p.name }}</b></a></td><td>{{ p.number }}</td><td>{{ p.company }}</td>
-    <td>{{ p.customer.name }}</td><td><span class="b b-P{{ p.status }}">{{ p.get_status_display }}</span></td>
+    <td>{{ p.customer.name }}</td><td><span class="b b-P{% if p.ready_to_close %}READY{% else %}{{ p.status }}{% endif %}">{{ p.status_label }}</span></td>
     <td>{% for u in p.owners.all %}{{ u.get_full_name|default:u.email }}{% if not forloop.last %}、{% endif %}{% empty %}<span class="lfd-warn">未指定</span>{% endfor %}</td>
     <td>{{ p.start_date|default:"—" }} → {{ p.end_date|default:"—" }}</td><td>{{ p.monday_item_id|default:"—" }}</td></tr>
   {% empty %}<tr><td colspan="8" class="muted">没有项目</td></tr>{% endfor %}
