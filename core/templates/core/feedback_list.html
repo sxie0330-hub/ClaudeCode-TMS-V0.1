@@ -1,0 +1,31 @@
+{% extends "core/base.html" %}
+{% block title %}问题反馈{% endblock %}
+{% block content %}
+<div class="head"><h1>问题反馈</h1><span class="muted">{{ reports|length }} 条</span></div>
+<form method="get" class="filters" style="margin-bottom:10px">
+  <select name="status" aria-label="状态" onchange="this.form.submit()">
+    <option value="open" {% if status == 'open' %}selected{% endif %}>未解决</option>
+    <option value="" {% if status == '' %}selected{% endif %}>全部</option>
+    {% for v, l in states %}<option value="{{ v }}" {% if status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}
+  </select>
+</form>
+<p class="muted" style="font-size:13px">同事在任何页面点右上角 <b>报告问题</b> 提交，带上当时的页面和页面脚本错误。每天的自动体检也会读这里的新反馈。</p>
+{% for r in reports %}
+<section class="panel"><div class="body">
+  <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:baseline">
+    <b>#{{ r.pk }}</b><span class="b">{{ r.get_kind_display }}</span><span class="b">{{ r.get_status_display }}</span>
+    <span class="muted">{{ r.created_at|date:"Y-m-d H:i" }} · {{ r.user.get_full_name|default:r.user.email|default:"—" }}{% if r.roles %} · {{ r.roles }}{% endif %}</span>
+  </div>
+  <p class="wrap" style="margin:6px 0">{{ r.text|linebreaksbr }}</p>
+  {% if r.url %}<div class="muted" style="font-size:13px">页面：<a href="{{ r.url }}">{{ r.page_title|default:r.url }}</a></div>{% endif %}
+  {% if r.js_errors %}<details style="font-size:12px"><summary>页面脚本错误</summary><pre class="wrap">{{ r.js_errors }}</pre></details>{% endif %}
+  {% if r.pr_url %}<div style="font-size:13px">修复：<a href="{{ r.pr_url }}">{{ r.pr_url }}</a></div>{% endif %}
+  <form method="post" action="{% url 'feedback_update' r.pk %}" style="display:grid;grid-template-columns:150px 1fr 1fr auto;gap:8px;margin-top:8px;align-items:end">{% csrf_token %}
+    <label style="display:flex;flex-direction:column">状态<select name="status">{% for v, l in states %}<option value="{{ v }}" {% if r.status == v %}selected{% endif %}>{{ l }}</option>{% endfor %}</select></label>
+    <label style="display:flex;flex-direction:column">处理说明（解决 / 不处理时会通知提交人）<input name="reply" value="{{ r.reply }}"></label>
+    <label style="display:flex;flex-direction:column">修复 PR 链接<input name="pr_url" value="{{ r.pr_url }}" placeholder="https://github.com/…"></label>
+    <button type="submit">保存</button>
+  </form>
+</div></section>
+{% empty %}<p class="muted">没有反馈</p>{% endfor %}
+{% endblock %}

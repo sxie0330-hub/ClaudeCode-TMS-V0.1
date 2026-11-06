@@ -2702,3 +2702,61 @@ class LanguageTests(Base):
 
         self.assertEqual(i18n.translate("环世"), "环世")  # a name: never split into single characters
         self.assertEqual(i18n.translate("保存"), "Save")
+
+
+class ProblemReportTests(Base):
+    def test_report_from_any_page_notifies_managers_and_is_listed(self):
+        from .models import Notification, ProblemReport
+
+        self.login(self.op)
+        self.assertContains(self.client.get("/"), 'id="fb-btn"')
+        r = self.client.post("/feedback/new/", {"kind": "BUG", "text": "点 POD 已上传后报错", "url": "https://x/shipments/1/",
+                                                 "title": "SHP-1", "js_errors": "12:00:01 /shipments/1/ TypeError: x"})
+        self.assertEqual(r.json()["ok"], True)
+        rep = ProblemReport.objects.get()
+        self.assertEqual((rep.user, rep.kind, rep.roles), (self.op, "BUG", "OP"))
+        self.assertIn("TypeError", rep.js_errors)
+        self.assertTrue(Notification.objects.filter(user=self.mgmt, text__contains=f"#{rep.pk}").exists())
+        self.assertEqual(self.client.post("/feedback/new/", {"text": " "}).status_code, 400)
+        self.assertEqual(self.client.get("/feedback/").status_code, 403)  # list: management only
+        self.login(self.mgmt)
+        self.assertContains(self.client.get("/feedback/"), "点 POD 已上传后报错")
+        self.client.post(f"/feedback/{rep.pk}/", {"status": "DONE", "reply": "已修复", "pr_url": "https://github.com/x/y/pull/1"})
+        rep.refresh_from_db()
+        self.assertEqual((rep.status, rep.pr_url), ("DONE", "https://github.com/x/y/pull/1"))
+        self.assertTrue(Notification.objects.filter(user=self.op, text__contains="已解决").exists())
+
+    def test_500_logs_who_and_where(self):
+        from unittest import mock
+
+        self.login(self.mgmt)
+        self.client.raise_request_exception = False
+        with mock.patch("core.views._milestones", side_effect=RuntimeError("boom")), \
+             self.assertLogs("tms.errors", level="ERROR") as cm:
+            r = self.client.get(f"/projects/{self.project.pk}/")
+        self.assertEqual(r.status_code, 500)
+        self.assertIn("user=boss@advtransolution.com", cm.output[0])
+        self.assertIn(f"/projects/{self.project.pk}/", cm.output[0])
+
+
+@override_settings(TMS_TASK_KEY="k-1")
+class HealthReportTests(Base):
+    def test_report_needs_key_or_service_account_token(self):
+        from unittest import mock
+
+        from .models import ProblemReport
+
+        ProblemReport.objects.create(user=self.op, kind="BUG", text="页面报错", url="/x/")
+        self.assertEqual(self.client.get("/tasks/health-report/").status_code, 403)
+        self.assertEqual(self.client.get("/tasks/health-report/", HTTP_AUTHORIZATION="Bearer junk").status_code, 403)
+        r = self.client.get("/tasks/health-report/", HTTP_X_TMS_TASK_KEY="k-1")
+        self.assertEqual(r.status_code, 200)
+        data = r.json()
+        self.assertEqual(data["problem_reports"]["new"][0]["text"], "页面报错")
+        self.assertIn("ai_reading", data)
+        self.assertIn("data_gaps", data)
+        ok = {"email": "github-deployer@atsstms.iam.gserviceaccount.com", "email_verified": True}
+        with mock.patch("google.oauth2.id_token.verify_oauth2_token", return_value=ok):
+            self.assertEqual(self.client.get("/tasks/health-report/", HTTP_AUTHORIZATION="Bearer t").status_code, 200)
+        with mock.patch("google.oauth2.id_token.verify_oauth2_token", return_value={**ok, "email": "someone@gmail.com"}):
+            self.assertEqual(self.client.get("/tasks/health-report/", HTTP_AUTHORIZATION="Bearer t").status_code, 403)

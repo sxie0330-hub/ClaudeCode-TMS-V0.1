@@ -90,3 +90,23 @@ class ProjectAccessMiddleware:
             obj = model.objects.filter(pk=kw.get("cid")).first() if model else None
             return load_project(obj.shipment.pk) if obj else None
         return False
+
+
+class ErrorContextMiddleware:
+    """On an unhandled error, log who was doing what, so a 500 in the server log can be traced to a person and a page."""
+
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        return self.get_response(request)
+
+    def process_exception(self, request, exception):
+        import logging
+
+        user = getattr(request, "user", None)
+        who = (user.email or user.username) if user is not None and user.is_authenticated else "anonymous"
+        logging.getLogger("tms.errors").error(
+            "500 %s %s user=%s referer=%s error=%s: %s", request.method, request.get_full_path()[:300], who,
+            request.META.get("HTTP_REFERER", "")[:200], type(exception).__name__, str(exception)[:300])
+        return None  # Django still renders the error page and logs the traceback

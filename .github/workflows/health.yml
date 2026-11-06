@@ -1,0 +1,52 @@
+# Daily health data for the automatic check: server errors (with who / which page) and the app's health report.
+# Run by the daily Claude session (or by hand: Actions -> Daily health data -> Run workflow). Read-only.
+name: Daily health data
+
+on:
+  workflow_dispatch:
+    inputs:
+      hours:
+        description: How many hours back
+        default: "26"
+
+permissions:
+  contents: read
+  id-token: write
+
+jobs:
+  health:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      HOURS: ${{ inputs.hours || 26 }}
+      SITE: https://tms-668605433770.us-central1.run.app
+    steps:
+      - id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          workload_identity_provider: projects/668605433770/locations/global/workloadIdentityPools/github/providers/github
+          service_account: github-deployer@atsstms.iam.gserviceaccount.com
+          token_format: id_token
+          id_token_audience: https://tms-668605433770.us-central1.run.app
+          id_token_include_email: true
+      - uses: google-github-actions/setup-gcloud@v2
+      - name: Requests that returned 5xx
+        run: |
+          SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+          gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"tms\" AND httpRequest.status>=500 AND timestamp>=\"$SINCE\"" \
+            --project atsstms --limit 100 --order desc \
+            --format 'value(timestamp,httpRequest.status,httpRequest.requestMethod,httpRequest.requestUrl)' | tac
+      - name: Errors with who and where (tms.errors)
+        run: |
+          SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+          gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"tms\" AND textPayload:\"500 \" AND textPayload:\"user=\" AND timestamp>=\"$SINCE\"" \
+            --project atsstms --limit 50 --order desc --format 'value(timestamp,textPayload)' | tac
+      - name: Tracebacks (last lines of each)
+        run: |
+          SINCE=$(date -u -d "-${HOURS} hours" +%Y-%m-%dT%H:%M:%SZ)
+          gcloud logging read "resource.type=\"cloud_run_revision\" AND resource.labels.service_name=\"tms\" AND severity>=ERROR AND timestamp>=\"$SINCE\"" \
+            --project atsstms --limit 40 --order desc --format 'value(timestamp,textPayload)' | tac | cut -c1-400
+      - name: Health report (problem reports, AI reading, scans, data gaps)
+        run: |
+          curl -sS --fail-with-body -H "Authorization: Bearer ${{ steps.auth.outputs.id_token }}" \
+            "$SITE/tasks/health-report/?hours=${HOURS}" | python3 -m json.tool --no-ensure-ascii
