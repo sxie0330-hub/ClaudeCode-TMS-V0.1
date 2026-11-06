@@ -58,6 +58,7 @@ MIDDLEWARE = [
     "simple_history.middleware.HistoryRequestMiddleware",
     "core.middleware.RequireLoginMiddleware",
     "core.middleware.ProjectAccessMiddleware",
+    "core.middleware.ErrorContextMiddleware",
 ]
 
 ROOT_URLCONF = "tms.urls"
@@ -205,6 +206,10 @@ TMS_AI_PROJECT = os.environ.get("TMS_AI_PROJECT", "")  # default: the project Cl
 TMS_AI_DAILY_LIMIT = int(os.environ.get("TMS_AI_DAILY_LIMIT", "200"))  # per user per 24 h
 # Shared secret for Cloud Scheduler calls to /tasks/… (daily mailbox scan).
 TMS_TASK_KEY = os.environ.get("TMS_TASK_KEY", "")
+# Daily health report (/tasks/health-report/): Google ID tokens for this audience from these service accounts
+TMS_HEALTH_AUDIENCE = os.environ.get("TMS_HEALTH_AUDIENCE", "https://tms-668605433770.us-central1.run.app")
+TMS_HEALTH_REPORT_ACCOUNTS = [a.strip() for a in os.environ.get(
+    "TMS_HEALTH_REPORT_ACCOUNTS", "github-deployer@atsstms.iam.gserviceaccount.com").split(",") if a.strip()]
 
 # Our own companies: never accepted as a customer. Lower-case letters/digits, matched as prefixes.
 TMS_OWN_COMPANY_ALIASES = {

@@ -1669,3 +1669,41 @@ class CustomerQuoteLine(models.Model):
     @property
     def cost_amount(self):
         return Decimal(0) if self.is_optional else (self.quantity or 0) * (self.unit_cost or 0)
+
+
+class ProblemReport(models.Model):
+    """Something a colleague reported from any page with the 报告问题 button: a bug, a wish, a question or wrong wording.
+    The page address, the browser and the last script errors on that page come with it; the daily health check reads them."""
+
+    class Kind(models.TextChoices):
+        BUG = "BUG", "功能不正常"
+        REQUEST = "REQUEST", "希望新增 / 改进"
+        QUESTION = "QUESTION", "不会用 / 有疑问"
+        TEXT = "TEXT", "文字错误或没翻译"
+
+    class State(models.TextChoices):
+        NEW = "NEW", "新提交"
+        SEEN = "SEEN", "已查看"
+        FIXING = "FIXING", "修复中"
+        DONE = "DONE", "已解决"
+        WONTFIX = "WONTFIX", "不处理"
+
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, null=True, on_delete=models.SET_NULL, related_name="+")
+    created_at = models.DateTimeField(auto_now_add=True, db_index=True)
+    kind = models.CharField("类型", max_length=10, choices=Kind.choices, default=Kind.BUG)
+    text = models.TextField("说明")
+    url = models.CharField("页面", max_length=500, blank=True)
+    page_title = models.CharField(max_length=200, blank=True)
+    roles = models.CharField(max_length=60, blank=True)
+    lang = models.CharField(max_length=5, blank=True)
+    user_agent = models.CharField(max_length=300, blank=True)
+    js_errors = models.TextField("页面脚本错误", blank=True)
+    status = models.CharField("状态", max_length=10, choices=State.choices, default=State.NEW, db_index=True)
+    reply = models.TextField("处理说明", blank=True)
+    pr_url = models.URLField("修复 PR", blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"#{self.pk} {self.get_kind_display()} {self.text[:40]}"

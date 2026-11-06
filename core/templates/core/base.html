@@ -29,6 +29,7 @@
            placeholder="搜索项目、柜号、MBL、客户、承运商、发票号…  按 / 唤出" data-suggest="{% url 'search_suggest' %}">
     <div class="sugg" id="sugg" hidden></div>
   </form>
+  <button type="button" class="fb-btn" id="fb-btn" title="发现功能不正常、文字有误，或者希望新增功能，点这里告诉我们">报告问题</button>
   <div class="bell">
     <button type="button" class="bell-btn" id="bell-btn" aria-label="通知" aria-expanded="false">🔔<span class="bell-n" id="bell-n" {% if not notif_unread %}hidden{% endif %}>{{ notif_unread }}</span></button>
     <div class="bell-menu" id="bell-menu" hidden>
@@ -46,6 +47,22 @@
   {% if messages %}<ul class="msgs">{% for m in messages %}<li class="{{ m.tags }}">{{ m }}</li>{% endfor %}</ul>{% endif %}
   {% block content %}{% endblock %}
 </main>
+{% if user.is_authenticated and user_role %}
+<dialog id="fb-dlg" class="fb-dlg">
+  <form method="post" action="{% url 'feedback_new' %}" data-done="{% if en %}Thanks, sent as #{}{% else %}已提交 #{}，谢谢{% endif %}" data-fail="{% if en %}Could not send, please try again{% else %}没有发送成功，请再试一次{% endif %}">{% csrf_token %}
+    <h2 style="margin:0 0 6px;font-size:1rem">报告问题</h2>
+    <p class="muted" style="font-size:13px;margin:0 0 8px">会自动带上当前页面和时间。写清楚你在做什么、看到了什么、本来以为会怎样。</p>
+    <label>类型<select name="kind"><option value="BUG">功能不正常</option><option value="REQUEST">希望新增 / 改进</option><option value="QUESTION">不会用 / 有疑问</option><option value="TEXT">文字错误或没翻译</option></select></label>
+    <label>说明<textarea name="text" rows="5" required placeholder="例如：点“POD 已上传”后页面报错，本来应该显示已上传"></textarea></label>
+    <div style="display:flex;gap:8px;align-items:center;margin-top:8px">
+      <button class="primary" type="submit">提交</button><button type="button" class="fb-cancel">取消</button>
+      <span class="fb-msg muted"></span>
+      {% if perm.mgmt %}<a href="{% url 'feedback_list' %}" style="margin-left:auto;font-size:13px">查看全部反馈 →</a>{% endif %}
+    </div>
+  </form>
+</dialog>
+<script src="{% static 'core/feedback.js' %}" defer></script>
+{% endif %}
 <div class="toasts" id="toasts">{% for n in notif_popups %}<a class="toast" href="{% url 'notification_go' n.pk %}">{{ n.text }}</a>{% endfor %}</div>
 {% if user.is_authenticated and user_role %}<script>window.TMS_POLL = "{% url 'notification_poll' %}";</script>
 <script src="{% static 'core/notify.js' %}" defer></script>{% endif %}

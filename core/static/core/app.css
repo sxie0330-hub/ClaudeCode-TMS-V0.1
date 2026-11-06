@@ -251,3 +251,9 @@ a.wg-num:hover { color: var(--accent, #1d4ed8); text-decoration: underline; }
 .top a.lang:hover { background: rgba(255,255,255,.12); }
 html[lang="en"] .gsearch { flex: 1 1 180px; }
 html[lang="en"] .top nav { gap: 13px; }
+.top .fb-btn { background: transparent; color: #dbe3ee; border: 1px solid #5b6b80; border-radius: 6px; padding: 3px 9px; font-size: 13px; cursor: pointer; white-space: nowrap; }
+.top .fb-btn:hover { background: #2d3b4f; color: #fff; }
+.fb-dlg { width: min(520px, 92vw); border: 1px solid var(--line, #d9dee5); border-radius: 10px; padding: 16px; }
+.fb-dlg::backdrop { background: rgba(15, 23, 42, .35); }
+.fb-dlg label { display: block; margin-top: 6px; }
+.fb-dlg select, .fb-dlg textarea { width: 100%; box-sizing: border-box; }

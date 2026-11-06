@@ -2558,7 +2558,33 @@
 "在项目页点“确认完结”": "click \"Confirm complete\" on the project page",
 "待执行 · 还没有 Load": "Pending · no Loads yet",
 "Load 进度": "Load progress",
-"来自 Load 的计划日期": "Planned date from the Loads"
+"来自 Load 的计划日期": "Planned date from the Loads",
+"报告问题": "Report a problem",
+"发现功能不正常、文字有误，或者希望新增功能，点这里告诉我们": "Something not working, wrong wording, or an idea? Tell us here",
+"会自动带上当前页面和时间。写清楚你在做什么、看到了什么、本来以为会怎样。": "The current page and time are added for you. Say what you were doing, what you saw and what you expected.",
+"功能不正常": "Not working",
+"希望新增 / 改进": "Feature request / improvement",
+"不会用 / 有疑问": "Question / not sure how",
+"文字错误或没翻译": "Wrong or untranslated text",
+"例如：点“POD 已上传”后页面报错，本来应该显示已上传": "e.g. clicking \"POD uploaded\" showed an error; it should show uploaded",
+"提交": "Send",
+"查看全部反馈 →": "All reports →",
+"问题反馈": "Problem reports",
+"未解决": "Open",
+"新提交": "New",
+"已查看": "Seen",
+"修复中": "Fixing",
+"已解决": "Solved",
+"不处理": "Won't fix",
+"同事在任何页面点右上角": "Colleagues report from any page with the",
+"提交，带上当时的页面和页面脚本错误。每天的自动体检也会读这里的新反馈。": "button (top right); the page and any script errors come with it. The daily health check reads new reports too.",
+"页面脚本错误": "Page script errors",
+"处理说明（解决 / 不处理时会通知提交人）": "Reply (sent to the reporter when solved or won't fix)",
+"修复 PR 链接": "Fix PR link",
+"修复：": "Fix: ",
+"页面：": "Page: ",
+"没有反馈": "No reports",
+"请写一句话说明问题": "Please describe the problem in a sentence"
 },
 "patterns": [
 [
@@ -3852,6 +3878,22 @@
 [
 "计划 {}",
 "planned {}"
+],
+[
+"{} 报告了问题 #{}（{}）：{}",
+"{} reported problem #{} ({}): {}"
+],
+[
+"你报告的问题 #{} {}",
+"Your report #{} {}"
+],
+[
+"已更新 #{}",
+"Updated #{}"
+],
+[
+"{} 条",
+"{} items"
 ]
 ]
 }

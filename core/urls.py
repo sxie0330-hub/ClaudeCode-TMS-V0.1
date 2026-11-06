@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import views, views_ai, views_leads as vl, views_mail, views_workspace as ws
+from . import health, views, views_ai, views_feedback, views_leads as vl, views_mail, views_workspace as ws
 
 urlpatterns = [
     path("", ws.home, name="home"),
@@ -61,6 +61,9 @@ urlpatterns = [
     path("history/<str:key>/<int:history_id>/revert/", views.history_revert, name="history_revert"),
     path("team/", views.team, name="team"),
     path("notifications/", views.notifications, name="notifications"),
+    path("feedback/", views_feedback.feedback_list, name="feedback_list"),
+    path("feedback/new/", views_feedback.feedback_new, name="feedback_new"),
+    path("feedback/<int:pk>/", views_feedback.feedback_update, name="feedback_update"),
     path("notifications/<int:nid>/", views.notification_go, name="notification_go"),
     path("notifications/poll/", views.notification_poll, name="notification_poll"),
     path("tools/import/", views.import_upload, name="import_upload"),
@@ -98,6 +101,7 @@ urlpatterns = [
     path("mail/scan/", views_mail.mail_scan_now, name="mail_scan_now"),
     path("mail/find/", views_mail.mail_find, name="mail_find"),
     path("tasks/scan-email/", views_mail.task_scan_email, name="task_scan_email"),
+    path("tasks/health-report/", health.health_report, name="health_report"),
     path("healthz", views.healthz, name="healthz"),
     path("health/", views.healthz, name="health"),  # Cloud Run blocks paths ending in "z"
     path("lang/<str:code>/", views.set_language, name="set_language"),
