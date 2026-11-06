@@ -603,6 +603,18 @@ class PodUploadTests(Base):
         self.assertContains(r, "提 1/1 · 送 0/1")
         self.assertContains(r, "计划 2026-11-06")
 
+    def test_short_wait_within_free_time_does_not_break_project_page(self):
+        from datetime import datetime, timedelta, timezone as dt_tz
+
+        arrived = datetime(2026, 11, 3, 15, 0, tzinfo=dt_tz.utc)
+        self.leg.pickup_arrived_at, self.leg.pickup_departed_at = arrived, arrived + timedelta(minutes=50)
+        self.leg.save()
+        w = self.leg.pickup_wait(2)
+        self.assertEqual((str(w["hours"]), str(w["billable"])), ("0.8", "0.0"))
+        self.login(self.mgmt)
+        self.assertEqual(self.client.get(f"/projects/{self.project.pk}/").status_code, 200)
+        self.assertEqual(self.client.get(f"/shipments/{self.s.pk}/").status_code, 200)
+
     def test_new_project_notifies_owners(self):
         from .models import Notification
 

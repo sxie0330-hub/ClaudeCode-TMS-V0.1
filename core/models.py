@@ -827,8 +827,9 @@ class Leg(SoftDeleteModel):
         if not arrived:
             return None
         end = departed or timezone.now()
-        hours = Decimal(max((end - arrived).total_seconds(), 0)) / 3600
-        return {"hours": hours.quantize(Decimal("0.1")), "billable": max(hours - Decimal(free_hours), 0).quantize(Decimal("0.1")),
+        hours = Decimal(str(max((end - arrived).total_seconds(), 0))) / 3600
+        billable = max(hours - Decimal(str(free_hours or 0)), Decimal("0"))  # Decimal zero: a plain 0 has no quantize()
+        return {"hours": hours.quantize(Decimal("0.1")), "billable": billable.quantize(Decimal("0.1")),
                 "running": departed is None}
 
     def pickup_wait(self, free_hours=2):

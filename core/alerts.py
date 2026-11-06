@@ -5,6 +5,7 @@ payment, and returns Alert rows. Users can switch rules on/off, change the
 threshold, the scope (my projects / everything) and the level, snooze single
 alerts, and add simple custom rules.
 """
+import logging
 from collections import defaultdict
 from dataclasses import dataclass, field
 from datetime import timedelta
@@ -28,6 +29,8 @@ from .models import (
     Status,
     YardStay,
 )
+
+log = logging.getLogger(__name__)
 from .permissions import can_see_margin, visible_sides
 
 LEVELS = [("urgent", "紧急"), ("today", "今天"), ("week", "本周")]
@@ -625,7 +628,10 @@ def collect(user, project=None, include_snoozed=False):
             continue
         r = st["rule"]
         ctx = Ctx(user, "all" if project else st["scope"], st["threshold"], st["level"], project)
-        alerts.extend(r.func(ctx) or [])
+        try:
+            alerts.extend(r.func(ctx) or [])
+        except Exception:  # noqa: BLE001 — one rule tripping on unusual data must not take the whole page down
+            log.exception("to-do rule %s failed", r.key)
     alerts.extend(_custom_alerts(user, project))
     snoozed = set(AlertSnooze.objects.filter(user=user, until__gt=timezone.now()).values_list("key", flat=True))
     for a in alerts:
