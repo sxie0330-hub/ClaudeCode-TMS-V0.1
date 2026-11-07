@@ -31,7 +31,7 @@ from django.utils import timezone
 from zoneinfo import ZoneInfo
 
 from . import ai
-from .models import AiExtraction, GmailConnection, Project, ScannedMessage, Shipment, Status
+from .models import AiChange, AiExtraction, GmailConnection, Project, ScannedMessage, Shipment, Status
 
 log = logging.getLogger(__name__)
 LA = ZoneInfo("America/Los_Angeles")
@@ -499,7 +499,7 @@ def scan_connection(conn, caller=None, now=None):
         for pid in projects:
             by_project.setdefault(pid, []).append(msg)
 
-    created, errors = 0, []
+    created, auto, errors = 0, 0, []
     projects = {p.pk: p for p in Project.objects.filter(pk__in=by_project)}
     capped = False
     for n, (pid, msgs) in enumerate(by_project.items()):
@@ -522,16 +522,17 @@ def scan_connection(conn, caller=None, now=None):
         except ai.AiError as e:
             errors.append(f"{projects[pid].name}：{e}")
             continue  # leave these messages unmarked so the next run retries them
+        auto += ext.changes.filter(status=AiChange.State.APPLIED, result__startswith="自动写入").count()
         if not ext.changes.exists() and not ai.proposals(ext):
             ext.status = AiExtraction.State.DONE  # nothing new: keep it out of the to-do list
             ext.save(update_fields=["status"])
-        else:
-            created += 1
+        elif ext.status == AiExtraction.State.PENDING:
+            created += 1  # something still needs a person
         for m in msgs:
             ScannedMessage.objects.update_or_create(connection=conn, message_id=m["id"],
                                                     defaults={"subject": m["subject"], "extraction": ext, "rfc_id": m.get("rfc_id", "")})
     relevant = len({m["id"] for msgs in by_project.values() for m in msgs})
-    result = f"读了 {relevant} 封相关邮件，{created} 个项目有更新待确认"
+    result = f"读了 {relevant} 封相关邮件，{created} 个项目有更新待确认" + (f"，{auto} 项低风险信息已自动写入" if auto else "")
     if quota_hit:
         result += f"；Gmail 每分钟读取次数到上限（已读 {read} / {min(len(ids), MAX_MESSAGES)} 封），剩下的下次扫描自动继续"
     if skipped_dup:

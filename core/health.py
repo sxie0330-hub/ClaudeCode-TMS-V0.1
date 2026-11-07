@@ -65,6 +65,10 @@ def report(hours=26, now=None):
             "change_outcomes": list(changes.values("status").annotate(n=Count("id")).order_by("status")),
             "rejected_by_field": list(changes.filter(status=AiChange.State.REJECTED).values("field")
                                       .annotate(n=Count("id")).order_by("-n")[:15]),
+            "auto_applied": changes.filter(status=AiChange.State.APPLIED, result__startswith="自动写入").count(),
+            "auto_undone": changes.filter(status=AiChange.State.REJECTED, result__contains="撤销").count(),
+            "auto_undone_by_field": list(changes.filter(status=AiChange.State.REJECTED, result__contains="撤销")
+                                         .values("field").annotate(n=Count("id")).order_by("-n")[:15]),
             "blocked_by_field": list(changes.filter(status=AiChange.State.BLOCKED).values("field", "result")
                                      .annotate(n=Count("id")).order_by("-n")[:15]),
         },

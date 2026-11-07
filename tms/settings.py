@@ -193,6 +193,11 @@ TMS_LFD_WARNING_DAYS = int(os.environ.get("TMS_LFD_WARNING_DAYS", "3"))
 # --- AI email reading (Gemini on Vertex AI, see core/ai.py) ----------------
 # Uses the Cloud Run service account; no API key. Off until TMS_AI_ENABLED=1.
 TMS_AI_ENABLED = env_bool("TMS_AI_ENABLED", False)
+# Low-risk facts AI may write without a person when the field is empty (see core.ai.auto_reason)
+TMS_AI_AUTO_APPLY = env_bool("TMS_AI_AUTO_APPLY", True)
+TMS_AI_AUTO_FIELDS = [f.strip() for f in os.environ.get("TMS_AI_AUTO_FIELDS", ",".join([
+    "actual_pickup", "actual_delivery", "pickup_arrived_at", "pickup_departed_at", "delivery_arrived_at",
+    "delivery_departed_at", "pod_received", "driver_name", "driver_phone", "truck_trailer", "tracking_url"])).split(",") if f.strip()]
 TMS_AI_MODEL = os.environ.get("TMS_AI_MODEL", "gemini-3.8-flash")
 TMS_AI_LOCATION = os.environ.get("TMS_AI_LOCATION", "global")
 # Gemini list prices, USD per 1M tokens (input, output incl. thinking), by start date. Used only for the

@@ -72,6 +72,7 @@ urlpatterns = [
     path("ai/new/", views_ai.ai_new, name="ai_new"),
     path("ai/<int:pk>/", views_ai.ai_review, name="ai_review"),
     path("ai/<int:pk>/apply/", views_ai.ai_apply, name="ai_apply"),
+    path("ai/changes/<int:pk>/undo/", views_ai.ai_undo, name="ai_undo"),
     path("ai/<int:pk>/create-project/", views_ai.ai_create_project, name="ai_create_project"),
     path("leads/", vl.lead_list, name="lead_list"),
     path("leads/new/", vl.lead_new, name="lead_new"),

@@ -2584,7 +2584,11 @@
 "修复：": "Fix: ",
 "页面：": "Page: ",
 "没有反馈": "No reports",
-"请写一句话说明问题": "Please describe the problem in a sentence"
+"请写一句话说明问题": "Please describe the problem in a sentence",
+"自动写入：低风险字段，原来为空": "Written automatically: low-risk field that was empty",
+"撤销": "Undo",
+"撤销这项自动写入，把字段恢复为空？": "Undo this automatic write and empty the field again?",
+"实际提送货日期、带时区的到达 / 离开时间、POD 收到日期、司机和车牌这类低风险信息，原来为空时自动写入，可以撤销。": "Low-risk facts (actual pickup / delivery date, arrival / departure times with a time zone, POD received date, driver and truck) are written automatically when the field is empty, and can be undone."
 },
 "patterns": [
 [
@@ -3894,6 +3898,34 @@
 [
 "{} 条",
 "{} items"
+],
+[
+"系统报错：{}（{}）{}。已记录，体检时会修复。",
+"System error: {} ({}) {}. Logged; the health check will fix it."
+],
+[
+"AI 自动写入（邮件识别 #{}）：{}",
+"Written automatically by AI (e-mail reading #{}): {}"
+],
+[
+"撤销 AI 自动写入：{} {}",
+"Undid AI automatic write: {} {}"
+],
+[
+"自动写入后被 {} 撤销",
+"written automatically, undone by {}"
+],
+[
+"已撤销自动写入：{}",
+"Automatic write undone: {}"
+],
+[
+"不能撤销：{}",
+"Cannot undo: {}"
+],
+[
+"，{} 项低风险信息已自动写入",
+", {} low-risk items written automatically"
 ]
 ]
 }

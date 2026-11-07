@@ -109,4 +109,20 @@ class ErrorContextMiddleware:
         logging.getLogger("tms.errors").error(
             "500 %s %s user=%s referer=%s error=%s: %s", request.method, request.get_full_path()[:300], who,
             request.META.get("HTTP_REFERER", "")[:200], type(exception).__name__, str(exception)[:300])
+        self._alert_managers(request.path, who, exception)
         return None  # Django still renders the error page and logs the traceback
+
+    @staticmethod
+    def _alert_managers(path, who, exception):
+        """An in-app notice to management right away, at most once per page per hour, so a weekly check is enough."""
+        from django.core.cache import cache
+
+        key = "err-alert:" + path[:200]
+        if not cache.add(key, 1, timeout=3600):
+            return
+        try:
+            from .notify import managers, notify
+
+            notify(managers(), f"系统报错：{path[:120]}（{who}）{type(exception).__name__}。已记录，体检时会修复。", path[:300])
+        except Exception:  # noqa: BLE001 — the alert must never hide the original error
+            pass
