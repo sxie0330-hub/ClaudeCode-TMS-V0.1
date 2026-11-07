@@ -833,7 +833,7 @@ def fake_gemini(result):
     return caller
 
 
-@override_settings(TMS_AI_ENABLED=True)
+@override_settings(TMS_AI_ENABLED=True, TMS_AI_AUTO_APPLY=False)  # the manual review path
 class AiEmailTests(Base):
     EMAIL = "CYMU2523606 picked up 1/5, arrived site 1/6 09:20 ET, unloaded. Driver Mike."
 
@@ -1385,7 +1385,7 @@ class AiMblFieldTests(Base):
 
 
 
-@override_settings(TMS_AI_ENABLED=True, TMS_TASK_KEY="k-1")
+@override_settings(TMS_AI_ENABLED=True, TMS_TASK_KEY="k-1", TMS_AI_AUTO_APPLY=False)
 class MailScanTests(Base):
     def setUp(self):
         super().setUp()
@@ -2736,6 +2736,9 @@ class ProblemReportTests(Base):
             r = self.client.get(f"/projects/{self.project.pk}/")
         self.assertEqual(r.status_code, 500)
         self.assertIn("user=boss@advtransolution.com", cm.output[0])
+        from .models import Notification
+
+        self.assertTrue(Notification.objects.filter(user=self.mgmt, text__startswith="系统报错").exists())
         self.assertIn(f"/projects/{self.project.pk}/", cm.output[0])
 
 
@@ -2760,3 +2763,80 @@ class HealthReportTests(Base):
             self.assertEqual(self.client.get("/tasks/health-report/", HTTP_AUTHORIZATION="Bearer t").status_code, 200)
         with mock.patch("google.oauth2.id_token.verify_oauth2_token", return_value={**ok, "email": "someone@gmail.com"}):
             self.assertEqual(self.client.get("/tasks/health-report/", HTTP_AUTHORIZATION="Bearer t").status_code, 403)
+
+
+@override_settings(TMS_AI_ENABLED=True, TMS_AI_AUTO_APPLY=True)
+class AiAutoApplyTests(Base):
+    def extract(self, updates):
+        from . import ai
+
+        load = {"container_number": "CYMU2523606", "carrier_load_number": "", "note": "", "updates": updates}
+        return ai.extract("mail", self.op, caller=fake_gemini({"summary": "x", "loads": [load], "unmatched": ""}))
+
+    def test_low_risk_empty_fields_are_written_the_rest_waits(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import AiChange, AiExtraction, Note
+
+        today = timezone.localdate()
+        y = (today - timedelta(days=1)).isoformat()
+        self.leg.truck_trailer = "T-100"
+        self.leg.save()
+        ext = self.extract([
+            {"field": "actual_pickup", "value": y, "evidence": "picked up yesterday"},           # auto
+            {"field": "pickup_arrived_at", "value": f"{y}T08:00:00-08:00", "evidence": "in 8am"},  # auto (zone given)
+            {"field": "pickup_departed_at", "value": f"{y}T09:30:00", "evidence": "out 9:30"},    # no zone: waits
+            {"field": "driver_name", "value": "Mike", "evidence": "Driver Mike"},                 # auto
+            {"field": "truck_trailer", "value": "T-200", "evidence": "truck T-200"},              # would overwrite: waits
+            {"field": "scheduled_delivery", "value": today.isoformat(), "evidence": "deliver today"},  # plan: waits
+            {"field": "actual_delivery", "value": (today + timedelta(days=3)).isoformat(), "evidence": "will deliver"},  # future: waits
+            {"field": "pod_received", "value": y, "evidence": ""},                                 # no evidence: waits
+        ])
+        by = {c.field: c for c in ext.changes.all()}
+        auto = {f for f, c in by.items() if c.status == AiChange.State.APPLIED}
+        self.assertEqual(auto, {"actual_pickup", "pickup_arrived_at", "driver_name"})
+        self.assertTrue(all(by[f].result.startswith("自动写入") for f in auto))
+        self.assertEqual({f for f, c in by.items() if c.status == AiChange.State.PENDING},
+                         {"pickup_departed_at", "truck_trailer", "scheduled_delivery", "actual_delivery", "pod_received"})
+        self.leg.refresh_from_db()
+        self.assertEqual((str(self.leg.actual_pickup), self.leg.driver_name, self.leg.truck_trailer), (y, "Mike", "T-100"))
+        ext.refresh_from_db()
+        self.assertEqual(ext.status, AiExtraction.State.PENDING)  # the rest still waits for a person
+        self.assertIsNone(ext.reviewed_by)
+        self.assertTrue(Note.objects.filter(shipment=self.s, text__startswith="AI 自动写入").exists())
+
+        # a person can undo an automatic write from the review page
+        self.login(self.op)
+        r = self.client.post(f"/ai/changes/{by['driver_name'].pk}/undo/")
+        self.assertEqual(r.status_code, 302)
+        self.leg.refresh_from_db()
+        self.assertEqual(self.leg.driver_name, "")
+        by["driver_name"].refresh_from_db()
+        self.assertEqual(by["driver_name"].status, AiChange.State.REJECTED)
+        self.assertContains(self.client.get(f"/ai/{ext.pk}/"), "撤销")
+
+    def test_all_low_risk_closes_the_extraction_and_order_is_checked(self):
+        from datetime import timedelta
+
+        from django.utils import timezone
+
+        from .models import AiChange, AiExtraction
+
+        today = timezone.localdate()
+        self.leg.actual_pickup = today - timedelta(days=2)
+        self.leg.save()
+        ext = self.extract([{"field": "actual_delivery", "value": (today - timedelta(days=3)).isoformat(), "evidence": "delivered"}])
+        c = ext.changes.get()
+        self.assertEqual(c.status, AiChange.State.PENDING)  # delivered before pickup: a person decides
+        ext = self.extract([{"field": "driver_name", "value": "Ana", "evidence": "driver Ana"}])
+        ext.refresh_from_db()
+        self.assertEqual(ext.status, AiExtraction.State.DONE)  # nothing left to confirm
+
+    @override_settings(TMS_AI_AUTO_APPLY=False)
+    def test_switch_off(self):
+        from .models import AiChange
+
+        ext = self.extract([{"field": "driver_name", "value": "Mike", "evidence": "Driver Mike"}])
+        self.assertEqual(ext.changes.get().status, AiChange.State.PENDING)

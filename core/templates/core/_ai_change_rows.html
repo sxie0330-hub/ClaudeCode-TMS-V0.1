@@ -8,7 +8,7 @@
       <td class="muted">{% if c.is_note %}—{% else %}{{ c.old_display }}{% endif %}</td>
       <td><b>{{ c.new_display }}</b>{% if c.tz_assumed %}<br><small class="lfd-warn">邮件没写时区，按太平洋时间</small>{% endif %}</td>
       <td class="wrap" style="max-width:360px"><small>{{ c.evidence|default:"—" }}</small></td>
-      <td>{% if c.status == 'PENDING' %}{% if c.blocked %}<span class="lfd-warn">{{ c.blocked }}</span>{% else %}待确认{% endif %}{% else %}{{ c.get_status_display }}{% if c.result %}<br><small class="muted">{{ c.result }}</small>{% endif %}{% endif %}</td>
+      <td>{% if c.status == 'PENDING' %}{% if c.blocked %}<span class="lfd-warn">{{ c.blocked }}</span>{% else %}待确认{% endif %}{% else %}{{ c.get_status_display }}{% if c.result %}<br><small class="muted">{{ c.result }}</small>{% endif %}{% if c.status == 'APPLIED' and c.result|slice:":4" == "自动写入" %}<br><button type="submit" class="sm" formaction="{% url 'ai_undo' c.pk %}" formnovalidate onclick="return confirm('撤销这项自动写入，把字段恢复为空？')">撤销</button>{% endif %}{% endif %}</td>
     </tr>
     {% endfor %}
     </tbody>

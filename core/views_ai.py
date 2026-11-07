@@ -2,12 +2,13 @@
 from collections import OrderedDict
 
 from django.contrib import messages
+from django.http import Http404
 from django.shortcuts import get_object_or_404, redirect, render
 from django.views.decorators.http import require_POST
 
 from . import ai
 from .models import AiChange, AiExtraction, CargoLine, Carrier, Company, Customer, Location, Project, Shipment
-from .permissions import can_edit_ops, visible_projects
+from .permissions import can_edit_ops, can_see_project, visible_projects
 from .views import _need
 
 
@@ -115,6 +116,21 @@ def ai_apply(request, pk):
     if not applied and not skipped:
         messages.info(request, "没有勾选任何内容，全部标为未采用")
     return redirect(ext)
+
+
+@require_POST
+def ai_undo(request, pk):
+    """Undo one automatic write (the field goes back to empty)."""
+    _need(can_edit_ops(request.user))
+    c = get_object_or_404(AiChange.objects.select_related("extraction", "shipment", "leg", "project"), pk=pk)
+    if c.shipment_id and not can_see_project(request.user, c.shipment.project):
+        raise Http404
+    reason = ai.undo_auto(c, request.user)
+    if reason:
+        messages.error(request, f"不能撤销：{reason}")
+    else:
+        messages.success(request, f"已撤销自动写入：{c.label}")
+    return redirect(c.extraction)
 
 
 def ai_list(request):

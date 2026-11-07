@@ -776,6 +776,7 @@ def extract(email_text, user, project=None, shipment=None, caller=None, source=A
     if not ext.changes.exists() and not proposals(ext):
         ext.status = AiExtraction.State.DONE  # nothing to confirm
     ext.save(update_fields=["unmatched", "status"])
+    auto_apply(ext)
     return ext
 
 
@@ -807,15 +808,99 @@ def blocked_reason(change, user):
     return ""
 
 
+# ---------------------------------------------------------------------------
+# Automatic writing of low-risk facts (no person in between)
+# ---------------------------------------------------------------------------
+# settings.TMS_AI_AUTO_FIELDS: facts that only fill an empty field and change no money, plan or identity —
+# when the truck was picked up / delivered, when the driver arrived and left, when the POD came in, who drives.
+AUTO_RESULT = "自动写入：低风险字段，原来为空"
+AUTO_MAX_AGE_DAYS = 14
+
+
+def auto_reason(c, user):
+    """'' when this pending change can be written without a person; otherwise why not."""
+    if c.field not in settings.TMS_AI_AUTO_FIELDS:
+        return "不在自动写入范围"
+    spec = FIELDS[c.field]
+    if c.old_value != "":
+        return "会覆盖已有内容"
+    if not c.evidence.strip():
+        return "没有邮件原文依据"
+    if spec.kind == "datetime" and c.tz_assumed:
+        return "邮件没写时区"
+    if reason := blocked_reason(c, user):
+        return reason
+    today = timezone.localdate()
+    if spec.kind in ("date", "datetime"):
+        v = deserialize(spec.kind, c.new_value)
+        day = timezone.localtime(v).date() if spec.kind == "datetime" else v
+        if day > today or day < today - timedelta(days=AUTO_MAX_AGE_DAYS):
+            return "日期不在最近两周内"
+        if spec.kind == "datetime" and v > timezone.now() + timedelta(hours=1):
+            return "时间在将来"
+    leg = c.leg
+    if leg is not None:  # never contradict what the leg already says
+        pairs = {"pickup_departed_at": ("pickup_arrived_at", 1), "pickup_arrived_at": ("pickup_departed_at", -1),
+                 "delivery_departed_at": ("delivery_arrived_at", 1), "delivery_arrived_at": ("delivery_departed_at", -1),
+                 "actual_delivery": ("actual_pickup", 1), "actual_pickup": ("actual_delivery", -1)}
+        if c.field in pairs:
+            other, later = pairs[c.field]  # later=1: the new value must not be before the other one
+            ov = getattr(leg, other)
+            nv = deserialize(spec.kind, c.new_value)
+            if ov is not None and ((later > 0 and nv < ov) or (later < 0 and nv > ov)):
+                return "和已有的时间先后矛盾"
+    return ""
+
+
+def auto_apply(ext):
+    """Write the low-risk, empty-field changes of a new extraction right away; leave the rest for a person."""
+    if not settings.TMS_AI_AUTO_APPLY or ext.status != AiExtraction.State.PENDING or ext.created_by is None:
+        return []
+    pending = ext.changes.select_related("shipment", "leg", "project").filter(status=AiChange.State.PENDING)
+    ids = [c.pk for c in pending if not auto_reason(c, ext.created_by)]
+    if not ids:
+        return []
+    applied, _ = apply_changes(ext, ext.created_by, ids, reject_rest=False, auto=True)
+    return applied
+
+
 @transaction.atomic
-def apply_changes(ext, user, approve_ids):
-    """Apply the ticked changes, reject the rest. Returns (applied, skipped) lists."""
+def undo_auto(change, user):
+    """Put back what an automatic write replaced (an empty field). Returns '' or why it can't."""
+    if change.status != AiChange.State.APPLIED or not change.result.startswith("自动写入"):
+        return "这一项不是自动写入的"
+    if not can_edit_ops(user):
+        return "没有编辑权限"
+    spec = FIELDS[change.field]
+    obj = target_obj(spec, change.shipment, change.leg, change.project)
+    if obj is None:
+        return "对象已不存在"
+    if _current(obj, change.field) != change.new_value:
+        return "之后已被改过，不能撤销"
+    setattr(obj, spec.attr or change.field, deserialize(spec.kind, change.old_value))
+    obj._change_reason = f"撤销 AI 自动写入 #{change.extraction_id}"
+    obj.save()
+    change.status, change.result = AiChange.State.REJECTED, f"自动写入后被 {user.get_full_name() or user.email} 撤销"
+    change.decided_by, change.decided_at = user, timezone.now()
+    change.save()
+    if change.shipment_id:
+        Note.objects.create(shipment=change.shipment, created_by=user, kind=Note.Kind.SYSTEM,
+                            text=f"撤销 AI 自动写入：{spec.label} {change.new_display}")
+    return ""
+
+
+@transaction.atomic
+def apply_changes(ext, user, approve_ids, reject_rest=True, auto=False):
+    """Apply the ticked changes, reject the rest (or, with reject_rest=False, leave them pending).
+    auto=True: the automatic write of low-risk facts, not a person's review. Returns (applied, skipped)."""
     approve_ids = {int(i) for i in approve_ids}
     applied, skipped = [], []
     pending = list(ext.changes.select_related("shipment", "leg", "project").filter(status=AiChange.State.PENDING))
     by_obj = {}
     now = timezone.now()
     for c in pending:
+        if c.id not in approve_ids and not reject_rest:
+            continue  # stays pending for a person
         if c.id not in approve_ids:
             c.status = AiChange.State.REJECTED
         elif reason := blocked_reason(c, user):
@@ -864,11 +949,13 @@ def apply_changes(ext, user, approve_ids):
                 else:
                     setattr(obj, spec.attr or c.field, value)
                 c.status = AiChange.State.APPLIED
+                if auto:
+                    c.result = AUTO_RESULT
                 applied.append(c)
-        c.decided_by, c.decided_at = user, now
+        c.decided_by, c.decided_at = (None if auto else user), now
         c.save()
 
-    reason = f"AI 邮件识别 #{ext.pk}"
+    reason = f"AI 邮件识别 #{ext.pk}" + ("（自动写入）" if auto else "")
     for (target, _), obj in by_obj.items():
         obj._change_reason = reason
         obj.save()
@@ -880,14 +967,16 @@ def apply_changes(ext, user, approve_ids):
         items = [c for c in applied if c.shipment_id == s.pk and c.field != NOTE_FIELD]
         if items:
             text = "；".join(f"{FIELDS[c.field].label} {c.new_display}" for c in items)
-            Note.objects.create(shipment=s, created_by=user, kind=Note.Kind.SYSTEM, text=f"通过 AI 邮件识别 #{ext.pk} 更新：{text}")
+            head = f"AI 自动写入（邮件识别 #{ext.pk}）" if auto else f"通过 AI 邮件识别 #{ext.pk} 更新"
+            Note.objects.create(shipment=s, created_by=None if auto else user, kind=Note.Kind.SYSTEM, text=f"{head}：{text}")
     for p in {c.project for c in applied if c.project_id}:
         items = [c for c in applied if c.project_id == p.pk]
         text = "；".join(f"{FIELDS[c.field].label} {c.new_display}" for c in items)
         Note.objects.create(project=p, created_by=user, kind=Note.Kind.SYSTEM, text=f"通过 AI 邮件识别 #{ext.pk} 补全：{text}")
-    if not open_proposals(ext):
-        ext.status = AiExtraction.State.DONE  # else a new-project proposal is still waiting
-    ext.reviewed_by, ext.reviewed_at = user, now
+    if not open_proposals(ext) and not ext.changes.filter(status=AiChange.State.PENDING).exists():
+        ext.status = AiExtraction.State.DONE  # else a new-project proposal or other changes still wait
+    if not auto:
+        ext.reviewed_by, ext.reviewed_at = user, now
     ext.save(update_fields=["status", "reviewed_by", "reviewed_at"])
     return applied, skipped
 

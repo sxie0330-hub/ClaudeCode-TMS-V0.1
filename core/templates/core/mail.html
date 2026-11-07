@@ -6,7 +6,7 @@
 
 <div class="card">
   <p style="margin-top:0">在你设定的时间（洛杉矶时间，默认每天傍晚 5:00），TMS 只读地查看你的 Gmail：用<b>扫描范围内在执行项目</b>的柜号、MBL、承运商单号（还没有柜号的项目用“项目编号 + 客户名”）搜索上次扫描之后的新邮件，Excel / CSV 附件也会读取，
-    没提到这些单号的邮件不会被打开。同一项目的邮件合并交给 AI 识别一次，结果放进 <a href="{% url 'todo' %}">今日待办</a>，<b>你确认后才写入</b>。</p>
+    没提到这些单号的邮件不会被打开。同一项目的邮件合并交给 AI 识别一次，结果放进 <a href="{% url 'todo' %}">今日待办</a>，<b>你确认后才写入</b>；实际提送货日期、带时区的到达 / 离开时间、POD 收到日期、司机和车牌这类低风险信息，原来为空时自动写入，可以撤销。</p>
   {% if conn %}
     <p>已连接 <b>{{ conn.email }}</b>（{{ conn.connected_at|date:"Y-m-d" }} 起）·
       上次扫描：{% if conn.last_scan_at %}{{ conn.last_scan_at|date:"m-d H:i" }}{% else %}还没有{% endif %}
